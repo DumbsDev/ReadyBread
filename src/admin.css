@@ -1,0 +1,78 @@
+/* -------------------------
+   ADMIN PAGE POLISH
+-------------------------- */
+
+.glassy-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.neon-glow {
+  box-shadow: 0 0 12px rgba(255, 209, 102, 0.4);
+}
+
+.scrollable-tabs {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.admin-shell {
+  padding-top: 10px;
+}
+
+.admin-list {
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+.admin-card {
+  transition: transform 0.15s ease;
+}
+.admin-card:hover {
+  transform: scale(1.02);
+}
+
+.status-tag {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  text-transform: capitalize;
+}
+
+.status-pending {
+  background: rgba(255, 200, 0, 0.2);
+  color: #ffd166;
+}
+
+.status-fulfilled {
+  background: rgba(0, 255, 120, 0.2);
+  color: #00e676;
+}
+
+.status-denied {
+  background: rgba(255, 0, 70, 0.2);
+  color: #ff1744;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-approve {
+  background: #00e676 !important;
+  color: #000 !important;
+}
+
+.admin-deny {
+  background: #ff1744 !important;
+  color: white !important;
+}

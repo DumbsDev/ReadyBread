@@ -1,0 +1,2697 @@
+/* ---------------------------------------------------
+   BRAND COLORS
+---------------------------------------------------- */
+:root {
+    --golden-toast: #FFD166;
+    --charred-wheat: #1A1A1A;
+    --burnt-toast: #2B2B2B;
+    --soft-sugar: #FDFDFD;
+    --warm-pastry: #FFEBC3;
+    --game: #cc41ff;
+    --survey: #6060ff;
+    --receipts: #3fff99;
+    --misc: #ff6666; 
+}
+
+#emphasis {
+    color: var(--golden-toast);}
+
+#text-gen {
+    color: var(--soft-sugar)
+}
+
+/* ---------------------------------------------------
+   GLOBAL RESET + BODY
+---------------------------------------------------- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--burnt-toast);
+    font-family: "Inter", Arial, sans-serif;
+    color: var(--soft-sugar);
+    padding: 0 12px;
+}
+
+/* ---------------------------------------------------
+   HEADER: LOGO + CENTERED NAV + BALANCE
+---------------------------------------------------- */
+
+.rb-header {
+    text-align: center;
+    margin-top: 14px;
+    background-color: var(--charred-wheat);
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--golden-toast);
+    box-shadow: 0 0 3px var(--golden-toast)
+}
+
+.rb-logo {
+    font-size: 30px;
+    margin-bottom: 8px;
+    font-weight: 800;
+    color: var(--golden-toast);
+}
+
+/* ─── Swipeable Nav Bar ─────────────────────────── */
+.rb-nav {
+    display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
+    gap: 14px;
+    padding: 8px 0;
+    justify-content: center;
+    scrollbar-width: none;
+}
+
+.rb-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.rb-nav a {
+    background: var(--charred-wheat);
+    padding: 8px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--golden-toast);
+    font-size: 15px;
+    color: var(--golden-toast);
+    text-decoration: none;
+    transition: 0.15s;
+}
+
+.rb-nav a:hover {
+    background: var(--golden-toast);
+    color: var(--charred-wheat);
+}
+
+/* ─── Balance Box ─────────────────────────────── */
+.rb-balance {
+    background: var(--charred-wheat);
+    padding: 10px 16px;
+    border-radius: 10px;
+    text-align: center;
+    width: fit-content;
+    margin: 10px auto 20px;
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--golden-toast);
+    border: 1px solid var(--golden-toast);
+    box-shadow: 0 0 3px var(--golden-toast);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    --digit-height: 1.35em;
+    --digit-width: 0.58em;
+    font-variant-numeric: tabular-nums;
+}
+
+.rb-balance-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+}
+
+.rb-balance-prefix {
+    font-weight: 550;
+    letter-spacing: 0;
+}
+
+.rb-balance-digits {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.rb-digit-roller {
+    position: relative;
+    overflow: hidden;
+    height: var(--digit-height);
+    width: var(--digit-width);
+    display: inline-block;
+}
+
+.rb-digit-track {
+    display: flex;
+    flex-direction: column;
+    transform: translateY(calc(-1 * var(--digit-height) * var(--digit-value, 0)));
+    transition: transform 0.35s ease;
+}
+
+.rb-digit {
+    height: var(--digit-height);
+    line-height: var(--digit-height);
+    text-align: center;
+}
+
+.rb-digit-static {
+    display: inline-block;
+    width: 0.42em;
+    margin: 0 0.06em;
+    text-align: center;
+}
+
+.rb-balance-pulse {
+    animation: balancePulse 1.2s ease;
+    box-shadow: 0 0 12px var(--golden-toast), 0 0 24px rgba(255, 209, 102, 0.35);
+}
+
+.rb-balance-pulse .rb-balance-prefix,
+.rb-balance-pulse .rb-digit,
+.rb-balance-pulse .rb-digit-static {
+    color: #fffbe8;
+    text-shadow: 0 0 10px rgba(255, 209, 102, 0.8);
+}
+
+@keyframes balancePulse {
+    0% {
+        transform: scale(1);
+    }
+    35% {
+        transform: scale(1.08);
+        box-shadow: 0 0 16px var(--golden-toast), 0 0 28px rgba(255, 209, 102, 0.35);
+    }
+    70% {
+        transform: scale(1.03);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 3px var(--golden-toast);
+    }
+}
+
+/* ---------------------------------------------------
+   PAGE CONTENT WRAPPER
+---------------------------------------------------- */
+.rb-content {
+    background: #1a1a1a;
+    border-radius: 14px;
+    padding: 18px 18px 22px;
+    margin-top: 18px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+}
+
+/* ---------------------------------------------------
+   LOGIN / SIGNUP CARDS (centered)
+---------------------------------------------------- */
+.login-card {
+    background: var(--charred-wheat);
+    border-radius: 14px;
+    padding: 24px;
+    max-width: 380px;
+    margin: 24px auto;
+    box-shadow: 0 0 20px rgba(0,0,0,0.35);
+    text-align: center;
+}
+
+.login-card input,
+.login-card button {
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* Inputs */
+input {
+    background: var(--burnt-toast);
+    border: 1px solid rgba(255,209,102,0.3);
+    padding: 12px;
+    color: var(--soft-sugar);
+    border-radius: 8px;
+}
+
+/* Buttons */
+button {
+    background: var(--golden-toast);
+    color: var(--charred-wheat);
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    font-weight: bold;
+    transition: 0.2s;
+    cursor: pointer;
+}
+
+button:hover {
+    box-shadow: 0 0 10px rgba(255,209,102,0.5);
+    transform: translateY(-2px);
+}
+
+/* ---------------------------------------------------
+   EARN PAGE — Shell + Cards
+---------------------------------------------------- */
+
+/* Shell wrapper */
+.earn-shell {
+    background: var(--charred-wheat);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 10px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+}
+
+/* Section headers */
+.earn-header h2 {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--golden-toast);
+}
+
+.earn-sub {
+    font-size: 14px;
+    opacity: 0.85;
+    margin-top: 4px;
+}
+
+/* Sort Bar */
+.earn-sort {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+}
+
+.sort-btn {
+    padding: 8px 14px;
+    border-radius: 30px;
+    border: 1px solid var(--golden-toast);
+    background: transparent;
+    color: var(--golden-toast);
+    font-size: 14px;
+}
+
+.sort-btn.sort-active,
+.sort-btn:hover {
+    background: var(--golden-toast);
+    color: var(--charred-wheat);
+}
+
+/* Survey List Cards */
+.survey-list {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.survey-card {
+    background: var(--burnt-toast);
+    border-left: 4px solid var(--golden-toast);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.survey-main h3 {
+    margin-bottom: 6px;
+    font-size: 18px;
+    color: var(--warm-pastry);
+}
+
+.survey-meta {
+    font-size: 14px;
+    opacity: 0.85;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.survey-start-btn {
+    background: var(--golden-toast);
+    color: var(--charred-wheat);
+    padding: 10px 18px;
+    border-radius: 30px;
+}
+
+/* Empty list */
+.survey-empty {
+    padding: 16px;
+    text-align: center;
+    opacity: 0.8;
+}
+
+/* ---------------------------------------
+   GAME & APP OFFERS (Games page)
+---------------------------------------- */
+
+.offer-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.offer-header-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.offer-thumb {
+  flex-shrink: 0;
+}
+
+.offer-thumb-inner {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.offer-thumb-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.offer-copy h3 {
+  margin: 0 0 4px 0;
+}
+
+.offer-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.chip-payout {
+  background: rgba(255, 204, 120, 0.15);
+  border-color: rgba(255, 204, 120, 0.5);
+}
+
+.chip-time {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.offer-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.survey-more-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--soft-sugar);
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.survey-more-btn:hover {
+  border-color: var(--golden-toast);
+}
+
+.offer-details {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+}
+
+.offer-details h4 {
+  margin: 0 0 6px 0;
+  font-size: 15px;
+  color: var(--soft-sugar);
+}
+
+.offer-objectives {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px 0;
+}
+
+.offer-objectives li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.obj-name {
+  opacity: 0.9;
+}
+
+.obj-reward {
+  font-weight: 600;
+  color: var(--golden-toast);
+}
+
+.offer-details-copy {
+  margin: 0 0 6px 0;
+  opacity: 0.9;
+}
+
+.offer-disclaimer {
+  margin: 0 0 6px 0;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.offer-details-note {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* Mobile tweaks */
+@media (max-width: 700px) {
+  .offer-header-row {
+    align-items: flex-start;
+  }
+
+  .offer-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .survey-more-btn,
+  .survey-start-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Dashboard - Active & Completed Offers already exist from before */
+
+/* Progress list */
+.dash-offer-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.dash-progress-row {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 204, 120, 0.05);
+  border: 1px solid rgba(255, 204, 120, 0.2);
+}
+
+.dash-progress-bar-wrap {
+  margin-top: 6px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.dash-progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--golden-toast);
+}
+
+/* ---------------------------------------------------
+   MOBILE TWEAKS
+---------------------------------------------------- */
+
+@media (max-width: 600px) {
+    .rb-logo {
+        font-size: 28px;
+    }
+
+    .rb-nav a {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+
+    .survey-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .survey-start-btn {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+/* ----------------------------
+   UNIVERSAL FORCED LOADER
+----------------------------- */
+
+/* Hide inputs from browser autofill parsing until JS enables them */
+.rb-hidden-inputs * {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Actual loader lol */
+#rb-loader {
+    position: fixed;
+    inset: 0;
+    background: #1A1A1A;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999999;
+    opacity: 1;
+    transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+#rb-loader.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.loader-bread {
+    font-size: 70px;
+    animation: bread-spin 1.4s linear infinite;
+}
+
+@keyframes bread-spin {
+    0% { transform: rotate(0); }
+    50% { transform: rotate(180deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ---------------------------------------------------
+   HOME PAGE v2 - HUB STYLE (matches Earn vibe)
+---------------------------------------------------- */
+
+/* Main wrapper for / (Home) */
+.home-wrapper {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 10px;
+    text-align: center;
+}
+
+/* Hero card at the top */
+.home-hero {
+    background: rgba(255, 204, 120, 0.06);
+    border-radius: 18px;
+    padding: 20px 22px;
+    border: 1px solid rgba(255, 204, 120, 0.22);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 22px rgba(0,0,0,0.45);
+    margin-bottom: 16px;
+    text-align: left;
+}
+
+/* “Welcome to ReadyBread” */
+.home-title {
+    font-size: 2rem;           /* a bit smaller than before */
+    font-weight: 800;
+    margin-bottom: 6px;
+    color: var(--soft-sugar);
+    text-align: center;
+}
+
+/* “Ready to earn some Bread?” */
+.home-slogan {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--golden-toast);
+    text-shadow: 0 0 6px rgba(255, 214, 102, 0.6);
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+/* Short supporting line under slogan */
+.home-sub {
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.8);
+    max-width: 520px;
+    text-align: center;
+}
+
+/* Generic section wrapper below hero */
+.home-section {
+    margin-top: 12px;
+}
+
+/* Make rb-card on home feel like earn’s modern cards */
+.home-section.rb-card,
+.home-hero.rb-card {
+    background: rgba(255, 204, 120, 0.05);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 204, 120, 0.24);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 22px rgba(0,0,0,0.4);
+}
+
+/* Section headings on home (Games/Our Mission/Latest Update) */
+.section-heading {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--golden-toast);
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+/* Mission text block */
+.mission-card {
+    line-height: 1.5;
+}
+
+.mission-text {
+    font-size: 0.95rem;
+    color: rgba(253,253,253,0.9);
+}
+
+/* Earn options grid on home (re-uses modern-grid + modern-card) */
+.home-earn-grid .modern-grid {
+    margin-top: 8px;
+}
+
+/* Keep all four home cards equal size (no feature card) */
+.home-earn-grid .modern-card {
+    min-height: 0; /* rely on padding, not forced height */
+}
+
+/* Changelog link layout */
+.changelog-link-wrapper {
+    margin-top: 10px;
+    text-align: right;
+}
+
+/* Small button style for GitHub link */
+.rb-btn-small {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    background: var(--charred-wheat);
+    color: var(--golden-toast);
+    border: 1px solid rgba(255, 204, 120, 0.5);
+    transition: 0.2s ease;
+}
+
+.rb-btn-small:hover {
+    background: var(--golden-toast);
+    color: var(--charred-wheat);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    transform: translateY(-1px);
+}
+
+/* Simple footer at bottom of home */
+.home-footer {
+    margin-top: 16px;
+    font-size: 0.8rem;
+    text-align: center;
+    opacity: 0.75;
+    color: rgba(255,255,255,0.7);
+}
+
+/* Mobile tweaks for home */
+@media (max-width: 600px) {
+    .home-title {
+        font-size: 1.4rem;
+        text-align: center;
+
+    }
+    .home-slogan {
+        font-size: 1rem;
+        text-align: center;
+
+    }
+    .home-sub {
+        font-size: 0.9rem;
+        text-align: center;
+    }
+}
+
+.pp-btn {
+    display: inline-block;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: #003087;
+    color: var(--soft-sugar);
+    font-weight: bold;
+    text-decoration: none;
+    transition: 0.2s ease;
+}
+
+.hb-btn:hover {
+    background: #ffca3a;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+}
+
+/* Disabled buttons */
+.hb-btn.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* ---------- Rewards Page Shell ---------- */
+
+.rewards-shell {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+.rw-card {
+    background: var(--charred-wheat);
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+}
+
+/* Hero rewards card */
+.rw-card-hero {
+    background: radial-gradient(circle at top left, rgba(255, 209, 102, 0.18), transparent 55%),
+                rgba(26, 26, 26, 0.98);
+    border: 1px solid rgba(255, 209, 102, 0.35);
+}
+
+/* Row header */
+.rw-row-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 10px;
+}
+
+.rw-row-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--soft-sugar);
+    margin-bottom: 2px;
+}
+
+.rw-row-sub {
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.78);
+}
+
+/* Horizontal strip - scrollable */
+.rw-row-strip {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin: 0 -6px;
+    padding-left: 6px;
+    padding-right: 6px;
+    scroll-snap-type: x mandatory;
+}
+
+.rw-row-strip::-webkit-scrollbar {
+    height: 6px;
+}
+
+.rw-row-strip::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.rw-row-strip::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.4);
+    border-radius: 999px;
+}
+
+/* Base pill card (glass) */
+.rw-pill-card {
+    min-width: 220px;
+    max-width: 260px;
+    border-radius: 16px;
+    padding: 14px 14px 12px;
+    border: 1px solid rgba(255, 204, 120, 0.2);
+    background: rgba(26, 26, 26, 0.9);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.45);
+    backdrop-filter: blur(10px);
+    color: var(--soft-sugar);
+    text-align: left;
+    cursor: pointer;
+    scroll-snap-align: start;
+
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.rw-pill-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.6);
+    border-color: rgba(255, 209, 102, 0.65);
+}
+
+/* Inner layout */
+.rw-pill-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.rw-pill-text h4 {
+    margin: 0 0 4px;
+    font-size: 0.98rem;
+    color: var(--soft-sugar);
+}
+
+.rw-pill-headline {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--warm-pastry);
+    margin-bottom: 2px;
+}
+
+.rw-pill-blurb {
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.82);
+}
+
+/* Brand logo bubble */
+.rw-pill-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+}
+
+.rw-pill-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Brand color accents */
+.rw-pill-paypal {
+    background: linear-gradient(135deg, #003087dd, #009cde33);
+}
+
+.rw-pill-cashapp {
+    background: linear-gradient(135deg, #00c244dd, #00c24422);
+}
+
+.rw-pill-dwb {
+    background: linear-gradient(135deg, #f26522dd, #f2652225);
+}
+
+.rw-pill-stjude {
+    background: linear-gradient(135deg, #c4002fdd, #c4002f25);
+}
+
+.rw-pill-redcross {
+    background: linear-gradient(135deg, #e21b22dd, #e21b2225);
+}
+
+.rw-pill-unicef {
+    background: linear-gradient(135deg, #1cabe2dd, #1cabe225);
+}
+
+.donation-calculator {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.35);
+    font-size: 0.85rem;
+    color: var(--soft-sugar);
+}
+
+.donation-calculator p {
+    margin-bottom: 4px;
+}
+
+.rw-card h2,
+.rw-card h3 {
+    margin: 0 0 10px 0;
+}
+
+.rw-balance-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--soft-sugar);
+    margin: 12px 0 18px 0;
+    font-size: 15px;
+}
+
+.rw-balance-line strong {
+    font-size: 18px;
+    color: var(--golden-toast);
+}
+
+.rw-rules {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    color: var(--soft-sugar);
+    font-size: 14px;
+}
+
+.rw-rules li {
+    margin-bottom: 6px;
+}
+
+/* ---------- Modal Styles ---------- */
+
+.rb-modal {
+    position: fixed;
+    inset: 0;
+    display: none; /* toggled via .hidden */
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.rb-modal.hidden {
+    display: none;
+}
+
+.rb-modal:not(.hidden) {
+    display: flex;
+}
+
+.rb-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+}
+
+.rb-modal-content {
+    position: relative;
+    z-index: 1001;
+    background: var(--charred-wheat);
+    border-radius: 14px;
+    padding: 20px 22px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.modal-label {
+    display: block;
+    text-align: left;
+    margin: 10px 0 4px 0;
+    font-size: 14px;
+    color: var(--soft-sugar);
+}
+
+.rb-modal-content input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 209, 102, 0.4);
+    background: var(--burnt-toast);
+    color: var(--soft-sugar);
+    box-sizing: border-box;
+}
+
+.rb-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.secondary-btn {
+    background: transparent;
+    border: 1px solid var(--golden-toast);
+    color: var(--golden-toast);
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 209, 102, 0.1);
+}
+
+.tiny {
+    font-size: 12px;
+    margin-top: 10px;
+    opacity: 0.8;
+}
+
+/* ---------- DASHBOARD LAYOUT ---------- */
+
+.dash-tab {
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-weight: 600;
+}
+
+.dash-tab:hover {
+  filter: brightness(1.05);
+}
+
+.dash-shell {
+    background: #1a1a1a;
+    border-radius: 14px;
+    padding: 18px 18px 22px;
+    margin-top: 18px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* Allow full-page scrolling on mobile */
+.rb-content {
+    height: 100%;
+    min-height: 100vh;
+    overflow-y: auto;
+    padding-bottom: 40px;
+}
+
+
+/* Floating tab bar (T1 style) */
+.dash-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.dash-tab {
+    border: none;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: rgba(253, 253, 253, 0.06);
+    color: #fdfdfd;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.dash-tab-active {
+    background: #ffd166;
+    color: #1a1a1a;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    transform: translateY(-1px);
+}
+
+/* Panels */
+.dash-panel {
+    display: none;
+}
+
+.dash-panel-active {
+    display: block;
+}
+
+/* Cards */
+.dash-card {
+    background: #2b2b2b;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+}
+
+.dash-card-title {
+    margin: 0 0 10px 0;
+    font-size: 17px;
+    color: #ffebc3;
+}
+
+.dash-line {
+    margin: 3px 0;
+    font-size: 14px;
+    color: #fdfdfd;
+}
+
+.dash-label {
+    opacity: 0.8;
+    margin-right: 4px;
+}
+
+.dash-muted {
+    font-size: 13px;
+    color: rgba(253, 253, 253, 0.78);
+}
+
+.dash-big-type {
+    font-size: 20px;
+    margin: 4px 0 6px;
+}
+
+/* Grid 2-cols on desktop, stack on mobile */
+.dash-grid-2 {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 12px;
+}
+
+@media (max-width: 768px) {
+    .dash-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* CTA sections */
+.dash-cta h4 {
+    margin: 0 0 4px 0;
+    color: #ffebc3;
+}
+
+.dash-link-btn {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: #ffd166;
+    color: #1a1a1a;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: box-shadow 0.15s ease, transform 0.1s ease, background 0.15s ease;
+}
+
+.dash-link-btn:hover {
+    background: #ffca3a;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.5);
+    transform: translateY(-1px);
+}
+
+/* List */
+.dash-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 6px 0 0 0;
+}
+
+.dash-list li {
+    margin: 4px 0;
+    font-size: 14px;
+    color: #fdfdfd;
+}
+
+/* Stats grid */
+.dash-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+    .dash-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dash-stat {
+    background: rgba(0,0,0,0.35);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.dash-stat-label {
+    display: block;
+    font-size: 12px;
+    color: rgba(253,253,253,0.7);
+    margin-bottom: 4px;
+}
+
+.dash-stat-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffd166;
+}
+
+/* History list */
+.dash-history-list {
+    margin-top: 6px;
+}
+
+.dash-history-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px 8px;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.2);
+    margin-bottom: 6px;
+}
+
+.dash-history-amount {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffd166;
+}
+
+.dash-history-meta {
+    font-size: 12px;
+    color: rgba(253,253,253,0.78);
+    display: flex;
+    flex-direction: column;
+}
+
+.dash-history-status {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    text-transform: capitalize;
+}
+
+/* Status colors */
+.dash-status-pending {
+    background: rgba(255, 209, 102, 0.15);
+    color: #ffd166;
+}
+
+.dash-status-approved {
+    background: rgba(0, 200, 83, 0.2);
+    color: #8ef2a6;
+}
+
+.dash-status-rejected {
+    background: rgba(255, 82, 82, 0.2);
+    color: #ff9b9b;
+}
+
+.dash-footnote {
+    margin-top: 8px;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* ---------- Earn Category Page ---------- */
+
+.page-title {
+    text-align: center;
+    color: var(--soft-sugar);
+    margin-bottom: 4px;
+    font-size: 26px;
+}
+
+.page-subtitle {
+    text-align: center;
+    color: rgba(255,255,255,0.75);
+    margin-bottom: 20px;
+}
+
+/* GRID */
+.earn-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 18px;
+    margin-top: 20px;
+}
+
+/* CARD */
+.earn-card {
+    background: var(--charred-wheat);
+    border-radius: 14px;
+    padding: 20px 16px;
+    text-align: center;
+    color: var(--soft-sugar);
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    transition: 0.2s ease;
+    border:  2px solid;
+    border-color:rgba(255, 255, 0, 0.45);
+}
+
+.earn-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+    border-color: var(--golden-toast);
+}
+
+/* Icon */
+.earn-icon {
+    font-size: 42px;
+    margin-bottom: 10px;
+}
+
+#earnSurvey {
+    border-color:rgba(0, 255, 0, 0.45);
+    border:  2px solid;
+}
+
+#earnGame {
+    border-color:rgba(255, 0, 255, 0.45);
+    border:  2px solid;
+}
+
+#earnReceipt {
+    border-color:rgba(255, 0, 0, 0.45);
+    border:  2px solid;
+}
+
+#earnMisc {
+    border-color:rgba(255, 255, 0, 0.45);
+    border:  2px solid;
+}
+
+/* Title */
+.earn-title {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 6px;
+    color: var(--golden-toast);
+}
+
+/* Description */
+.earn-desc {
+    font-size: 14px;
+    opacity: 0.85;
+}
+
+/* ----------------------------------*/
+/* Visuals for 2x2 grid on earn page */
+/* ----------------------------------*/
+.earn-modern {
+    text-align: center;
+    padding-top: 10px;
+}
+
+/* Titles */
+.modern-title {
+    font-size: 2.4rem;
+    font-weight: 900;
+    background: linear-gradient(
+        135deg,
+        var(--golden-toast),
+        var(--golden-toast),
+        var(--soft-sugar),
+        var(--soft-sugar)
+    );
+    -webkit-background-clip: text;
+    color: transparent;
+    text-align: center;
+    margin-bottom: 6px;
+    /* REAL glow (can't use gradients in text-shadow) */
+    filter:
+        drop-shadow(0 0 6px rgba(255, 191, 90, 0.7))
+        drop-shadow(0 0 12px rgba(255, 163, 40, 0.5));
+}
+
+#paypal-btn {
+    background-color: #009cde;
+}
+
+.modern-subtitle {
+    font-size: 1rem;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 24px;
+}
+
+/* 2x2 Grid */
+.modern-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 24px;
+    padding: 10px;
+}
+
+/* Card Base */
+.modern-card {
+    background: rgba(255, 204, 120, 0.06);
+    border-radius: 18px;
+    padding: 26px 18px;
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 204, 120, 0.18);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    transition: all 0.25s ease;
+    cursor: pointer;
+    text-decoration: none;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    gap: 16px;
+}
+
+/* Hover lift + glow */
+.modern-card:hover {
+    transform: translateY(-6px) scale(1.03);
+    box-shadow:
+        0 8px 26px rgba(0,0,0,0.55),
+        0 0 16px rgba(255, 168, 63, 0.55);
+}
+
+/* Emoji Icon */
+.modern-icon {
+    font-size: 2.8rem;
+    margin-bottom: 10px;
+    transition: transform 0.25s ease;
+    text-align: center;
+}
+
+.modern-card:hover .modern-icon {
+    transform: scale(1.15) rotate(-4deg);
+}
+
+/* Card Titles */
+.modern-title-sm {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+/* Descriptions */
+.modern-desc {
+    font-size: 0.95rem;
+    opacity: 0.85;
+    text-align: center;
+}
+
+.changelog {
+    display: block;
+    background-color: #120b05;
+    border-radius: 12px;
+    padding: 12px 12px;
+}
+
+/* .homeEarn {
+    display: flex;
+    overflow-x: auto;
+    flex-wrap: wrap;
+    padding: 14px 0;
+    justify-content: center;
+    flex: 0 0 50%;
+} */
+
+/* Color Themes for each earn type (bread-core + category hints) */
+.surveys-card {
+    background: radial-gradient(circle at top left, var(--survey) 0%, transparent 55%),
+                linear-gradient(135deg, var(--survey), #2b1d0f);
+}
+.games-card {
+    background: radial-gradient(circle at top left, var(--game) 0%, transparent 55%),
+                linear-gradient(135deg, var(--game), #2b1d0f);
+}
+.receipts-card {
+    background: radial-gradient(circle at top left, var(--receipts) 0%, transparent 55%),
+                linear-gradient(135deg, var(--receipts), #2b1d0f);
+}
+.misc-card {
+    background: radial-gradient(circle at top left, var(--misc) 0%, transparent 55%),
+                linear-gradient(135deg, var(--misc), #2b1d0f);
+}
+.gold-card {
+    background: radial-gradient(circle at top left, var(--golden-toast) 0%, transparent 55%),
+                linear-gradient(135deg, var(--misc), #2b280f);
+}
+
+/* Hover gradient glow */
+.modern-card:hover {
+    border-color: rgba(255,255,255,0.25);
+}
+
+/* Mobile spacing */
+@media (max-width: 480px) {
+    .modern-title { font-size: 1.9rem; }
+    .modern-grid { gap: 16px; }
+}
+
+
+/* ------------------------------- */
+/* ReadyBread glossyglass UI theme */
+/* ------------------------------- */
+
+/* Universal glowing section headers */
+.rb-section-title {
+    font-size: 2.2rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--golden-toast), var(--soft-sugar));
+    -webkit-background-clip: text;
+    color: transparent;
+    text-align: center;
+    margin-bottom: 10px;
+
+    filter: drop-shadow(0 0 6px rgba(255, 214, 102, 0.45))
+            drop-shadow(0 0 12px rgba(255, 214, 102, 0.2));
+}
+
+/* Glow subtitle */
+.rb-section-sub {
+    text-align: center;
+    font-size: 1rem;
+    opacity: 0.8;
+    color: var(--soft-sugar);
+    margin-bottom: 20px;
+}
+
+/* Soft neon cards everywhere */
+.rb-card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 18px;
+    padding: 22px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+    transition: all 0.25s ease;
+    margin-bottom: 14px;
+    margin-top: 4px;
+}
+
+.rb-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+}
+
+/* Emoji icons inside cards */
+.rb-emoji {
+    font-size: 2.4rem;
+    margin-bottom: 8px;
+    transition: transform 0.25s ease;
+}
+
+.rb-card:hover .rb-emoji {
+    transform: scale(1.12) rotate(-4deg);
+}
+
+/* Gradient button */
+.rb-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--golden-toast), var(--soft-sugar));
+    color: #000;
+    font-weight: bold;
+    text-decoration: none;
+
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.rb-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 16px rgba(255, 214, 102, 0.45);
+}
+
+/* ---------------------------- */
+/* COLOR-THEMED PAGE ACCENTS   */
+/* ---------------------------- */
+.theme-surveys  { --theme-accent: #6060ff; }
+.theme-games    { --theme-accent: #cc41ff; }
+.theme-receipts { --theme-accent: #3fff99; }
+.theme-misc     { --theme-accent: #ff6666; }
+
+.accent-wheated {
+background: linear-gradient(
+        135deg,
+        var(--golden-toast),
+        var(--golden-toast),
+        var(--soft-sugar),
+        var(--soft-sugar)
+    );
+    -webkit-background-clip: text;
+    color: transparent;
+    margin-bottom: 6px;
+
+    /* REAL glow (can't use gradients in text-shadow) */
+    filter:
+        drop-shadow(0 0 6px rgba(255, 191, 90, 0.7))
+        drop-shadow(0 0 12px rgba(255, 163, 40, 0.5));
+}
+
+/* Applies glowing accent to headings on that page */
+.theme-surveys  .rb-section-title { filter: drop-shadow(0 0 6px rgba(96,96,255,0.4)); }
+.theme-games    .rb-section-title { filter: drop-shadow(0 0 6px rgba(204,65,255,0.4)); }
+.theme-receipts .rb-section-title { filter: drop-shadow(0 0 6px rgba(63,255,153,0.4)); }
+.theme-misc     .rb-section-title { filter: drop-shadow(0 0 6px rgba(255,102,102,0.4)); }
+
+/* ---------------------------- */
+/* Glow Effects                 */
+/* ---------------------------- */
+.glow-soft {
+    filter: drop-shadow(0 0 4px rgba(255,255,255,0.25));
+}
+
+.glow-strong {
+    filter: drop-shadow(0 0 10px rgba(255,255,255,0.45));
+}
+
+.glow-gold {
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6));
+}
+
+.glow-theme {
+    filter: drop-shadow(0 0 10px var(--golden-toast));
+}
+
+/* ------------------------------- */
+/* theme heplers                   */
+/* ------------------------------- */
+
+body {
+    background: #120b05; /* deep bakery brown */
+}
+
+/* Generic section titles */
+.rb-section-title {
+    font-size: 2.1rem;
+    font-weight: 900;
+    background: linear-gradient(
+        135deg,
+        var(--golden-toast),
+        var(--honey-butter, #ffb84d),
+        var(--soft-sugar)
+    );
+    -webkit-background-clip: text;
+    color: transparent;
+    text-align: center;
+    margin-bottom: 6px;
+    filter:
+        drop-shadow(0 0 6px rgba(255, 191, 90, 0.7))
+        drop-shadow(0 0 12px rgba(255, 163, 40, 0.4));
+}
+
+.rb-section-sub {
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.78);
+    margin-bottom: 20px;
+}
+
+/* Soft neon bread card (reusable) */
+.rb-card {
+    background: rgba(255, 204, 120, 0.05);
+    border-radius: 16px;
+    padding: 18px 20px;
+    border: 1px solid rgba(255, 204, 120, 0.2);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    transition: all 0.26s ease;
+}
+
+.rb-card:hover {
+    transform: translateY(-4px);
+    box-shadow:
+        0 10px 26px rgba(0,0,0,0.65),
+        0 0 18px rgba(255, 163, 40, 0.55);
+}
+
+/* Theme accents per page */
+.theme-surveys  { --theme-accent: #a0a0ff; } /* still bread-colored, just gentle */
+.theme-games    { --theme-accent: #dd00ff; }
+.theme-receipts { --theme-accent: #3fff99; }
+.theme-misc     { --theme-accent: #ff7676; }
+
+.theme-surveys  .rb-section-title { filter: drop-shadow(0 0 10px rgba(255, 214, 120, 0.7)); }
+.theme-games    .rb-section-title { filter: drop-shadow(0 0 10px rgba(255, 154, 60, 0.75)); }
+.theme-receipts .rb-section-title { filter: drop-shadow(0 0 10px rgba(63, 255, 153, 0.7)); }
+.theme-misc     .rb-section-title { filter: drop-shadow(0 0 10px rgba(255, 136, 136, 0.7)); }
+
+/* Glow utilities */
+.glow-soft  { filter: drop-shadow(0 0 4px rgba(255,255,255,0.25)); }
+.glow-gold  { filter: drop-shadow(0 0 10px rgba(255, 191, 90, 0.8)); }
+.glow-theme { filter: drop-shadow(0 0 10px var(--theme-accent)); }
+
+/* ------------------- */
+/* emoji native colors */
+/* ------------------- */
+
+/* Default behavior: emojis ignore parent text clipping/masking */
+.emoji {
+    /* Prevent inheriting background-clip/layer masks from parents */
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+
+    /* Ensure they stay real emojis */
+    -webkit-text-fill-color: initial !important;
+    color: inherit !important;
+
+    /* Prevent filters from flattening emoji color */
+    filter: none !important;
+    mix-blend-mode: normal !important;
+
+    /* Prevent gradient masks from leaking onto emoji */
+    display: inline-block;
+    isolation: isolate;
+}
+
+/* If emoji accidentally sits inside gradient-text */
+.gradient-text .emoji,
+.modern-title .emoji,
+.rb-section-title .emoji,
+.page-title .emoji {
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    -webkit-text-fill-color: initial !important;
+    color: inherit !important;
+}
+
+/* Affiliates Page */
+/* Grid Layout */
+.affiliate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 22px;
+  margin-top: 10px;
+}
+
+/* Each affiliate item is just a modern-card */
+.affiliate-card {
+  position: relative; /* to anchor the logo */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 32px Bottom-Right Badge */
+.affiliate-logo-badge {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(6px);
+  padding: 4px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+
+  box-shadow: 0px 3px 10px rgba(0,0,0,0.35);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* Logo hover matches your earn-card glow */
+.modern-card:hover .affiliate-logo-badge {
+  transform: scale(1.12);
+}
+
+/* Logo image itself */
+.affiliate-logo-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Home hero */
+.home-hero-title {
+    font-size: 1.9rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--golden-toast), var(--soft-sugar));
+    -webkit-background-clip: text;
+    color: transparent;
+    text-align: center;
+    margin-bottom: 6px;
+    filter:
+        drop-shadow(0 0 6px rgba(255, 191, 90, 0.7))
+        drop-shadow(0 0 12px rgba(255, 163, 40, 0.45));
+}
+
+.home-hero-sub {
+    color: rgba(255, 255, 255, 0.75);
+    text-align: center;
+    margin-bottom: 24px;
+    font-size: 0.95rem;
+}
+
+/* Featured card bigger */
+.home-feature-card {
+    grid-column: span 2;
+    min-height: 180px;
+}
+
+/* Mobile fallback */
+@media (max-width: 520px) {
+  .home-feature-card {
+    grid-column: span 1;
+    min-height: auto;
+  }
+}
+
+/* Horizontal slider row */
+.slider-row {
+  overflow-x: auto;
+  padding: 4px 0 10px;
+  scrollbar-width: none;
+}
+.slider-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* Inner slider container */
+.slider {
+  display: flex;
+  gap: 14px;
+}
+
+/* Reward cards */
+.reward-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 18px;
+  padding: 18px;
+  min-width: 180px;
+
+  text-align: left;
+  cursor: pointer;
+  transition: 0.25s;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+.reward-card:hover {
+  transform: translateY(-5px) scale(1.04);
+}
+
+/* Icon */
+.reward-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+/* Brand Colors */
+.paypal-card {
+  border-color: #009cde66;
+  background: linear-gradient(135deg, #009cde22, transparent);
+}
+
+.cashapp-card {
+  border-color: #00c24466;
+  background: linear-gradient(135deg, #00c24422, transparent);
+}
+
+.charity-card {
+  border-color: #ffb36655;
+}
+
+/* Specific charity accents */
+.msf      { background: linear-gradient(135deg, #ff575722, transparent); }
+.stjude   { background: linear-gradient(135deg, #cf0a2c22, transparent); }
+.unicef   { background: linear-gradient(135deg, #1cabe222, transparent); }
+.redcross { background: linear-gradient(135deg, #e21b1b22, transparent); }
+
+.donation-card {
+  background: rgba(255, 204, 120, 0.06);
+  border: 1px solid rgba(255, 204, 120, 0.18);
+  border-radius: 14px;
+  padding: 20px 18px;
+  margin-top: 16px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+}
+
+.donation-breakdown {
+  margin: 14px 0;
+  color: var(--soft-sugar);
+  font-size: 14px;
+}
+
+.donation-total {
+  margin-top: 10px;
+  font-size: 18px;
+  color: var(--golden-toast);
+}
+
+/* ---------------------------------------------------
+   DASHBOARD v2 — Compact + Mobile Optimized
+---------------------------------------------------- */
+
+/* Make the dashboard wrapper full-height and scrollable */
+.rb-content,
+.dash-shell {
+    max-height: calc(100vh - 110px); /* below header + padding */
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.25) transparent;
+}
+
+/* WebKit scrollbars */
+.rb-content::-webkit-scrollbar,
+.dash-shell::-webkit-scrollbar {
+    width: 6px;
+}
+.rb-content::-webkit-scrollbar-thumb,
+.dash-shell::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.25);
+    border-radius: 99px;
+}
+
+/* Compact cards */
+.dash-card {
+    padding: 12px 14px !important;
+    margin-bottom: 12px !important;
+    border-radius: 10px !important;
+}
+
+/* Compact text */
+.dash-card-title {
+    font-size: 15px !important;
+    margin-bottom: 8px !important;
+}
+.dash-line {
+    font-size: 13px !important;
+    margin: 2px 0 !important;
+}
+.dash-muted {
+    font-size: 12px !important;
+}
+
+/* Belly-tight page spacing */
+.dash-shell {
+    padding: 12px !important;
+    margin-top: 12px !important;
+}
+
+/* ---------------------------------------------------
+   Sticky Tab Bar (stays visible on mobile)
+---------------------------------------------------- */
+
+.dash-tabs {
+    position: sticky;
+    top: 0;
+    background: #1a1a1a;
+    padding: 8px 0;
+    z-index: 50;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Compact tabs */
+.dash-tab {
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    border-radius: 999px;
+}
+
+/* Active tab — slightly smaller shadow on mobile */
+.dash-tab-active {
+    box-shadow: 0 4px 10px rgba(0,0,0,0.45) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* ---------------------------------------------------
+   Mobile-First Tweaks
+---------------------------------------------------- */
+
+@media (max-width: 600px) {
+
+    /* Remove horizontal padding from cards */
+    .dash-card {
+        padding: 10px 12px !important;
+    }
+
+    /* Reduce title sizes */
+    .dash-card-title {
+        font-size: 14px !important;
+    }
+
+    /* Tighter lines */
+    .dash-line {
+        font-size: 12px !important;
+    }
+
+    /* Make offer rows cleaner */
+    .dash-offer-row {
+        padding: 10px !important;
+        border-radius: 10px !important;
+    }
+
+    /* Progress bars smaller */
+    .dash-progress-row {
+        padding: 8px 10px !important;
+    }
+
+    .dash-progress-bar-wrap {
+        height: 6px !important;
+    }
+}
+
+/* ---------------------------------------------------
+   Make Achievements Panel centered + neat
+---------------------------------------------------- */
+.dash-panel-achievements {
+    text-align: center;
+    padding: 40px 10px;
+}
+
+.dash-panel-achievements p {
+    font-size: 15px;
+    opacity: 0.85;
+}
+
+/* ---------------------------------------------------
+   Dashboard v3 — Compact Layout Fix (Non-intrusive)
+   Keeps top scrollable navbar + balance box intact
+---------------------------------------------------- */
+
+/* Allow the page to scroll normally on mobile */
+.rb-content {
+    min-height: auto !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    padding-bottom: 40px !important;
+}
+
+/* Dashboard root should not lock its own height */
+.dash-shell {
+    max-height: none !important;
+    overflow: visible !important;
+    padding-bottom: 60px !important; /* space below cards */
+}
+
+/* Make dashboard cards more compact on all screens */
+.dash-card {
+    padding: 14px 16px !important;
+    margin-bottom: 14px !important;
+    border-radius: 14px !important;
+}
+
+/* Compact text & spacing */
+.dash-card-title {
+    font-size: 16px !important;
+    margin-bottom: 8px !important;
+}
+
+.dash-line {
+    font-size: 14px !important;
+    margin: 4px 0 !important;
+}
+
+/* Offer rows more compact */
+.dash-offer-row {
+    padding: 10px 12px !important;
+}
+
+.dash-offer-title {
+    font-size: 14px !important;
+}
+
+.dash-offer-meta {
+    font-size: 12px !important;
+}
+
+.dash-offer-btn {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+}
+
+/* Mobile-specific tightening */
+@media (max-width: 768px) {
+
+    .dash-card {
+        padding: 12px 14px !important;
+    }
+
+    .dash-card-title {
+        font-size: 15px !important;
+    }
+
+    .dash-line {
+        font-size: 13px !important;
+    }
+
+    .dash-offer-title {
+        font-size: 13px !important;
+    }
+
+    .dash-offer-meta {
+        font-size: 11px !important;
+    }
+
+    .dash-offer-btn {
+        padding: 5px 10px !important;
+        font-size: 11px !important;
+    }
+}
+
+/* -------------------------------------------------------- */
+/*  GLASSY DASHBOARD PANELS                                 */
+/* -------------------------------------------------------- */
+.dash-card.modern-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px) saturate(1.8);
+  -webkit-backdrop-filter: blur(12px) saturate(1.8);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.25);
+  transition: transform 0.25s ease, box-shadow 0.3s ease;
+}
+
+.dash-card.modern-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+}
+
+/* Headings */
+.dash-card-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--soft-sugar);
+}
+
+/* Lines inside cards */
+.dash-line {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px 0;
+  color: rgba(255,255,255,0.9);
+  font-size: 15px;
+}
+
+.dash-label {
+  color: var(--golden-toast);
+  margin-right: 8px;
+}
+
+/* -------------------------------------------------------- */
+/*  GLASSIER PANEL BACKGROUND                               */
+/* -------------------------------------------------------- */
+.dash-panel {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.dash-panel-active {
+  animation: fadeIn 0.25s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* -------------------------------------------------------- */
+/*  MOBILE-FRIENDLY SLIDING TABS                            */
+/* -------------------------------------------------------- */
+.dash-tabs {
+  display: flex;
+  overflow-x: auto;
+  white-space: nowrap;
+  margin: 16px 0;
+  padding-bottom: 8px;
+  gap: 12px;
+  scrollbar-width: none;
+}
+
+.dash-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.dash-tab-btn {
+  flex: 0 0 auto;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 15px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+  color: var(--soft-sugar);
+  cursor: pointer;
+  transition: background 0.25s, border 0.25s, transform 0.25s;
+}
+
+.dash-tab-active {
+  background: rgba(255,255,255,0.18);
+  border-color: var(--golden-toast);
+  transform: translateY(-2px);
+}
+
+/* Prevent tabs from going outside the screen */
+.dash-shell {
+  overflow-x: hidden;
+}
+
+/* -------------------------------------------------------- */
+/*  OFFER CARDS UPGRADE (GLASSY)                            */
+/* -------------------------------------------------------- */
+.dash-offer-row,
+.dash-payout-row,
+.dash-progress-row {
+  background: rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(8px);
+  transition: transform 0.25s ease;
+}
+
+.dash-offer-row:hover,
+.dash-payout-row:hover,
+.dash-progress-row:hover {
+  transform: translateY(-3px);
+}
+
+/* Progress bars */
+.dash-progress-bar-wrap {
+  height: 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.17);
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.dash-progress-bar-fill {
+  height: 100%;
+  background: var(--golden-toast);
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+/* Offer titles */
+.dash-offer-title {
+  font-weight: 600;
+  color: var(--soft-sugar);
+}
+
+/* Muted text */
+.dash-muted {
+  opacity: 0.65;
+  font-size: 14px;
+}
+
+/* Footnote */
+.dash-footnote {
+  margin-top: 12px;
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+.rb-legal-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  color: var(--soft-sugar);
+  background: rgba(255,255,255,0.04);
+  border-radius: 18px;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.rb-legal-page h1, 
+.rb-legal-page h2 {
+  color: var(--golden-toast);
+}
+.rb-legal-page a {
+  color: var(--golden-toast);
+  text-decoration: underline;
+}
+.legal-checks {
+  font-size: 13px;
+  margin-top: 10px;
+  opacity: 0.9;
+  text-align: center;
+  color: var(--warm-pastry);
+  margin-bottom: 4px;
+}
+
+.footertos {
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* -------------------------
+   ADMIN PAGE POLISH
+-------------------------- */
+
+.glassy-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.neon-glow {
+  box-shadow: 0 0 12px rgba(255, 209, 102, 0.4);
+}
+
+.scrollable-tabs {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.admin-shell {
+  padding-top: 10px;
+}
+
+.admin-list {
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+.admin-card {
+  transition: transform 0.15s ease;
+}
+.admin-card:hover {
+  transform: scale(1.02);
+}
+
+.status-tag {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  text-transform: capitalize;
+}
+
+.status-pending {
+  background: rgba(255, 200, 0, 0.2);
+  color: #ffd166;
+}
+
+.status-fulfilled {
+  background: rgba(0, 255, 120, 0.2);
+  color: #00e676;
+}
+
+.status-denied {
+  background: rgba(255, 0, 70, 0.2);
+  color: #ff1744;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-approve {
+  background: #00e676 !important;
+  color: #000 !important;
+}
+
+.admin-deny {
+  background: #ff1744 !important;
+  color: white !important;
+}
+
+/* ======================================================
+   ADMIN PANEL — GLASS + NEON EFFECTS
+   ====================================================== */
+
+/* Admin container */
+.admin-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 900px;
+  margin: auto;
+}
+
+/* Glassy cards used across admin */
+.glassy-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 14px;
+  padding: 18px 22px;
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.05);
+}
+
+/* Stronger glow for section headers */
+.neon-glow {
+  box-shadow:
+    0 0 10px rgba(255, 221, 102, 0.2),
+    0 0 40px rgba(255, 221, 102, 0.15),
+    0 0 70px rgba(255, 221, 102, 0.07);
+}
+
+/* Admin header */
+.admin-header {
+  text-align: center;
+  padding: 25px;
+}
+
+/* Lookup panel */
+.admin-lookup-card {
+  margin-top: 10px;
+}
+
+.admin-lookup-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.admin-lookup-row input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+}
+
+.admin-lookup-row .rb-btn {
+  flex-shrink: 0;
+}
+
+.admin-lookup-result,
+.admin-lookup-payouts {
+  margin-top: 18px;
+}
+
+/* User data labels */
+.dash-label {
+  font-weight: 600;
+  color: var(--golden-toast);
+}
+
+.error-text {
+  color: #ff6b6b;
+}
+
+/* ======================================================
+   PAYOUT CARDS
+   ====================================================== */
+
+.admin-card {
+  margin-bottom: 14px;
+}
+
+.status-tag {
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  text-transform: capitalize;
+  color: #fff;
+}
+
+.status-pending {
+  background: #e9a84a;
+}
+
+.status-fulfilled {
+  background: #4caf50;
+}
+
+.status-denied {
+  background: #e53935;
+}
+
+/* Scrollable payout list */
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 75vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* ======================================================
+   SUSPICION TAGS
+   ====================================================== */
+
+.suspicion-tag {
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: white;
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+.suspicion-normal {
+  background: #4caf50;
+}
+
+.suspicion-low {
+  background: #f1c40f;
+}
+
+.suspicion-medium {
+  background: #e67e22;
+}
+
+.suspicion-high {
+  background: #e74c3c;
+}
+
+/* Suspicion reason bullet list */
+.suspicion-reasons {
+  margin: 6px 0 0 10px;
+  padding-left: 16px;
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+}
+
+/* ======================================================
+   ACTION BUTTONS
+   ====================================================== */
+
+.admin-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+.admin-approve {
+  background: rgba(76, 175, 80, 0.9);
+}
+
+.admin-deny {
+  background: rgba(229, 57, 53, 0.9);
+}
+
+/* ======================================================
+   MODAL
+   ====================================================== */
+
+.rb-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.rb-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(6px);
+}
+
+.rb-modal-content {
+  position: relative;
+  z-index: 10000;
+  background: rgba(40,40,40,0.9);
+  padding: 25px;
+  border-radius: 16px;
+  width: 95%;
+  max-width: 480px;
+  box-shadow:
+    0 0 20px rgba(255, 221, 102, 0.2),
+    0 0 80px rgba(255, 221, 102, 0.1);
+}
+
+.modal-label {
+  margin-top: 16px;
+  display: block;
+  font-weight: 600;
+}
+
+.admin-denial-text {
+  margin-top: 8px;
+  width: 100%;
+  height: 80px;
+  border-radius: 10px;
+  padding: 10px;
+  border: none;
+  background: rgba(0,0,0,0.35);
+  color: white;
+  resize: none;
+}
+
+.admin-refund-toggle {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.rb-modal-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.hb-btn {
+  background: var(--golden-toast);
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.secondary-btn {
+  background: rgba(255,255,255,0.12);
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* ======================================================
+   TAB FILTERS
+   ====================================================== */
+.scrollable-tabs {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.dash-tab-btn {
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.dash-tab-active {
+  background: var(--golden-toast);
+  color: #000;
+  font-weight: 600;
+}
+
+/* ======================================================
+   MOBILE OPTIMIZATION
+   ====================================================== */
+@media (max-width: 640px) {
+  .admin-lookup-row {
+    flex-direction: column;
+  }
+
+  .admin-actions {
+    flex-direction: column;
+  }
+
+  .rb-modal-content {
+    width: 92%;
+  }
+}
