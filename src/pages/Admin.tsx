@@ -33,15 +33,18 @@ interface CashoutRow {
   refunded?: boolean;
   ref: QueryDocumentSnapshot<unknown, DocumentData>["ref"];
 
+  // Donation-only fields
   charityId?: string | null;
   charityName?: string | null;
   receiptEmail?: string | null;
   readybreadMatch?: number | null;
 
+  // Enriched user info
   userCreatedAt?: any;
   userEmail?: string | null;
   username?: string | null;
 
+  // Risk analysis
   suspiciousScore?: number;
   suspiciousReasons?: string[];
 }
@@ -50,7 +53,7 @@ type FilterTab = "pending" | "fulfilled" | "denied" | "all";
 type ActionType = "fulfill" | "deny" | null;
 
 export const Admin: React.FC = () => {
-  const { user, isAdmin } = useUser();
+  const { user, admin } = useUser();
 
   const [cashouts, setCashouts] = useState<CashoutRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,9 +72,19 @@ export const Admin: React.FC = () => {
   const [refundOnDeny, setRefundOnDeny] = useState(true);
   const [actionSaving, setActionSaving] = useState(false);
 
+  // -----------------------------
+  // Helpers
+  // -----------------------------
   const parseAmount = (value: unknown): number => {
     const n = Number(value);
     return Number.isFinite(n) ? n : 0;
+  };
+
+  const formatDate = (ts: any) => {
+    if (!ts) return "--";
+    if (ts.toDate) return ts.toDate().toLocaleString();
+    if (ts instanceof Date) return ts.toLocaleString();
+    return "--";
   };
 
   const mapCashoutDoc = (
@@ -79,6 +92,7 @@ export const Admin: React.FC = () => {
     fallbackUid = "unknown"
   ): CashoutRow => {
     const data = (docSnap.data() || {}) as Record<string, any>;
+
     return {
       id: docSnap.id,
       type: "cashout",
@@ -86,7 +100,9 @@ export const Admin: React.FC = () => {
       amount: parseAmount(data.amount),
       method: typeof data.method === "string" ? data.method : "unknown",
       status:
-        typeof data.status === "string" ? (data.status as CashoutStatus) : "pending",
+        typeof data.status === "string"
+          ? (data.status as CashoutStatus)
+          : "pending",
       createdAt: data.createdAt,
       paypalEmail:
         typeof data.paypalEmail === "string" ? data.paypalEmail : null,
@@ -111,7 +127,9 @@ export const Admin: React.FC = () => {
       amount: parseAmount(data.amount),
       method: data.charityName || "Donation",
       status:
-        typeof data.status === "string" ? (data.status as CashoutStatus) : "pending",
+        typeof data.status === "string"
+          ? (data.status as CashoutStatus)
+          : "pending",
       createdAt: data.createdAt,
       paypalEmail: null,
       cashappTag: null,
@@ -120,7 +138,8 @@ export const Admin: React.FC = () => {
       refunded: Boolean(data.refunded),
       ref: docSnap.ref,
       charityId: typeof data.charityId === "string" ? data.charityId : null,
-      charityName: typeof data.charityName === "string" ? data.charityName : null,
+      charityName:
+        typeof data.charityName === "string" ? data.charityName : null,
       receiptEmail:
         typeof data.receiptEmail === "string" ? data.receiptEmail : null,
       readybreadMatch:
@@ -132,12 +151,28 @@ export const Admin: React.FC = () => {
     };
   };
 
-  /* -------------------------------------------------------
-     LOAD REQUESTS
-  ------------------------------------------------------- */
+  const suspicionClass = (row: CashoutRow) => {
+    const s = row.suspiciousScore || 0;
+    if (s <= 0) return "suspicion-normal";
+    if (s === 1) return "suspicion-low";
+    if (s === 2) return "suspicion-medium";
+    return "suspicion-high";
+  };
+
+  const suspicionLabel = (row: CashoutRow) => {
+    const s = row.suspiciousScore || 0;
+    if (s <= 0) return "Normal";
+    if (s === 1) return "Watch";
+    if (s === 2) return "Moderate";
+    return "Suspicious";
+  };
+
+  // -----------------------------
+  // Load requests (cashout + donations)
+  // -----------------------------
   useEffect(() => {
     const load = async () => {
-      if (!isAdmin) {
+      if (!admin) {
         setLoading(false);
         return;
       }
@@ -160,9 +195,13 @@ export const Admin: React.FC = () => {
         const cashRows = cashSnap.docs.map((d) => mapCashoutDoc(d));
         const donRows = donSnap.docs.map((d) => mapDonationDoc(d));
 
-        let combined = [...cashRows, ...donRows].sort((a, b) => {
-          const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
-          const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+        let combined: CashoutRow[] = [...cashRows, ...donRows].sort((a, b) => {
+          const ta = a.createdAt?.toDate
+            ? a.createdAt.toDate().getTime()
+            : 0;
+          const tb = b.createdAt?.toDate
+            ? b.createdAt.toDate().getTime()
+            : 0;
           return tb - ta;
         });
 
@@ -172,7 +211,8 @@ export const Admin: React.FC = () => {
           );
         }
 
-        setCashouts(await enrichRows(combined));
+        const enriched = await enrichRows(combined);
+        setCashouts(enriched);
       } catch (err) {
         console.error(err);
         setError("Failed to load requests.");
@@ -182,15 +222,14 @@ export const Admin: React.FC = () => {
     };
 
     load();
-  }, [isAdmin, filterStatus]);
+  }, [admin, filterStatus]);
 
-  /* -------------------------------------------------------
-     ENRICH WITH USER DATA + SUSPICION
-  ------------------------------------------------------- */
+  // -----------------------------
+  // Enrich with user data + suspicion score
+  // -----------------------------
   const enrichRows = async (rows: CashoutRow[]) => {
     const uidSet = new Set(rows.map((r) => r.userId));
     const uidArr = Array.from(uidSet);
-
     const userData: Record<string, any> = {};
 
     await Promise.all(
@@ -198,7 +237,9 @@ export const Admin: React.FC = () => {
         try {
           const snap = await getDoc(doc(db, "users", uid));
           if (snap.exists()) userData[uid] = snap.data();
-        } catch {}
+        } catch {
+          // Ignore individual failures
+        }
       })
     );
 
@@ -249,9 +290,9 @@ export const Admin: React.FC = () => {
     });
   };
 
-  /* -------------------------------------------------------
-     USER LOOKUP
-  ------------------------------------------------------- */
+  // -----------------------------
+  // User lookup
+  // -----------------------------
   const handleLookup = async () => {
     const uid = lookupUid.trim();
     if (!uid) {
@@ -292,12 +333,16 @@ export const Admin: React.FC = () => {
         )
       );
 
-      const rows = [
+      const rows: CashoutRow[] = [
         ...cashSnap.docs.map((d) => mapCashoutDoc(d, uid)),
         ...donSnap.docs.map((d) => mapDonationDoc(d, uid)),
       ].sort((a, b) => {
-        const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
-        const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+        const ta = a.createdAt?.toDate
+          ? a.createdAt.toDate().getTime()
+          : 0;
+        const tb = b.createdAt?.toDate
+          ? b.createdAt.toDate().getTime()
+          : 0;
         return tb - ta;
       });
 
@@ -310,9 +355,9 @@ export const Admin: React.FC = () => {
     }
   };
 
-  /* -------------------------------------------------------
-     ACTION MODAL
-  ------------------------------------------------------- */
+  // -----------------------------
+  // Action modal handlers
+  // -----------------------------
   const openModal = (row: CashoutRow, type: ActionType) => {
     setActionRow(row);
     setActionType(type);
@@ -329,7 +374,7 @@ export const Admin: React.FC = () => {
   };
 
   const handleAction = async () => {
-    if (!actionRow || !actionType || !isAdmin) return;
+    if (!actionRow || !actionType || !admin) return;
     setActionSaving(true);
 
     try {
@@ -341,7 +386,9 @@ export const Admin: React.FC = () => {
         });
 
         setCashouts((prev) =>
-          prev.map((r) => (r.id === actionRow.id ? { ...r, status: "fulfilled" } : r))
+          prev.map((r) =>
+            r.id === actionRow.id ? { ...r, status: "fulfilled" } : r
+          )
         );
       }
 
@@ -391,51 +438,30 @@ export const Admin: React.FC = () => {
     }
   };
 
-  /* -------------------------------------------------------
-     RENDER
-  ------------------------------------------------------- */
-  if (!isAdmin) {
+  // -----------------------------
+  // Render
+  // -----------------------------
+  if (!admin) {
     return (
       <main className="rb-content">
         <div className="dash-card modern-card glassy-card admin-denied">
           <h2>Admin Only</h2>
-          <p className="dash-muted">You do not have permission to view this page.</p>
+          <p className="dash-muted">
+            You do not have permission to view this page.
+          </p>
         </div>
       </main>
     );
   }
 
-    const formatDate = (ts: any) => {
-      if (!ts) return "--";
-      if (ts.toDate) return ts.toDate().toLocaleString();
-      if (ts instanceof Date) return ts.toLocaleString();
-      return "--";
-    };
-
-
-  const suspicionClass = (row: CashoutRow) => {
-    const s = row.suspiciousScore || 0;
-    if (s <= 0) return "suspicion-normal";
-    if (s === 1) return "suspicion-low";
-    if (s === 2) return "suspicion-medium";
-    return "suspicion-high";
-  };
-
-  const suspicionLabel = (row: CashoutRow) => {
-    const s = row.suspiciousScore || 0;
-    if (s <= 0) return "Normal";
-    if (s === 1) return "Watch";
-    if (s === 2) return "Moderate";
-    return "Suspicious";
-  };
-
   return (
     <main className="rb-content">
       <section className="dash-shell admin-shell">
-
         {/* HEADER */}
         <div className="admin-header glassy-card neon-glow">
-          <h2 className="rb-section-title">Admin · Payouts, Donations & Users</h2>
+          <h2 className="rb-section-title">
+            Admin · Payouts, Donations & Users
+          </h2>
           <p className="rb-section-sub">
             Review cashouts, donations, analyze accounts, and manage risk.
           </p>
@@ -453,20 +479,35 @@ export const Admin: React.FC = () => {
               onChange={(e) => setLookupUid(e.target.value)}
               placeholder="Enter user UID…"
             />
-            <button className="rb-btn" onClick={handleLookup}>Lookup</button>
+            <button className="rb-btn" onClick={handleLookup}>
+              Lookup
+            </button>
           </div>
 
           {lookupLoading && <p className="dash-muted">Loading…</p>}
-          {lookupError && <p className="dash-muted error-text">{lookupError}</p>}
+          {lookupError && (
+            <p className="dash-muted error-text">{lookupError}</p>
+          )}
 
           {lookupProfile && (
             <div className="admin-lookup-result">
               <h4>Profile</h4>
-              <p><b>UID:</b> {lookupProfile.id}</p>
-              <p><b>Username:</b> {lookupProfile.username}</p>
-              <p><b>Email:</b> {lookupProfile.email}</p>
-              <p><b>Balance:</b> ${Number(lookupProfile.balance).toFixed(2)}</p>
-              <p><b>Created:</b> {formatDate(lookupProfile.createdAt)}</p>
+              <p>
+                <b>UID:</b> {lookupProfile.id}
+              </p>
+              <p>
+                <b>Username:</b> {lookupProfile.username}
+              </p>
+              <p>
+                <b>Email:</b> {lookupProfile.email}
+              </p>
+              <p>
+                <b>Balance:</b> $
+                {Number(lookupProfile.balance).toFixed(2)}
+              </p>
+              <p>
+                <b>Created:</b> {formatDate(lookupProfile.createdAt)}
+              </p>
             </div>
           )}
 
@@ -475,14 +516,35 @@ export const Admin: React.FC = () => {
               <h4>Recent Payouts & Donations</h4>
 
               {lookupPayouts.map((row) => (
-                <div key={row.id} className="dash-card modern-card glassy-card">
-                  <p><b>Type:</b> {row.type}</p>
-                  <p><b>Amount:</b> ${row.amount.toFixed(2)}</p>
-                  <p><b>Method:</b> {row.method}</p>
-                  {row.charityName && <p><b>Charity:</b> {row.charityName}</p>}
-                  {row.receiptEmail && <p><b>Receipt Email:</b> {row.receiptEmail}</p>}
-                  <p><b>Status:</b> {row.status}</p>
-                  <p><b>Requested:</b> {formatDate(row.createdAt)}</p>
+                <div
+                  key={row.id}
+                  className="dash-card modern-card glassy-card"
+                >
+                  <p>
+                    <b>Type:</b> {row.type}
+                  </p>
+                  <p>
+                    <b>Amount:</b> ${row.amount.toFixed(2)}
+                  </p>
+                  <p>
+                    <b>Method:</b> {row.method}
+                  </p>
+                  {row.charityName && (
+                    <p>
+                      <b>Charity:</b> {row.charityName}
+                    </p>
+                  )}
+                  {row.receiptEmail && (
+                    <p>
+                      <b>Receipt Email:</b> {row.receiptEmail}
+                    </p>
+                  )}
+                  <p>
+                    <b>Status:</b> {row.status}
+                  </p>
+                  <p>
+                    <b>Requested:</b> {formatDate(row.createdAt)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -491,15 +553,19 @@ export const Admin: React.FC = () => {
 
         {/* FILTER TABS */}
         <div className="dash-tabs scrollable-tabs glassy-card">
-          {(["pending", "fulfilled", "denied", "all"] as FilterTab[]).map((tab) => (
-            <button
-              key={tab}
-              className={`dash-tab-btn ${filterStatus === tab ? "dash-tab-active" : ""}`}
-              onClick={() => setFilterStatus(tab)}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
+          {(["pending", "fulfilled", "denied", "all"] as FilterTab[]).map(
+            (tab) => (
+              <button
+                key={tab}
+                className={`dash-tab-btn ${
+                  filterStatus === tab ? "dash-tab-active" : ""
+                }`}
+                onClick={() => setFilterStatus(tab)}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            )
+          )}
         </div>
 
         {loading && <p className="dash-muted">Loading...</p>}
@@ -510,29 +576,77 @@ export const Admin: React.FC = () => {
             {cashouts.length === 0 ? (
               <p className="dash-muted">No requests found.</p>
             ) : (
-              cashouts.map((row) => (
-                <div key={row.id} className="dash-card modern-card glassy-card admin-card">
-                  <p><b>User ID:</b> {row.userId}</p>
-                  {row.username && <p><b>Username:</b> {row.username}</p>}
-                  {row.userEmail && <p><b>Email:</b> {row.userEmail}</p>}
-                  <p><b>Amount:</b> ${row.amount.toFixed(2)}</p>
-                  <p><b>Method:</b> {row.method}</p>
-                  <p><b>Status:</b> {row.status}</p>
-                  <p><b>Requested:</b> {formatDate(row.createdAt)}</p>
+              cashouts.map((row) => {
+                const statusClass = row.status
+                  ? row.status.toString().toLowerCase()
+                  : "pending";
+
+                return (
+                  <div
+                    key={row.id}
+                    className={`dash-card modern-card glassy-card admin-card status-${statusClass}`}
+                  >
+                  <p>
+                    <b>User ID:</b> {row.userId}
+                  </p>
+                  {row.username && (
+                    <p>
+                      <b>Username:</b> {row.username}
+                    </p>
+                  )}
+                  {row.userEmail && (
+                    <p>
+                      <b>Email:</b> {row.userEmail}
+                    </p>
+                  )}
+                  <p>
+                    <b>Amount:</b> ${row.amount.toFixed(2)}
+                  </p>
+                  <p>
+                    <b>Method:</b> {row.method}
+                  </p>
+                  <p>
+                    <b>Status:</b>{" "}
+                    <span className={`status-tag status-${statusClass}`}>
+                      {row.status}
+                    </span>
+                  </p>
+                  <p>
+                    <b>Requested:</b> {formatDate(row.createdAt)}
+                  </p>
 
                   <p>
                     <b>Risk:</b>{" "}
-                    <span className={`suspicion-tag ${suspicionClass(row)}`}>
+                    <span
+                      className={`suspicion-tag ${suspicionClass(row)}`}
+                    >
                       {suspicionLabel(row)}
                     </span>
                   </p>
 
-                  {row.suspiciousReasons && row.suspiciousReasons.length > 0 && (
-                    <ul className="suspicion-reasons">
-                      {row.suspiciousReasons.map((r, idx) => (
-                        <li key={idx}>{r}</li>
-                      ))}
-                    </ul>
+                  {row.suspiciousReasons &&
+                    row.suspiciousReasons.length > 0 && (
+                      <ul className="suspicion-reasons">
+                        {row.suspiciousReasons.map((r, idx) => (
+                          <li key={idx}>{r}</li>
+                        ))}
+                      </ul>
+                    )}
+
+                  {row.status === "denied" && (
+                    <div className="denial-note">
+                      <p>
+                        <b>Reason:</b>{" "}
+                        {row.denialReason
+                          ? row.denialReason
+                          : "No reason provided."}
+                      </p>
+                      <p className="denial-meta">
+                        {row.refunded
+                          ? "Refunded to user"
+                          : "No refund issued"}
+                      </p>
+                    </div>
                   )}
 
                   {row.status === "pending" && (
@@ -552,7 +666,8 @@ export const Admin: React.FC = () => {
                     </div>
                   )}
                 </div>
-              ))
+              );
+              })
             )}
           </div>
         )}
@@ -570,7 +685,8 @@ export const Admin: React.FC = () => {
             <p>
               <b>Type:</b> {actionRow.type} <br />
               <b>User:</b> {actionRow.userId} <br />
-              <b>Amount:</b> ${actionRow.amount.toFixed(2)} via {actionRow.method}
+              <b>Amount:</b> ${actionRow.amount.toFixed(2)} via{" "}
+              {actionRow.method}
             </p>
 
             {actionType === "deny" && (

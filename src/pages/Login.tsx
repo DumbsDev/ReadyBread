@@ -1,5 +1,5 @@
 // src/pages/Login.tsx
-import React, { useState, /*useRef,*/ useEffect } from "react";
+import React, { useState, /* useRef */ useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   signInWithEmailAndPassword,
@@ -27,8 +27,6 @@ import { useUser } from "../contexts/UserContext";
 const REFERRAL_REWARD = 0.25;
 const REFERRAL_CAP = 1.0;
 
-
-
 /* -------------------------------------------------------
    DEVICE ID GENERATION
 ------------------------------------------------------- */
@@ -55,6 +53,7 @@ export const Login: React.FC = () => {
   const { authUser, profile, loading } = useUser();
   const [params] = useSearchParams();
 
+  // ?ref= in URL
   const referredByParam = params.get("ref") || null;
 
   const [isSignUp, setIsSignUp] = useState(false);
@@ -75,7 +74,9 @@ export const Login: React.FC = () => {
     if (referredByParam) {
       try {
         localStorage.setItem("referralCode", referredByParam);
-      } catch {}
+      } catch {
+        // ignore storage errors
+      }
     }
   }, [referredByParam]);
 
@@ -90,6 +91,9 @@ export const Login: React.FC = () => {
     if (authUser && profile) {
       if (authUser.emailVerified) {
         navigate("/dashboard");
+      } else {
+        // Unverified users stay on this page
+        // (you can show a banner here if you want later)
       }
     }
   }, [authUser, profile, loading, navigate]);
@@ -169,7 +173,7 @@ export const Login: React.FC = () => {
         return;
       }
 
-      // Call backend
+      // Cloud Function to process referrals
       try {
         await fetch(
           `https://us-central1-readybread-56d81.cloudfunctions.net/processReferrals?uid=${cred.user.uid}`
@@ -178,6 +182,7 @@ export const Login: React.FC = () => {
         console.error("Referral function error:", err);
       }
 
+      // Fallback referral bonus check
       await applyReferralBonusIfQualified(cred.user.uid);
 
       navigate("/dashboard");
@@ -213,10 +218,12 @@ export const Login: React.FC = () => {
       if (!referredBy) {
         try {
           referredBy = localStorage.getItem("referralCode");
-        } catch {}
+        } catch {
+          // ignore
+        }
       }
 
-      // Firestore user doc — MUST follow your rules
+      // Firestore user doc — MUST follow your security rules
       await setDoc(doc(db, "users", uid), {
         balance: 0,
         isBanned: false,
@@ -236,7 +243,7 @@ export const Login: React.FC = () => {
         auditLog: [],
       });
 
-      // 2) Create public profile doc
+      // Public profile doc for safe lookups (username, etc.)
       await setDoc(doc(db, "publicProfiles", uid), {
         username: email.split("@")[0],
         createdAt: serverTimestamp(),
@@ -244,17 +251,25 @@ export const Login: React.FC = () => {
 
       await sendEmailVerification(cred.user);
 
-      // Cloud function
+      // Cloud function to process referrals on signup as well
       try {
         await fetch(
           `https://us-central1-readybread-56d81.cloudfunctions.net/processReferrals?uid=${uid}`
         );
-      } catch {}
+      } catch {
+        // non-fatal
+      }
 
-      localStorage.removeItem("referralCode");
+      // Clear stored referral code so it doesn't leak to future signups
+      try {
+        localStorage.removeItem("referralCode");
+      } catch {
+        // ignore
+      }
 
       alert("Verification email sent! Please verify before logging in.");
 
+      // Log them out after signup so they must verify first
       await signOut(auth);
       setIsSignUp(false);
       navigate("/login");
@@ -265,7 +280,7 @@ export const Login: React.FC = () => {
 
   /* -------------------------------------------------------
      RENDER
-------------------------------------------------------- */
+  ------------------------------------------------------- */
   return (
     <main className="rb-content">
       <div className="login-card">

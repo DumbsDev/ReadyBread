@@ -2416,6 +2416,8 @@ body {
 
 .admin-card {
   transition: transform 0.15s ease;
+  position: relative;
+  overflow: visible;
 }
 .admin-card:hover {
   transform: scale(1.02);
@@ -2546,23 +2548,31 @@ body {
 }
 
 .status-tag {
-  padding: 3px 8px;
-  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
   font-size: 13px;
   text-transform: capitalize;
+  font-weight: 700;
   color: #fff;
+  letter-spacing: 0.02em;
 }
 
 .status-pending {
-  background: #e9a84a;
+  background: linear-gradient(135deg, #ffda7a, #ffb347);
+  color: #261500;
 }
 
 .status-fulfilled {
-  background: #4caf50;
+  background: linear-gradient(135deg, #4caf50, #6fda86);
+  color: #071e0b;
 }
 
 .status-denied {
-  background: #e53935;
+  background: linear-gradient(135deg, #e53935, #ff6f61);
+  color: #fff;
 }
 
 /* Scrollable payout list */
@@ -2628,6 +2638,41 @@ body {
 
 .admin-deny {
   background: rgba(229, 57, 53, 0.9);
+}
+
+.admin-card.status-denied {
+  border: 1px solid rgba(229, 57, 53, 0.35);
+  background: linear-gradient(
+    145deg,
+    rgba(229, 57, 53, 0.12),
+    rgba(255, 255, 255, 0.04)
+  );
+  box-shadow: 0 10px 26px rgba(229, 57, 53, 0.22);
+}
+
+.admin-card.status-denied::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 15px;
+  border: 1px solid rgba(229, 57, 53, 0.3);
+  pointer-events: none;
+  box-shadow: 0 0 14px rgba(229, 57, 53, 0.18);
+}
+
+.denial-note {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(229, 57, 53, 0.12);
+  border: 1px solid rgba(229, 57, 53, 0.2);
+  line-height: 1.4;
+}
+
+.denial-meta {
+  margin-top: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 /* ======================================================
@@ -2787,4 +2832,36 @@ body {
 @keyframes bread-spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* ---------------------------
+   BUTTON — DANGER STYLE
+--------------------------- */
+
+.rb-btn-danger {
+  background: #d9534f;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.2s ease;
+}
+
+.rb-btn-danger:hover {
+  background: #c9302c;
+  transform: translateY(-1px);
+}
+
+.rb-btn-danger:active {
+  transform: scale(0.98);
+}
+
+.mt-10 {
+  margin-top: 10px;
+}
+
+.mt-20 {
+  margin-top: 20px;
 }

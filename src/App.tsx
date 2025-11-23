@@ -31,7 +31,7 @@ import { TOS } from "./pages/TOS";
 import { EarningsDisclaimer } from "./pages/earningdisclaimer";
 
 export const AppInner: React.FC = () => {
-  const { user, profile, balance, loading, isAdmin } = useUser();
+  const { user, profile, balance, loading, admin } = useUser();
 
   const showLoader: boolean = loading || (user !== null && profile === null);
 
@@ -73,7 +73,7 @@ export const AppInner: React.FC = () => {
 
         <Route
           path="/admin"
-          element={isAdmin ? <Admin /> : <NotFound />}
+          element={admin ? <Admin /> : <NotFound />}
         />
 
 

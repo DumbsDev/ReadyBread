@@ -9,11 +9,11 @@ type SortMode = "best" | "payout" | "length" | "random";
 
 export const Surveys: React.FC = () => {
   // Pull user from global UserContext
-  const { authUser } = useUser();
+  const { authUser, loading: userLoading } = useUser();
 
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>("best");
-  const [loading, setLoading] = useState(true);
+  const [surveysLoading, setSurveysLoading] = useState(true);
 
   const navigate = useNavigate();
 
@@ -23,6 +23,8 @@ export const Surveys: React.FC = () => {
      LOGIN / VERIFICATION CHECK
   --------------------------------------------------- */
   useEffect(() => {
+    if (userLoading) return;
+
     if (!authUser) {
       alert("Please log in to earn rewards.");
       navigate("/login");
@@ -35,13 +37,13 @@ export const Surveys: React.FC = () => {
     }
 
     loadSurveys();
-  }, [authUser, navigate]);
+  }, [authUser, userLoading, navigate]);
 
   /* ---------------------------------------------------
      LOAD SURVEYS FROM BITLABS
   --------------------------------------------------- */
   const loadSurveys = async () => {
-    setLoading(true);
+    setSurveysLoading(true);
 
     try {
       const res = await fetch("https://api.bitlabs.ai/v2/client/surveys", {
@@ -59,7 +61,7 @@ export const Surveys: React.FC = () => {
       console.error("Error loading surveys:", err);
       setSurveys([]);
     } finally {
-      setLoading(false);
+      setSurveysLoading(false);
     }
   };
 
@@ -99,6 +101,26 @@ export const Surveys: React.FC = () => {
         )
       )
     : 0;
+
+  if (userLoading) {
+    return (
+      <main className="rb-content theme-surveys">
+        <section className="earn-shell">
+          <p className="rb-section-sub">Checking your account...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!authUser) {
+    return (
+      <main className="rb-content theme-surveys">
+        <section className="earn-shell">
+          <p className="rb-section-sub">Please log in to access surveys.</p>
+        </section>
+      </main>
+    );
+  }
 
   /* ---------------------------------------------------
      RENDER
@@ -169,8 +191,8 @@ export const Surveys: React.FC = () => {
 
         {/* Survey list */}
         <div id="survey-list" className="survey-list">
-          {loading ? (
-            <div className="survey-empty">Loading surveys…</div>
+          {surveysLoading ? (
+            <div className="survey-empty">Loading surveys...</div>
           ) : sortedSurveys.length === 0 ? (
             <div className="survey-empty">
               No surveys available right now. Try again soon.

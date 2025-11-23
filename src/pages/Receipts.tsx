@@ -9,12 +9,14 @@ export const Receipts: React.FC = () => {
   const navigate = useNavigate();
 
   // Pull global user (auth + profile)
-  const { authUser } = useUser();
+  const { authUser, loading } = useUser();
 
   /* ---------------------------------------------------
      LOGIN / VERIFICATION CHECK
   --------------------------------------------------- */
   useEffect(() => {
+    if (loading) return;
+
     if (!authUser) {
       alert("Please log in to use Magic Receipts.");
       navigate("/login");
@@ -26,7 +28,16 @@ export const Receipts: React.FC = () => {
       navigate("/login");
       return;
     }
-  }, [authUser, navigate]);
+  }, [authUser, loading, navigate]);
+
+  if (loading) {
+    return (
+      <main className="rb-content">
+        <h2 className="rb-section-title">Magic Receipts</h2>
+        <p className="rb-section-sub">Checking your account...</p>
+      </main>
+    );
+  }
 
   // If still not logged in (redirect already handled)
   if (!authUser) {

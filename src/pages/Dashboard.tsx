@@ -16,6 +16,7 @@ import {
 
 import { db } from "../config/firebase";
 import { useUser } from "../contexts/UserContext";
+import { getAuth, deleteUser } from "firebase/auth";
 
 // -------------------------------
 // Types
@@ -81,6 +82,31 @@ export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "overview" | "stats" | "offers" | "payouts" | "achievements"
   >("overview");
+
+  const auth = getAuth();
+  const handleLogout = async () => {
+  try {
+  await auth.signOut();
+  window.location.href = "/login";
+  } catch (err) {
+  console.error("Logout error", err);
+  alert("Failed to log out. Try again.");
+  }
+  };
+
+
+  const handleDeleteAccount = async () => {
+  if (!window.confirm("Are you sure? This will permanently delete your account and all data.")) return;
+  try {
+  const u = auth.currentUser;
+  if (!u) return alert("No user logged in.");
+  await deleteUser(u);
+  window.location.href = "/signup";
+  } catch (err) {
+  console.error("Delete error", err);
+  alert("Failed to delete account. You may need to re-authenticate.");
+  }
+  };
 
   const [allOffers, setAllOffers] = useState<StartedOffer[]>([]);
   const [activeOffers, setActiveOffers] = useState<StartedOffer[]>([]);
@@ -1004,7 +1030,19 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         )}
+        <section className="dash-card modern-card glass-card danger-zone">
+          <h3 className="dash-card-title" style={{ color: 'var(--golden-toast)' }}>Danger Zone</h3>
+          <p className="dash-muted">These actions are permanent or sensitive.</p>
+          <button className="rb-btn rb-btn-danger" onClick={handleLogout}>
+            Log Out
+          </button>
+          <br></br>
+          <button className="rb-btn rb-btn-danger" onClick={handleDeleteAccount}>
+            Delete Account
+          </button>
+        </section>
       </section>
     </main>
+    
   );
 };

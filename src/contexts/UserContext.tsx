@@ -44,7 +44,7 @@ interface UserContextType {
   profile: UserProfile | null;     // firestore profile
   balance: number;                 // always a number
   loading: boolean;                // global loading state
-  isAdmin: boolean;                // admin boolean
+  admin: boolean;                  // admin boolean
   refreshProfile: () => Promise<void>;
 }
 
@@ -57,7 +57,7 @@ const UserContext = createContext<UserContextType>({
   profile: null,
   balance: 0,
   loading: true,
-  isAdmin: false,
+  admin: false,
   refreshProfile: async () => {},
 });
 
@@ -148,7 +148,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   /* ------------------------------------------------------------
      ADMIN CHECK
   ------------------------------------------------------------ */
-  const isAdmin =
+  const admin =
     profile?.admin === true ||
     authUser?.uid === "c0WrVU0aaOSM4SGrwhWrSlNjJk72";
 
@@ -163,7 +163,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         profile,
         balance,
         loading,
-        isAdmin,
+        admin,
         refreshProfile,
       }}
     >
