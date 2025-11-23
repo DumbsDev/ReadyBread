@@ -4,9 +4,9 @@
 // in Firestore or used throughout the application.
 
 // ------------------------------------------------------------
-// USER TYPE (Firestore Profile)
+// READYBREAD USER TYPE (Firestore Profile)
 // ------------------------------------------------------------
-export interface User {
+export interface RBUser {
   uid: string;
 
   // Core identity fields
@@ -87,4 +87,3 @@ export interface CashoutRequest {
   status: "pending" | "completed" | "rejected";
   createdAt: any;
 }
-

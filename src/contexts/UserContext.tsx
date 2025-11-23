@@ -1,35 +1,55 @@
+// src/contexts/UserContext.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../config/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
-import type { User } from "../types";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
+
+import type { RBUser } from "../types";
 
 /* ------------------------------------------------------------
-   TYPES
+   FIRESTORE USER PROFILE (strict shape from Firestore)
 ------------------------------------------------------------ */
-
-// Your ReadyBread user profile from Firestore
-type UserProfile = Omit<User, "uid" | "email" | "emailVerified">;
-
-// The object ALL your pages expect (merged Firebase Auth + Firestore profile)
-export type ReadyBreadUser = Omit<FirebaseUser, "email"> &
-  User & {
-    email: string; // force non-null for app components
-    profile: UserProfile;
-  };
-
-// Context shape
-interface UserContextType {
-  user: ReadyBreadUser | null;   // <-- THIS fixes your type errors
-  authUser: FirebaseUser | null; // raw firebase user if needed
-  profile: UserProfile | null;
+export interface UserProfile {
+  username: string;
   balance: number;
-  loading: boolean;
-  isAdmin: boolean;
+  email?: string;
+  referralCode: string;
+  referredBy: string | null;
+  totalReferralEarnings: number;
+  isBanned: boolean;
+  admin: boolean;
+  createdAt: any;
+  shortcutBonusClaimed: boolean;
 }
 
 /* ------------------------------------------------------------
-   CONTEXT DEFAULT
+   MERGED USER TYPE
+   This is what ALL pages will receive as `user`
+   - FirebaseUser (emailVerified, uid, etc.)
+   - RBUser fields (username, balance, referralCode, etc.)
+   - profile: full Firestore profile object
+------------------------------------------------------------ */
+export type ReadyBreadUser = Omit<FirebaseUser, "email"> &
+  RBUser & {
+    email: string; // non-null for app usage
+    profile: UserProfile;
+  };
+
+/* ------------------------------------------------------------
+   CONTEXT SHAPE
+------------------------------------------------------------ */
+interface UserContextType {
+  user: ReadyBreadUser | null;     // merged user object for all pages
+  authUser: FirebaseUser | null;   // raw firebase user
+  profile: UserProfile | null;     // firestore profile
+  balance: number;                 // always a number
+  loading: boolean;                // global loading state
+  isAdmin: boolean;                // admin boolean
+  refreshProfile: () => Promise<void>;
+}
+
+/* ------------------------------------------------------------
+   CONTEXT DEFAULT VALUES
 ------------------------------------------------------------ */
 const UserContext = createContext<UserContextType>({
   user: null,
@@ -38,10 +58,11 @@ const UserContext = createContext<UserContextType>({
   balance: 0,
   loading: true,
   isAdmin: false,
+  refreshProfile: async () => {},
 });
 
 /* ------------------------------------------------------------
-   PROVIDER
+   USER PROVIDER
 ------------------------------------------------------------ */
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -52,18 +73,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true);
 
   /* ------------------------------------------------------------
-     1) AUTH LISTENER
+     AUTH LISTENER (firebase auth)
   ------------------------------------------------------------ */
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
-      setAuthUser(firebaseUser);
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setAuthUser(u);
+      if (!u) {
+        setProfile(null);
+        setBalance(0);
+      }
     });
-
     return () => unsub();
   }, []);
 
   /* ------------------------------------------------------------
-     2) FIRESTORE USER PROFILE
+     FIRESTORE PROFILE LISTENER (live)
   ------------------------------------------------------------ */
   useEffect(() => {
     if (!authUser) {
@@ -75,42 +99,49 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const ref = doc(db, "users", authUser.uid);
 
-    const unsub = onSnapshot(ref, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data() as Partial<UserProfile>;
-
-        // Ensure required fields exist on the merged user
-        const normalizedProfile: UserProfile = {
-          balance: 0,
-          admin: false,
-          username: authUser.email?.split("@")[0] ?? "",
-          referralCode: "",
-          referredBy: null,
-          totalReferralEarnings: 0,
-          isBanned: false,
-          shortcutBonusClaimed: false,
-          ...data,
-        };
-
-        setProfile(normalizedProfile);
-        setBalance(normalizedProfile.balance);
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data() as UserProfile;
+          setProfile(data);
+          setBalance(data.balance ?? 0);
+        }
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Firestore profile error:", err);
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
 
     return () => unsub();
   }, [authUser]);
 
   /* ------------------------------------------------------------
+     MANUAL PROFILE REFRESH (optional but useful)
+  ------------------------------------------------------------ */
+  const refreshProfile = async () => {
+    if (!authUser) return;
+    const ref = doc(db, "users", authUser.uid);
+    await getDoc(ref); // forces Firestore to return fresh data
+  };
+
+  /* ------------------------------------------------------------
      MERGED USER OBJECT
+     Combines:
+     - FirebaseUser
+     - profile fields
+     - RBUser fields
+     - profile object attached
   ------------------------------------------------------------ */
   const mergedUser: ReadyBreadUser | null =
     authUser && profile
       ? ({
-          ...authUser,
-          ...profile,
-          email: authUser.email || "",
-          profile,
+          ...authUser,   // firebase fields (uid, metadata...)
+          ...profile,    // RBUser fields (username, balance, referralCode...)
+          email: profile.email || authUser.email || "", // ensure string
+          profile,       // original Firestore profile included
         } as ReadyBreadUser)
       : null;
 
@@ -122,17 +153,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     authUser?.uid === "c0WrVU0aaOSM4SGrwhWrSlNjJk72";
 
   /* ------------------------------------------------------------
-     PROVIDER VALUE
------------------------------------------------------------- */
+     PROVIDER OUTPUT
+  ------------------------------------------------------------ */
   return (
     <UserContext.Provider
       value={{
-        user: mergedUser,   // <-- THIS is what all pages receive
-        authUser,           // raw firebase user (optional)
+        user: mergedUser,
+        authUser,
         profile,
         balance,
         loading,
         isAdmin,
+        refreshProfile,
       }}
     >
       {children}
