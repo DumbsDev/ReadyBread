@@ -27,6 +27,8 @@ import { useUser } from "../contexts/UserContext";
 const REFERRAL_REWARD = 0.25;
 const REFERRAL_CAP = 1.0;
 
+
+
 /* -------------------------------------------------------
    DEVICE ID GENERATION
 ------------------------------------------------------- */
@@ -232,6 +234,12 @@ export const Login: React.FC = () => {
         shortcutBonusClaimed: false,
         totalReferralEarnings: 0,
         auditLog: [],
+      });
+
+      // 2) Create public profile doc
+      await setDoc(doc(db, "publicProfiles", uid), {
+        username: email.split("@")[0],
+        createdAt: serverTimestamp(),
       });
 
       await sendEmailVerification(cred.user);
