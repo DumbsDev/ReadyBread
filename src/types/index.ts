@@ -87,3 +87,6 @@ export interface CashoutRequest {
   status: "pending" | "completed" | "rejected";
   createdAt: any;
 }
+
+// TEMP PATCH: Legacy compatibility for pages expecting "User"
+export type User = RBUser;
