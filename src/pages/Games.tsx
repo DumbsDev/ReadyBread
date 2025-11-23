@@ -1,13 +1,11 @@
 // src/pages/Games.tsx
+// Game & App offers page, now using UserContext (ReadyBreadUser).
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { type User } from "../types";
 import { db } from "../config/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-
-interface GamesProps {
-  user: User | null;
-}
+import { useUser } from "../contexts/UserContext";
 
 interface Offer {
   id: string;
@@ -23,63 +21,37 @@ interface Offer {
   }>;
 }
 
-export const Games: React.FC<GamesProps> = ({ user }) => {
+export const Games: React.FC = () => {
   const navigate = useNavigate();
+  const { user, loading } = useUser();
+
   const [offers, setOffers] = useState<Offer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingOffers, setLoadingOffers] = useState(true);
   const [expandedOfferId, setExpandedOfferId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter] = useState<"all" | "bitlabs" | "ayet">("all");
-  const [sortMode, setSortMode] = useState<"recommended" | "highest" | "fastest">("recommended");
-  const filteredOffers =
-    filter === "all"
-      ? offers
-      : offers.filter((o) =>
-          filter === "bitlabs"
-            ? o.id.startsWith("bitlabs_")
-            : o.id.startsWith("ayet_")
-        );
-  const sortedOffers = [...filteredOffers].sort((a, b) => {
-  if (sortMode === "highest") {
-    return b.payout - a.payout; // high → low
-  }
-
-  if (sortMode === "fastest") {
-    const aTime = a.est_minutes ?? 9999;
-    const bTime = b.est_minutes ?? 9999;
-    return aTime - bTime; // low → high
-  }
-
-  // Recommended:
-  // We blend payout *and* time to get a ratio:
-  // Higher ratio = better value per minute.
-  const aScore =
-    (a.payout || 0) / Math.max(a.est_minutes || 1, 1);
-
-  const bScore =
-    (b.payout || 0) / Math.max(b.est_minutes || 1, 1);
-
-  return bScore - aScore;
-});
-
+  const [sortMode, setSortMode] =
+    useState<"recommended" | "highest" | "fastest">("recommended");
 
   const BITLABS_KEY = "250f0833-3a86-4232-ae29-9b30026d1820";
-  const AYET_PUB_ID = "4093286"; // use your real AyeT publisher ID
-  
+  const AYET_PUB_ID = "4093286"; // your AyeT publisher ID
   const AYET_APP_ID = "21054";
 
+  // Gate page behind auth
   useEffect(() => {
+    if (loading) return;
+
     if (!user) {
       alert("Please log in to view game offers.");
       navigate("/login");
       return;
     }
-    loadOffers();
-  }, [user, navigate]);
 
-  const loadOffers = async () => {
-    if (!user) return;
-    setLoading(true);
+    loadOffers(user);
+  }, [user, loading, navigate]);
+
+  const loadOffers = async (currentUser: { uid: string }) => {
+    setLoadingOffers(true);
     setError(null);
 
     try {
@@ -89,7 +61,7 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
       const blRes = await fetch("https://api.bitlabs.ai/v2/client/offers", {
         headers: {
           "X-Api-Token": BITLABS_KEY,
-          "X-User-Id": user.uid,
+          "X-User-Id": currentUser.uid,
           "X-Api-Sdk": "CUSTOM",
         },
       });
@@ -131,7 +103,7 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
       // -------------------------------------------
       // 2) Fetch AyeT Offers
       // -------------------------------------------
-      const ayURL = `https://www.ayetstudios.com/offers?pubid=${AYET_PUB_ID}&appid=${AYET_APP_ID}&userid=${user.uid}`;
+      const ayURL = `https://www.ayetstudios.com/offers?pubid=${AYET_PUB_ID}&appid=${AYET_APP_ID}&userid=${currentUser.uid}`;
       const ayRes = await fetch(ayURL);
 
       let ayetOffers: Offer[] = [];
@@ -158,7 +130,7 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
       }
 
       // -------------------------------------------
-      // 3) Combine & Sort Offers (B)
+      // 3) Combine & default sort (highest payout)
       // -------------------------------------------
       const combined = [...bitlabsOffers, ...ayetOffers].sort(
         (a, b) => b.payout - a.payout
@@ -169,15 +141,12 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
       console.error(err);
       setError("Failed to load offers.");
     } finally {
-      setLoading(false);
+      setLoadingOffers(false);
     }
   };
 
-
   const toggleMoreInfo = (offerId: string) => {
-    setExpandedOfferId((prev) =>
-      prev === offerId ? null : offerId
-    );
+    setExpandedOfferId((prev) => (prev === offerId ? null : offerId));
   };
 
   const handleStartOffer = async (offer: Offer) => {
@@ -187,7 +156,8 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
       return;
     }
 
-    try {
+    try
+    {
       const totalObjectives = offer.objectives?.length ?? 0;
 
       await setDoc(
@@ -199,7 +169,7 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
           estMinutes: offer.est_minutes ?? null,
           imageUrl: offer.image_url ?? null,
           clickUrl: offer.click_url,
-          source: "bitlabs-offers",
+          source: offer.id.startsWith("ayet_") ? "ayet-offers" : "bitlabs-offers",
           status: "started", // later: "in-progress" or "completed"
           startedAt: serverTimestamp(),
           lastUpdatedAt: serverTimestamp(),
@@ -221,6 +191,48 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
     }
   };
 
+  if (loading) {
+    return (
+      <main className="rb-content theme-games">
+        <section className="earn-shell">
+          <p className="rb-section-sub">Loading your offers…</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!user) {
+    // Effect already navigates; this just prevents rendering flicker.
+    return null;
+  }
+
+  // Filter + sort view model
+  const filteredOffers =
+    filter === "all"
+      ? offers
+      : offers.filter((o) =>
+          filter === "bitlabs"
+            ? o.id.startsWith("bitlabs_")
+            : o.id.startsWith("ayet_")
+        );
+
+  const sortedOffers = [...filteredOffers].sort((a, b) => {
+    if (sortMode === "highest") {
+      return b.payout - a.payout; // high → low
+    }
+
+    if (sortMode === "fastest") {
+      const aTime = a.est_minutes ?? 9999;
+      const bTime = b.est_minutes ?? 9999;
+      return aTime - bTime; // low → high
+    }
+
+    // Recommended: payout per minute ratio
+    const aScore = (a.payout || 0) / Math.max(a.est_minutes || 1, 1);
+    const bScore = (b.payout || 0) / Math.max(b.est_minutes || 1, 1);
+    return bScore - aScore;
+  });
+
   return (
     <main className="rb-content theme-games">
       <section className="earn-shell">
@@ -232,28 +244,36 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
             <p className="rb-section-sub">
               Install and play games to earn <i>big</i>.
             </p>
+
             <div className="offer-sort-tabs">
               <button
-                className={sortMode === "recommended" ? "sort-tab active" : "sort-tab"}
+                className={
+                  sortMode === "recommended" ? "sort-tab active" : "sort-tab"
+                }
                 onClick={() => setSortMode("recommended")}
               >
                 🔥 Recommended
               </button>
 
               <button
-                className={sortMode === "highest" ? "sort-tab active" : "sort-tab"}
+                className={
+                  sortMode === "highest" ? "sort-tab active" : "sort-tab"
+                }
                 onClick={() => setSortMode("highest")}
               >
                 💰 Highest Earnings
               </button>
 
               <button
-                className={sortMode === "fastest" ? "sort-tab active" : "sort-tab"}
+                className={
+                  sortMode === "fastest" ? "sort-tab active" : "sort-tab"
+                }
                 onClick={() => setSortMode("fastest")}
               >
                 ⏱️ Fastest
               </button>
             </div>
+
             {/* subtle glass stats / “powered by” row */}
             <div
               style={{
@@ -268,7 +288,7 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
               <span className="chip chip-time">
                 {offers.length > 0
                   ? `${offers.length} live offers`
-                  : loading
+                  : loadingOffers
                   ? "Checking offers…"
                   : "No active offers at the moment"}
               </span>
@@ -276,17 +296,21 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
           </div>
         </div>
 
-        {loading && <div className="survey-empty">Loading offers…</div>}
+        {loadingOffers && (
+          <div className="survey-empty">Loading offers…</div>
+        )}
 
-        {!loading && error && <div className="survey-empty">{error}</div>}
+        {!loadingOffers && error && (
+          <div className="survey-empty">{error}</div>
+        )}
 
-        {!loading && !error && offers.length === 0 && (
+        {!loadingOffers && !error && offers.length === 0 && (
           <div className="survey-empty">
             No offers available right now. Try again later.
           </div>
         )}
 
-        {!loading && !error && offers.length > 0 && (
+        {!loadingOffers && !error && offers.length > 0 && (
           <div className="survey-list">
             {sortedOffers.map((offer) => {
               const isExpanded = expandedOfferId === offer.id;
@@ -340,8 +364,8 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
                           <p className="offer-details-copy">
                             This partner pays after you complete all in-app
                             goals for the offer. You&apos;ll receive the full{" "}
-                            <b>${offer.payout.toFixed(2)}</b> once BitLabs
-                            confirms completion.
+                            <b>${offer.payout.toFixed(2)}</b> once completion is
+                            confirmed.
                           </p>
                         )}
 

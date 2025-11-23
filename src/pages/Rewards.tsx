@@ -1,5 +1,6 @@
 // src/pages/Rewards.tsx
 // Multi-method cashout + donations with glass cards and logos
+// Now powered by UserContext (ReadyBreadUser) instead of props.
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -17,7 +18,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { type User } from "../types";
+import { useUser } from "../contexts/UserContext";
 
 // Logos (ensure these paths/files exist)
 import paypalLogo from "../static/images/icons/paypal.png";
@@ -26,11 +27,6 @@ import dwbLogo from "../static/images/icons/drswithoutborders.png";
 import redcrossLogo from "../static/images/icons/redcross.png";
 import stjudesLogo from "../static/images/icons/stjudes.png";
 import unicefLogo from "../static/images/icons/unicef.png";
-
-interface RewardsProps {
-  user: User | null;
-  onBalanceUpdate: () => void;
-}
 
 type PayoutMethodId = "paypal" | "cashapp";
 
@@ -101,7 +97,10 @@ const charities: Charity[] = [
   },
 ];
 
-export const Rewards: React.FC<RewardsProps> = ({ user, onBalanceUpdate }) => {
+export const Rewards: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, loading, refreshProfile } = useUser();
+
   const [currentBalance, setCurrentBalance] = useState(0);
 
   const [showPayoutModal, setShowPayoutModal] = useState(false);
@@ -117,19 +116,33 @@ export const Rewards: React.FC<RewardsProps> = ({ user, onBalanceUpdate }) => {
   const [donationAmount, setDonationAmount] = useState("");
   const [donationEmail, setDonationEmail] = useState("");
 
-  const navigate = useNavigate();
-
   // Require login + have user doc before using this page
   useEffect(() => {
+    if (loading) return;
+
     if (!user) {
       alert("Please log in to view rewards.");
       navigate("/login");
       return;
     }
-    setCurrentBalance(user.balance || 0);
-  }, [user, navigate]);
 
-  if (!user) return null;
+    setCurrentBalance(user.balance ?? 0);
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <main className="rb-content rewards-shell">
+        <section className="rw-card rw-card-hero">
+          <p className="rb-section-sub">Loading your rewards…</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!user) {
+    // The effect above will already navigate; this is just a safety fallback.
+    return null;
+  }
 
   const effectiveMax = Math.min(20, currentBalance);
 
@@ -149,7 +162,7 @@ export const Rewards: React.FC<RewardsProps> = ({ user, onBalanceUpdate }) => {
   const openPayoutModal = (methodId: PayoutMethodId) => {
     if (!user) return;
 
-    const balance = user.balance || 0;
+    const balance = user.balance ?? 0;
     const max = Math.min(20, balance);
 
     if (balance < 3) {
@@ -260,13 +273,14 @@ export const Rewards: React.FC<RewardsProps> = ({ user, onBalanceUpdate }) => {
       await updateDoc(userRef, { balance: newBalance });
       setCurrentBalance(newBalance);
 
+      await refreshProfile();
+
       alert(
         `Cashout request for $${amountNum.toFixed(
           2
         )} via ${selectedMethod.name} submitted!`
       );
       setShowPayoutModal(false);
-      onBalanceUpdate();
     } catch (err) {
       console.error("Cashout error:", err);
       alert("Error submitting request. Please try again later.");
@@ -329,13 +343,14 @@ export const Rewards: React.FC<RewardsProps> = ({ user, onBalanceUpdate }) => {
       await updateDoc(userRef, { balance: newBalance });
       setCurrentBalance(newBalance);
 
+      await refreshProfile();
+
       alert(
         `Donation of $${amountNum.toFixed(
           2
         )} to ${selectedCharity.name} submitted!`
       );
       setShowDonationModal(false);
-      onBalanceUpdate();
     } catch (err) {
       console.error("Donation error:", err);
       alert("Error submitting donation. Please try again later.");
@@ -555,8 +570,7 @@ export const Rewards: React.FC<RewardsProps> = ({ user, onBalanceUpdate }) => {
 
             <div className="donation-calculator">
               <p>
-                ReadyBread match (5%):{" "}
-                <b>${matchAmount.toFixed(2)}</b>
+                ReadyBread match (5%): <b>${matchAmount.toFixed(2)}</b>
               </p>
               <p>
                 Total impact (you + match):{" "}

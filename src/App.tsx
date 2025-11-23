@@ -50,12 +50,9 @@ export const AppInner: React.FC = () => {
 
         <Route path="/surveys" element={<Surveys user={user} />} />
 
-        <Route path="/games" element={<Games user={user} />} />
+        <Route path="/games" element={<Games />} />
 
-        <Route
-          path="/rewards"
-          element={<Rewards user={user} onBalanceUpdate={() => {}} />}
-        />
+        <Route path="/rewards" element={<Rewards />} />
 
         <Route path="/receipts" element={<Receipts user={user} />} />
 
