@@ -1,38 +1,45 @@
 // src/components/Loader.tsx
-// Loading screen with smooth fade-out using the #rb-loader.hidden CSS
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 
 interface LoaderProps {
-  show: boolean;  // Should the loader be visible?
+  show: boolean;
 }
 
+const FADE_DURATION_MS = 350; // keep in sync with CSS transition
+
 export const Loader: React.FC<LoaderProps> = ({ show }) => {
-  const [visible, setVisible] = useState(show);
-  const [hiddenClass, setHiddenClass] = useState('');
+  // Loader is always mounted, but visually hidden unless needed.
+  const [shouldDisplay, setShouldDisplay] = useState(show); // controls DOM presence
+  const [fadeOut, setFadeOut] = useState(false); // controls CSS fade-out
 
   useEffect(() => {
     if (show) {
-      // When loading starts again, show immediately
-      setVisible(true);
-      setHiddenClass('');
-    } else if (visible) {
-      // When loading finishes, add the .hidden class to trigger CSS fade-out
-      setHiddenClass('hidden');
+      // show = true -> display instantly
+      setShouldDisplay(true);
+      setFadeOut(false);
+    } else {
+      // show = false -> fade out
+      setFadeOut(true);
 
-      const timeout = setTimeout(() => {
-        setVisible(false);
-      }, 400); // slightly longer than the CSS transition (0.35s)
+      // after fade, remove from DOM
+      const timer = setTimeout(() => {
+        setShouldDisplay(false);
+      }, FADE_DURATION_MS);
 
-      return () => clearTimeout(timeout);
+      return () => clearTimeout(timer);
     }
-  }, [show, visible]);
+  }, [show]);
 
-  if (!visible) return null;
+  // If loader fully removed, don't render
+  if (!shouldDisplay) return null;
 
   return (
-    <div id="rb-loader" className={hiddenClass}>
-      <div className="loader-bread">🥖</div>
+    <div id="rb-loader" className={fadeOut ? "hidden" : ""}>
+      <img
+        src="/assets/emoji/icon.png"
+        alt="Loading Bread"
+        className="loader-bread-img"
+      />
     </div>
   );
 };

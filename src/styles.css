@@ -2749,3 +2749,42 @@ body {
     width: 92%;
   }
 }
+
+/* Loader container */
+/* Loader full-screen wrapper */
+#rb-loader {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 26, 26, 0.9);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+
+  opacity: 1;
+  visibility: visible;
+  pointer-events: all;
+  transition:
+    opacity 0.35s ease,
+    visibility 0s linear 0.35s; /* delay visibility toggle so fade shows */
+}
+
+#rb-loader.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Keep your bread animation */
+.loader-bread-img {
+  width: 96px;
+  height: 96px;
+  animation: bread-spin 1.2s linear infinite;
+  filter: drop-shadow(0 0 10px rgba(255, 209, 102, 0.6));
+}
+
+@keyframes bread-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

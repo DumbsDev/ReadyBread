@@ -10,7 +10,5 @@ Dark color: Burnt Toast (#2B2B2B)
 White Stand-in: Soft Sugar (#FDFDFD)
 Light primary: Warm Pastry (#FFEBC3)
 
-ROADMAP
+ROADMAP (old)
 Userbase (log-in, signup, etc), -> Survey Earnings (via bitlab) -> Game Offers (Via 3rd party) -> -> Magic Receipts (via Bitlabs) -> add a refer-a-friend feature that gives the referer $0.25 per referal -> add security and fraud prevention for everything -> Public test builds and advertising -> Build more on the dashboard (make it like a home screen) -> add affiliate links for modern, genz partners (bisect hosting for minecraft, steam key crates, etc.) -> articles and tutorials -> optimize the site -> prep for release and qol / appearance
-
-currently on -> GAME OFFERS
