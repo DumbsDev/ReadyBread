@@ -2,6 +2,7 @@ import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -564,3 +565,53 @@ export const bitlabsReceiptCallback = onRequest(
     }
   }
 );
+
+// Clean up completed startedOffers after ~24 hours
+export const cleanupCompletedOffers = onSchedule("every 24 hours", async () => {
+  const db = admin.firestore();
+
+  // Anything completed more than 24h ago
+  const cutoff = admin.firestore.Timestamp.fromDate(
+    new Date(Date.now() - 24 * 60 * 60 * 1000)
+  );
+
+  console.log("Starting cleanupCompletedOffers, cutoff:", cutoff.toDate());
+
+  const usersSnap = await db.collection("users").get();
+
+  const batchSize = 400;
+  let batch = db.batch();
+  let writeCount = 0;
+  const commits: Promise<FirebaseFirestore.WriteResult[]>[] = [];
+
+  for (const userDoc of usersSnap.docs) {
+    const startedRef = userDoc.ref.collection("startedOffers");
+
+    // Only completed offers older than 24h
+    const completedSnap = await startedRef
+      .where("status", "==", "completed")
+      .where("completedAt", "<", cutoff)
+      .get();
+
+    if (completedSnap.empty) continue;
+
+    completedSnap.forEach((docSnap) => {
+      batch.delete(docSnap.ref);
+      writeCount++;
+
+      if (writeCount >= batchSize) {
+        commits.push(batch.commit());
+        batch = db.batch();
+        writeCount = 0;
+      }
+    });
+  }
+
+  if (writeCount > 0) {
+    commits.push(batch.commit());
+  }
+
+  await Promise.all(commits);
+
+  console.log("cleanupCompletedOffers finished.");
+});

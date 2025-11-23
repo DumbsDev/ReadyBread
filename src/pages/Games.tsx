@@ -29,8 +29,44 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
   const [loading, setLoading] = useState(true);
   const [expandedOfferId, setExpandedOfferId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [filter] = useState<"all" | "bitlabs" | "ayet">("all");
+  const [sortMode, setSortMode] = useState<"recommended" | "highest" | "fastest">("recommended");
+  const filteredOffers =
+    filter === "all"
+      ? offers
+      : offers.filter((o) =>
+          filter === "bitlabs"
+            ? o.id.startsWith("bitlabs_")
+            : o.id.startsWith("ayet_")
+        );
+  const sortedOffers = [...filteredOffers].sort((a, b) => {
+  if (sortMode === "highest") {
+    return b.payout - a.payout; // high → low
+  }
+
+  if (sortMode === "fastest") {
+    const aTime = a.est_minutes ?? 9999;
+    const bTime = b.est_minutes ?? 9999;
+    return aTime - bTime; // low → high
+  }
+
+  // Recommended:
+  // We blend payout *and* time to get a ratio:
+  // Higher ratio = better value per minute.
+  const aScore =
+    (a.payout || 0) / Math.max(a.est_minutes || 1, 1);
+
+  const bScore =
+    (b.payout || 0) / Math.max(b.est_minutes || 1, 1);
+
+  return bScore - aScore;
+});
+
 
   const BITLABS_KEY = "250f0833-3a86-4232-ae29-9b30026d1820";
+  const AYET_PUB_ID = "4093286"; // use your real AyeT publisher ID
+  
+  const AYET_APP_ID = "21054";
 
   useEffect(() => {
     if (!user) {
@@ -47,7 +83,10 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
     setError(null);
 
     try {
-      const res = await fetch("https://api.bitlabs.ai/v2/client/offers", {
+      // -------------------------------------------
+      // 1) Fetch BitLabs Offers
+      // -------------------------------------------
+      const blRes = await fetch("https://api.bitlabs.ai/v2/client/offers", {
         headers: {
           "X-Api-Token": BITLABS_KEY,
           "X-User-Id": user.uid,
@@ -55,53 +94,85 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
         },
       });
 
-      if (!res.ok) {
-        console.error("BitLabs offers HTTP error", res.status, res.statusText);
-        setError("Failed to load offers. Please try again later.");
-        setOffers([]);
-        return;
+      let bitlabsOffers: Offer[] = [];
+
+      if (blRes.ok) {
+        const json = await blRes.json();
+        const rawOffers = (json?.data?.offers || []) as any[];
+
+        bitlabsOffers = rawOffers.map((o) => {
+          const payout =
+            typeof o.payout === "number"
+              ? o.payout
+              : parseFloat(o.points ?? o.reward ?? 0) / 100;
+
+          return {
+            id: `bitlabs_${o.id}`,
+            title: o.title || "Game offer",
+            payout: isNaN(payout) ? 0 : payout,
+            image_url:
+              o.image_url ??
+              o.icon_url ??
+              o.app_metadata?.screenshot_urls?.[0] ??
+              null,
+            click_url: o.click_url ?? "#",
+            est_minutes:
+              typeof o.est_minutes === "number"
+                ? o.est_minutes
+                : o.hours_left
+                ? o.hours_left * 60
+                : null,
+            disclaimer: o.disclaimer ?? null,
+            objectives: undefined,
+          };
+        });
       }
 
-      const json = await res.json();
-      const rawOffers = (json?.data?.offers || []) as any[];
+      // -------------------------------------------
+      // 2) Fetch AyeT Offers
+      // -------------------------------------------
+      const ayURL = `https://www.ayetstudios.com/offers?pubid=${AYET_PUB_ID}&appid=${AYET_APP_ID}&userid=${user.uid}`;
+      const ayRes = await fetch(ayURL);
 
-      const mapped: Offer[] = rawOffers.map((o) => {
-        const payout =
-          typeof o.payout === "number"
-            ? o.payout
-            : parseFloat(o.points ?? o.reward ?? 0) / 100;
+      let ayetOffers: Offer[] = [];
 
-        return {
-          id: String(o.id ?? o.anchor ?? o.offer_id),
-          title: String(o.title ?? o.anchor ?? "Game offer"),
-          payout: isNaN(payout) ? 0 : payout,
-          image_url:
-            o.image_url ??
-            o.icon_url ??
-            o.app_metadata?.screenshot_urls?.[0] ??
-            null,
-          click_url: o.click_url ?? o.continue_url ?? "#",
-          est_minutes:
-            typeof o.est_minutes === "number"
-              ? o.est_minutes
-              : o.hours_left
-              ? o.hours_left * 60
-              : null,
-          disclaimer: o.disclaimer ?? null,
-          // If you later map BitLabs milestones, pipe them into objectives
-          objectives: undefined,
-        };
-      });
+      if (ayRes.ok) {
+        const json = await ayRes.json();
+        const rawAyeT = json.offers || [];
 
-      setOffers(mapped);
+        ayetOffers = rawAyeT.map((o: any) => ({
+          id: `ayet_${o.offer_id}`,
+          title: o.title || "AyeT Offer",
+          payout: o.payout_usd || 0,
+          image_url: o.icon || null,
+          click_url: o.tracking_link || "#",
+          est_minutes: o.time_to_payout_minutes || null,
+          disclaimer: null,
+          objectives: o.steps
+            ? o.steps.map((s: any) => ({
+                name: s.name,
+                reward: s.reward_usd || 0,
+              }))
+            : undefined,
+        }));
+      }
+
+      // -------------------------------------------
+      // 3) Combine & Sort Offers (B)
+      // -------------------------------------------
+      const combined = [...bitlabsOffers, ...ayetOffers].sort(
+        (a, b) => b.payout - a.payout
+      );
+
+      setOffers(combined);
     } catch (err) {
-      console.error("Error loading offers:", err);
-      setError("Something went wrong while loading offers.");
-      setOffers([]);
+      console.error(err);
+      setError("Failed to load offers.");
     } finally {
       setLoading(false);
     }
   };
+
 
   const toggleMoreInfo = (offerId: string) => {
     setExpandedOfferId((prev) =>
@@ -161,7 +232,28 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
             <p className="rb-section-sub">
               Install and play games to earn <i>big</i>.
             </p>
+            <div className="offer-sort-tabs">
+              <button
+                className={sortMode === "recommended" ? "sort-tab active" : "sort-tab"}
+                onClick={() => setSortMode("recommended")}
+              >
+                🔥 Recommended
+              </button>
 
+              <button
+                className={sortMode === "highest" ? "sort-tab active" : "sort-tab"}
+                onClick={() => setSortMode("highest")}
+              >
+                💰 Highest Earnings
+              </button>
+
+              <button
+                className={sortMode === "fastest" ? "sort-tab active" : "sort-tab"}
+                onClick={() => setSortMode("fastest")}
+              >
+                ⏱️ Fastest
+              </button>
+            </div>
             {/* subtle glass stats / “powered by” row */}
             <div
               style={{
@@ -196,7 +288,7 @@ export const Games: React.FC<GamesProps> = ({ user }) => {
 
         {!loading && !error && offers.length > 0 && (
           <div className="survey-list">
-            {offers.map((offer) => {
+            {sortedOffers.map((offer) => {
               const isExpanded = expandedOfferId === offer.id;
 
               return (

@@ -45,7 +45,7 @@ interface StartedOffer {
   lastUpdatedAt?: any;
   totalObjectives?: number;
   completedObjectives?: number;
-  goals?: OfferGoal[]; // optional milestones from BitLabs
+  goals?: OfferGoal[]; // optional milestones from BitLabs / other vendors
 }
 
 interface ReferralDoc {
@@ -494,6 +494,7 @@ export const Dashboard: React.FC = () => {
     let inProgressGoals: OfferGoal[] = [];
 
     if (goals.length > 0) {
+      // Generic multi-goal support for BitLabs, Lootably, AyeT, AdGem, OfferToro, etc.
       completedGoals = goals.filter((g) => g.isCompleted);
       inProgressGoals = goals.filter((g) => !g.isCompleted);
     } else if (type === "survey") {
@@ -997,7 +998,8 @@ export const Dashboard: React.FC = () => {
               )}
 
               <p className="dash-muted dash-footnote">
-                Completed offers may be auto-cleaned after ~3 months.
+                Completed offers are auto-cleaned from this list about 24 hours
+                after completion to keep your dashboard snappy.
               </p>
             </div>
 
