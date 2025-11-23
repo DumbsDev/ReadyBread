@@ -55,6 +55,22 @@ body {
     margin-bottom: 8px;
     font-weight: 800;
     color: var(--golden-toast);
+
+    background: linear-gradient(
+        135deg,
+        var(--golden-toast),
+        var(--golden-toast),
+        var(--soft-sugar),
+        var(--soft-sugar)
+    );
+    -webkit-background-clip: text;
+    color: transparent;
+    margin-bottom: 6px;
+
+    /* REAL glow (can't use gradients in text-shadow) */
+    filter:
+        drop-shadow(0 0 6px rgba(255, 191, 90, 0.7))
+        drop-shadow(0 0 12px rgba(255, 163, 40, 0.5));
 }
 
 /* ─── Swipeable Nav Bar ─────────────────────────── */
@@ -263,6 +279,7 @@ button:hover {
   margin-top: 14px;
   margin-bottom: 6px;
   padding: 6px 0;
+  align-items: center;
 }
 
 .sort-tab {
