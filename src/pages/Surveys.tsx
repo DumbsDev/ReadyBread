@@ -1,33 +1,46 @@
 // src/pages/Surveys.tsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import type { User, Survey } from "../types";
 
-interface SurveysProps {
-  user: User | null;
-}
+import { useUser } from "../contexts/UserContext";
+import type { Survey } from "../types";
 
 type SortMode = "best" | "payout" | "length" | "random";
 
-export const Surveys: React.FC<SurveysProps> = ({ user }) => {
+export const Surveys: React.FC = () => {
+  // Pull user from global UserContext
+  const { authUser } = useUser();
+
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>("best");
   const [loading, setLoading] = useState(true);
+
   const navigate = useNavigate();
 
   const BITLABS_API_KEY = "250f0833-3a86-4232-ae29-9b30026d1820";
 
+  /* ---------------------------------------------------
+     LOGIN / VERIFICATION CHECK
+  --------------------------------------------------- */
   useEffect(() => {
-    if (!user) {
+    if (!authUser) {
       alert("Please log in to earn rewards.");
       navigate("/login");
       return;
     }
-    loadSurveys();
-  }, [user, navigate]);
+    if (!authUser.emailVerified) {
+      alert("Please verify your email before earning.");
+      navigate("/login");
+      return;
+    }
 
+    loadSurveys();
+  }, [authUser, navigate]);
+
+  /* ---------------------------------------------------
+     LOAD SURVEYS FROM BITLABS
+  --------------------------------------------------- */
   const loadSurveys = async () => {
-    if (!user) return;
     setLoading(true);
 
     try {
@@ -35,7 +48,7 @@ export const Surveys: React.FC<SurveysProps> = ({ user }) => {
         method: "GET",
         headers: {
           "X-Api-Token": BITLABS_API_KEY,
-          "X-User-Id": user.uid,
+          "X-User-Id": authUser?.uid || "UNKNOWN",
           "X-Api-Sdk": "CUSTOM",
         },
       });
@@ -50,6 +63,9 @@ export const Surveys: React.FC<SurveysProps> = ({ user }) => {
     }
   };
 
+  /* ---------------------------------------------------
+     SORT SURVEYS
+  --------------------------------------------------- */
   const getSortedSurveys = (): Survey[] => {
     const sorted = [...surveys];
 
@@ -58,26 +74,35 @@ export const Surveys: React.FC<SurveysProps> = ({ user }) => {
     } else if (sortMode === "length") {
       sorted.sort((a, b) => Number(a.loi || 0) - Number(b.loi || 0));
     } else if (sortMode === "random") {
+      // Fisher-Yates shuffle
       for (let i = sorted.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [sorted[i], sorted[j]] = [sorted[j], sorted[i]];
       }
     }
+
     return sorted;
   };
 
   const sortedSurveys = getSortedSurveys();
 
-  // Small helper stats for the header chips
+  /* ---------------------------------------------------
+     HEADER METRICS
+  --------------------------------------------------- */
   const totalSurveys = surveys.length;
   const bestPayout = surveys.length
     ? Math.max(
         ...surveys.map((s) =>
-          Number(s.cpi || (typeof s.value === "string" ? s.value.replace("$", "") : 0))
+          Number(
+            s.cpi || (typeof s.value === "string" ? s.value.replace("$", "") : 0)
+          )
         )
       )
     : 0;
 
+  /* ---------------------------------------------------
+     RENDER
+  --------------------------------------------------- */
   return (
     <main className="rb-content theme-surveys">
       <section className="earn-shell">
@@ -91,7 +116,7 @@ export const Surveys: React.FC<SurveysProps> = ({ user }) => {
               Complete surveys from our partners and earn some quick dough.
             </p>
 
-            {/* Little glassy stats row */}
+            {/* Live stats chips */}
             <div
               style={{
                 display: "flex",
@@ -103,8 +128,11 @@ export const Surveys: React.FC<SurveysProps> = ({ user }) => {
               }}
             >
               <span className="chip chip-time">
-                {totalSurveys > 0 ? `${totalSurveys} live surveys` : "Checking for surveys…"}
+                {totalSurveys > 0
+                  ? `${totalSurveys} live surveys`
+                  : "Checking for surveys…"}
               </span>
+
               {bestPayout > 0 && (
                 <span className="chip chip-payout">
                   Top payout ~ ${bestPayout.toFixed(2)}
@@ -113,29 +141,33 @@ export const Surveys: React.FC<SurveysProps> = ({ user }) => {
             </div>
           </div>
 
-          {/* SORT BUTTONS */}
+          {/* Sorting buttons */}
           <div className="earn-sort">
             <span className="earn-sort-label">Sort by:</span>
 
-            {(["best", "payout", "length", "random"] as SortMode[]).map((mode) => (
-              <button
-                key={mode}
-                className={`sort-btn ${sortMode === mode ? "sort-active" : ""}`}
-                onClick={() => setSortMode(mode)}
-              >
-                {mode === "best"
-                  ? "Best match"
-                  : mode === "payout"
-                  ? "Highest pay"
-                  : mode === "length"
-                  ? "Shortest"
-                  : "Random"}
-              </button>
-            ))}
+            {(["best", "payout", "length", "random"] as SortMode[]).map(
+              (mode) => (
+                <button
+                  key={mode}
+                  className={`sort-btn ${
+                    sortMode === mode ? "sort-active" : ""
+                  }`}
+                  onClick={() => setSortMode(mode)}
+                >
+                  {mode === "best"
+                    ? "Best match"
+                    : mode === "payout"
+                    ? "Highest pay"
+                    : mode === "length"
+                    ? "Shortest"
+                    : "Random"}
+                </button>
+              )
+            )}
           </div>
         </div>
 
-        {/* SURVEY LIST */}
+        {/* Survey list */}
         <div id="survey-list" className="survey-list">
           {loading ? (
             <div className="survey-empty">Loading surveys…</div>
@@ -145,7 +177,10 @@ export const Surveys: React.FC<SurveysProps> = ({ user }) => {
             </div>
           ) : (
             sortedSurveys.map((survey) => {
-              const minutes = survey.loi ? Number(survey.loi).toFixed(0) : "?";
+              const minutes = survey.loi
+                ? Number(survey.loi).toFixed(0)
+                : "?";
+
               const payout =
                 survey.value || `$${Number(survey.cpi || 0).toFixed(2)}`;
 
@@ -159,12 +194,10 @@ export const Surveys: React.FC<SurveysProps> = ({ user }) => {
                       {survey.category?.name || "Survey"}
                     </h3>
 
-                    {/* reuse chip style from Games for a more unified neon look */}
+                    {/* Payout & time badges */}
                     <div className="offer-tags" style={{ marginTop: "4px" }}>
                       <span className="chip chip-payout">{payout}</span>
-                      <span className="chip chip-time">
-                        ~{minutes} min
-                      </span>
+                      <span className="chip chip-time">~{minutes} min</span>
                     </div>
 
                     <p

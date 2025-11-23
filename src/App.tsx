@@ -46,15 +46,15 @@ export const AppInner: React.FC = () => {
       <Routes>
         <Route path="/" element={<Home />} />
 
-        <Route path="/login" element={<Login user={user} />} />
+        <Route path="/login" element={<Login />} />
 
-        <Route path="/surveys" element={<Surveys user={user} />} />
+        <Route path="/surveys" element={<Surveys />} />
 
         <Route path="/games" element={<Games />} />
 
         <Route path="/rewards" element={<Rewards />} />
 
-        <Route path="/receipts" element={<Receipts user={user} />} />
+        <Route path="/receipts" element={<Receipts />} />
 
         <Route path="/security" element={<Security />} />
 
@@ -73,8 +73,10 @@ export const AppInner: React.FC = () => {
 
         <Route
           path="/admin"
-          element={isAdmin ? <Admin user={user} /> : <NotFound />}
+          element={isAdmin ? <Admin /> : <NotFound />}
         />
+
+
 
         <Route path="*" element={<NotFound />} />
       </Routes>

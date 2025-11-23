@@ -1,25 +1,35 @@
 // src/pages/Receipts.tsx
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { type User } from "../types";
-
-interface ReceiptsProps {
-  user: User | null;
-}
+import { useUser } from "../contexts/UserContext";
 
 const BITLABS_API_KEY = "250f0833-3a86-4232-ae29-9b30026d1820";
 
-export const Receipts: React.FC<ReceiptsProps> = ({ user }) => {
+export const Receipts: React.FC = () => {
   const navigate = useNavigate();
 
+  // Pull global user (auth + profile)
+  const { authUser } = useUser();
+
+  /* ---------------------------------------------------
+     LOGIN / VERIFICATION CHECK
+  --------------------------------------------------- */
   useEffect(() => {
-    if (!user) {
+    if (!authUser) {
       alert("Please log in to use Magic Receipts.");
       navigate("/login");
+      return;
     }
-  }, [user, navigate]);
 
-  if (!user) {
+    if (!authUser.emailVerified) {
+      alert("Please verify your email before earning.");
+      navigate("/login");
+      return;
+    }
+  }, [authUser, navigate]);
+
+  // If still not logged in (redirect already handled)
+  if (!authUser) {
     return (
       <main className="rb-content">
         <h2 className="rb-section-title">Magic Receipts</h2>
@@ -30,11 +40,16 @@ export const Receipts: React.FC<ReceiptsProps> = ({ user }) => {
     );
   }
 
-  // BitLabs web offerwall URL, restricted to Magic Receipts tab
+  /* ---------------------------------------------------
+     BUILD MAGIC RECEIPTS URL
+  --------------------------------------------------- */
   const magicReceiptsUrl = `https://web.bitlabs.ai?token=${encodeURIComponent(
     BITLABS_API_KEY
-  )}&uid=${encodeURIComponent(user.uid)}&display_mode=magic_receipts`;
+  )}&uid=${encodeURIComponent(authUser.uid)}&display_mode=magic_receipts`;
 
+  /* ---------------------------------------------------
+     RENDER RECEIPTS PAGE
+  --------------------------------------------------- */
   return (
     <main className="rb-content theme-receipts">
       <h2 className="rb-section-title">Magic Receipts</h2>
@@ -49,7 +64,7 @@ export const Receipts: React.FC<ReceiptsProps> = ({ user }) => {
           and only receipts from supported stores.
         </p>
 
-        {/* Optional "open in new tab" action */}
+        {/* Optional open in new tab */}
         <button
           type="button"
           className="survey-start-btn"
@@ -59,7 +74,7 @@ export const Receipts: React.FC<ReceiptsProps> = ({ user }) => {
           Open Magic Receipts in a new tab
         </button>
 
-        {/* Inline embed */}
+        {/* Embedded BitLabs experience */}
         <div
           className="rb-iframe-shell"
           style={{

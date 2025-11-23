@@ -1,20 +1,24 @@
 // src/pages/Earn.tsx
 import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { useUser } from "../contexts/UserContext";
 
 export const Earn: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading } = useUser();
   const navigate = useNavigate();
 
-  // Require login before accessing Earn page
+  /* -------------------------------------------------------
+     REQUIRE LOGIN BEFORE ACCESSING EARN PAGE
+  ------------------------------------------------------- */
   useEffect(() => {
     if (!loading && !user) {
       navigate("/login");
     }
   }, [user, loading, navigate]);
 
-  // While checking user state
+  /* -------------------------------------------------------
+     WHILE LOADING USER STATE
+  ------------------------------------------------------- */
   if (loading) {
     return (
       <main className="rb-content earn-modern">
@@ -25,9 +29,14 @@ export const Earn: React.FC = () => {
     );
   }
 
-  // If not logged in (redirect already triggered above)
+  /* -------------------------------------------------------
+     IF NO USER (redirect already triggered above)
+  ------------------------------------------------------- */
   if (!user) return null;
 
+  /* -------------------------------------------------------
+     PAGE CONTENT
+  ------------------------------------------------------- */
   return (
     <main className="rb-content earn-modern">
       <h2 className="modern-title">Earn Bread Your Way</h2>
