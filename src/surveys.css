@@ -16,3 +16,32 @@
   padding: 14px;
   background: var(--charred-wheat);
 }
+
+.unavailable-wrapper {
+  padding: 30px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  text-align: center;
+  margin: 40px auto;
+  max-width: 500px;
+}
+
+.unavailable-title {
+  font-size: 24px;
+  margin-bottom: 12px;
+  color: var(--soft-sugar);
+}
+
+.unavailable-text {
+  font-size: 15px;
+  color: rgba(255,255,255,0.75);
+  margin-bottom: 20px;
+}
+
+.unavailable-btn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
