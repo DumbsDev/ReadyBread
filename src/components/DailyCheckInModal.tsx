@@ -4,8 +4,8 @@ import "../home.css";
 
 interface DailyCheckInModalProps {
   open: boolean;
-  onClose: () => void;
   onCheckIn: () => Promise<void>;
+  onClose?: () => void;
   loading: boolean;
   dailyStreak?: number;
   bonusPercent?: number;
@@ -13,22 +13,30 @@ interface DailyCheckInModalProps {
 
 function getStreakEmoji(streak?: number): string {
   if (!streak || streak <= 0) return "❄️";
-  if (streak <= 3) return `❄️`;
-  if (streak <= 7) return `☁️`;
-  return `🔥`;
+  if (streak <= 3) return "❄️";
+  if (streak <= 7) return "☁️";
+  return "🔥";
 }
 
 export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
   open,
-  onClose,
   onCheckIn,
+  onClose,
   loading,
   dailyStreak,
   bonusPercent,
 }) => {
   if (!open) return null;
 
+  const handleOverlayClick = () => {
+    if (loading) return;
+    onClose?.();
+  };
+
+  const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
+
   const emoji = getStreakEmoji(dailyStreak);
+
   const streakText =
     typeof dailyStreak === "number" && dailyStreak > 0
       ? `${dailyStreak} day${dailyStreak > 1 ? "s" : ""}`
@@ -40,34 +48,40 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
       : "+0.0% earnings boost";
 
   return (
-    <div className="checkin-backdrop">
-      <div className="checkin-modal">
-        <h2 className="checkin-title">
-          Welcome back, Breadwinner! {emoji}
+    <div className="checkin-alert-overlay" onClick={handleOverlayClick}>
+      <div className="checkin-alert-modal" onClick={stopPropagation}>
+        <h2 className="checkin-alert-title">
+          Welcome back! {emoji}
         </h2>
-        <p className="checkin-sub">
-          You&apos;re on a <b>{streakText}</b> streak.
+
+        <p className="checkin-alert-body">
+          You're on a <b>{streakText}</b> streak.  
           <br />
-          Your current bonus is <b>{bonusText}</b>.
+          Your bonus is now <b>{bonusText}</b>.
         </p>
 
-        <p className="checkin-note">
-          Checking in daily slowly increases your bonus up to{" "}
-          <b>+10%</b> on all offers you complete (surveys, games, receipts).
+        <p className="checkin-alert-small">
+          Check in daily to build up to a <b>+10%</b> boost on all earnings.
         </p>
 
-        <div className="checkin-actions">
+        <button
+          className="checkin-alert-btn"
+          onClick={onCheckIn}
+          disabled={loading}
+        >
+          {loading ? "Checking in…" : "OK"}
+        </button>
+
+        {onClose && (
           <button
-            className="checkin-btn-primary"
-            onClick={onCheckIn}
+            className="checkin-alert-btn"
+            onClick={onClose}
             disabled={loading}
+            type="button"
           >
-            {loading ? "Checking in..." : "Check in for today"}
-          </button>
-          <button className="checkin-btn-secondary" onClick={onClose}>
             Maybe later
           </button>
-        </div>
+        )}
       </div>
     </div>
   );
