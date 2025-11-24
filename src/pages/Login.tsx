@@ -19,8 +19,9 @@ import {
   increment,
   serverTimestamp,
 } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
-import { auth, db } from "../config/firebase";
+import { app, auth, db } from "../config/firebase";
 import { useUser } from "../contexts/UserContext";
 
 // Referral reward constants
@@ -175,9 +176,9 @@ export const Login: React.FC = () => {
 
       // Cloud Function to process referrals
       try {
-        await fetch(
-          `https://us-central1-readybread-56d81.cloudfunctions.net/processReferrals?uid=${cred.user.uid}`
-        );
+        const functions = getFunctions(app, "us-central1");
+        const processReferrals = httpsCallable(functions, "processReferralsCallable");
+        await processReferrals({});
       } catch (err) {
         console.error("Referral function error:", err);
       }
@@ -253,9 +254,9 @@ export const Login: React.FC = () => {
 
       // Cloud function to process referrals on signup as well
       try {
-        await fetch(
-          `https://us-central1-readybread-56d81.cloudfunctions.net/processReferrals?uid=${uid}`
-        );
+        const functions = getFunctions(app, "us-central1");
+        const processReferrals = httpsCallable(functions, "processReferralsCallable");
+        await processReferrals({});
       } catch {
         // non-fatal
       }

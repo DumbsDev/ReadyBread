@@ -481,6 +481,11 @@ export const Dashboard: React.FC = () => {
               </p>
 
               <p className="dash-line">
+                <span className="dash-label">UID:</span>
+                <span style={{ fontFamily: "monospace" }}>{user?.uid}</span>
+              </p>
+
+              <p className="dash-line">
                 <span className="dash-label">Email:</span>
                 <span>{profile?.email ?? user?.email ?? "Unknown"}</span>
               </p>
@@ -1028,19 +1033,23 @@ export const Dashboard: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* DANGER ZONE (only on Overview) */}
+            <section className="dash-card modern-card glass-card danger-zone">
+              <h3 className="dash-card-title" style={{ color: "var(--golden-toast)" }}>
+                Danger Zone
+              </h3>
+              <p className="dash-muted">These actions are permanent or sensitive.</p>
+              <button className="rb-btn rb-btn-danger" onClick={handleLogout}>
+                Log Out
+              </button>
+              <br />
+              <button className="rb-btn rb-btn-danger" onClick={handleDeleteAccount}>
+                Delete Account
+              </button>
+            </section>
           </div>
         )}
-        <section className="dash-card modern-card glass-card danger-zone">
-          <h3 className="dash-card-title" style={{ color: 'var(--golden-toast)' }}>Danger Zone</h3>
-          <p className="dash-muted">These actions are permanent or sensitive.</p>
-          <button className="rb-btn rb-btn-danger" onClick={handleLogout}>
-            Log Out
-          </button>
-          <br></br>
-          <button className="rb-btn rb-btn-danger" onClick={handleDeleteAccount}>
-            Delete Account
-          </button>
-        </section>
       </section>
     </main>
     

@@ -1,6 +1,6 @@
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
-import { onRequest } from "firebase-functions/v2/https";
+import { onRequest, onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 
@@ -180,6 +180,126 @@ export const adgemWebhook = onRequest(
 
 const REFERRAL_REWARD = 0.25;
 const REFERRAL_CAP = 1.0;
+const ADMIN_REFERRAL_CODE = "NJJK72"; // set to your admin's referralCode
+const ADMIN_REFERRAL_BONUS = 1.0; // USD to new user
+
+const processReferralCore = async (uid: string): Promise<string> => {
+  const userRef = db.collection("users").doc(uid);
+  const userSnap = await userRef.get();
+
+  if (!userSnap.exists) {
+    return "User not found";
+  }
+
+  const user = userSnap.data()!;
+  const referredBy = user.referredBy || null;
+
+  if (!referredBy) {
+    return "No referral code used";
+  }
+
+  if (!user.referralPending) {
+    return "Referral already resolved";
+  }
+
+  const fbUser = await admin.auth().getUser(uid);
+  if (!fbUser.emailVerified) {
+    return "Email not verified — cannot process referral yet";
+  }
+
+  // Special admin/referral-code bonus: pay $1 to the new user, no referrer payout
+  if (referredBy === ADMIN_REFERRAL_CODE) {
+    await userRef.update({
+      balance: admin.firestore.FieldValue.increment(ADMIN_REFERRAL_BONUS),
+      referralPending: false,
+      auditLog: admin.firestore.FieldValue.arrayUnion({
+        type: "admin_referral_bonus",
+        amount: ADMIN_REFERRAL_BONUS,
+        code: referredBy,
+        at: admin.firestore.Timestamp.now(),
+      }),
+    });
+    return "Admin referral bonus applied";
+  }
+
+  const refQ = await db
+    .collection("users")
+    .where("referralCode", "==", referredBy)
+    .limit(1)
+    .get();
+
+  if (refQ.empty) {
+    await userRef.update({ referralPending: false });
+    return "Invalid referral code";
+  }
+
+  const referrerDoc = refQ.docs[0];
+  const referrerId = referrerDoc.id;
+  const referrer = referrerDoc.data()!;
+  const isAdminReferrer = (referrer as any)?.referralCode === ADMIN_REFERRAL_CODE;
+
+  if (referrerId === uid) {
+    await userRef.update({ referralPending: false });
+    return "Self referral blocked";
+  }
+
+  if (referrer.referredBy === user.referralCode) {
+    await userRef.update({ referralPending: false });
+    return "Circular referral blocked";
+  }
+
+  const sameDevice =
+    referrer.deviceId &&
+    user.deviceId &&
+    referrer.deviceId === user.deviceId;
+
+  // ALWAYS pay referred user
+  await userRef.update({
+    balance: admin.firestore.FieldValue.increment(REFERRAL_REWARD),
+  });
+
+  await userRef
+    .collection("referrals")
+    .doc(referrerId)
+    .set({
+      referredUserId: uid,
+      joinedAt: admin.firestore.FieldValue.serverTimestamp(),
+      earningsFromReferral: REFERRAL_REWARD,
+    });
+
+  if (sameDevice) {
+    await userRef.update({ referralPending: false });
+    return "Same-device referral — referrer not paid";
+  }
+
+  const currentEarned = referrer.totalReferralEarnings || 0;
+  if (!isAdminReferrer && currentEarned >= REFERRAL_CAP) {
+    await userRef.update({ referralPending: false });
+    return "Referrer at cap";
+  }
+
+  await db.collection("users").doc(referrerId).update({
+    balance: admin.firestore.FieldValue.increment(REFERRAL_REWARD),
+    totalReferralEarnings: admin.firestore.FieldValue.increment(
+      REFERRAL_REWARD
+    ),
+  });
+
+  await db
+    .collection("users")
+    .doc(referrerId)
+    .collection("referrals")
+    .doc(uid)
+    .set({
+      referredUserId: uid,
+      joinedAt: admin.firestore.FieldValue.serverTimestamp(),
+      earningsFromReferral: REFERRAL_REWARD,
+    });
+
+  await userRef.update({ referralPending: false });
+
+  return "Referral processed successfully";
+};
 
 export const processReferrals = functions.https.onRequest(async (req, res) => {
   try {
@@ -189,117 +309,25 @@ export const processReferrals = functions.https.onRequest(async (req, res) => {
       return;
     }
 
-    const userRef = db.collection("users").doc(uid);
-    const userSnap = await userRef.get();
-
-    if (!userSnap.exists) {
-      res.status(404).send("User not found");
-      return;
-    }
-
-    const user = userSnap.data()!;
-    const referredBy = user.referredBy || null;
-
-    if (!referredBy) {
-      res.send("No referral code used");
-      return;
-    }
-
-    if (!user.referralPending) {
-      res.send("Referral already resolved");
-      return;
-    }
-
-    const fbUser = await admin.auth().getUser(uid);
-    if (!fbUser.emailVerified) {
-      res.send("Email not verified – cannot process referral yet");
-      return;
-    }
-
-    const refQ = await db
-      .collection("users")
-      .where("referralCode", "==", referredBy)
-      .limit(1)
-      .get();
-
-    if (refQ.empty) {
-      await userRef.update({ referralPending: false });
-      res.send("Invalid referral code");
-      return;
-    }
-
-    const referrerDoc = refQ.docs[0];
-    const referrerId = referrerDoc.id;
-    const referrer = referrerDoc.data()!;
-
-    if (referrerId === uid) {
-      await userRef.update({ referralPending: false });
-      res.send("Self referral blocked");
-      return;
-    }
-
-    if (referrer.referredBy === user.referralCode) {
-      await userRef.update({ referralPending: false });
-      res.send("Circular referral blocked");
-      return;
-    }
-
-    const sameDevice =
-      referrer.deviceId &&
-      user.deviceId &&
-      referrer.deviceId === user.deviceId;
-
-    // ALWAYS pay referred user
-    await userRef.update({
-      balance: admin.firestore.FieldValue.increment(REFERRAL_REWARD),
-    });
-
-    await userRef
-      .collection("referrals")
-      .doc(referrerId)
-      .set({
-        referredUserId: uid,
-        joinedAt: admin.firestore.FieldValue.serverTimestamp(),
-        earningsFromReferral: REFERRAL_REWARD,
-      });
-
-    if (sameDevice) {
-      await userRef.update({ referralPending: false });
-      res.send("Same-device referral — referrer not paid");
-      return;
-    }
-
-    const currentEarned = referrer.totalReferralEarnings || 0;
-    if (currentEarned >= REFERRAL_CAP) {
-      await userRef.update({ referralPending: false });
-      res.send("Referrer at cap");
-      return;
-    }
-
-    await db.collection("users").doc(referrerId).update({
-      balance: admin.firestore.FieldValue.increment(REFERRAL_REWARD),
-      totalReferralEarnings: admin.firestore.FieldValue.increment(
-        REFERRAL_REWARD
-      ),
-    });
-
-    await db
-      .collection("users")
-      .doc(referrerId)
-      .collection("referrals")
-      .doc(uid)
-      .set({
-        referredUserId: uid,
-        joinedAt: admin.firestore.FieldValue.serverTimestamp(),
-        earningsFromReferral: REFERRAL_REWARD,
-      });
-
-    await userRef.update({ referralPending: false });
-
-    res.send("Referral processed successfully");
+    const message = await processReferralCore(uid);
+    res.send(message);
   } catch (err) {
     console.error("Referral processing error:", err);
     res.status(500).send("Error processing referral");
+  }
+});
+
+export const processReferralsCallable = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Must be logged in.");
+  }
+
+  try {
+    const message = await processReferralCore(request.auth.uid);
+    return { message };
+  } catch (err: any) {
+    console.error("Referral processing error (callable):", err);
+    throw new HttpsError("internal", "Referral processing failed.");
   }
 });
 

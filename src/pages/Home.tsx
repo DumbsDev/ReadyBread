@@ -4,9 +4,14 @@ import { Link, useNavigate } from "react-router-dom";
 import "../home.css";
 import TiltCard from "../components/TiltCard";
 import { useUser } from "../contexts/UserContext";
+import { db } from "../config/firebase";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { ChangelogCard } from "../components/ChangelogCard";
-import { DailyCheckInModal } from "../components/DailyCheckInModal";
-import { useDailyCheckIn } from "../hooks/useDailyCheckIn";
 
 interface FeaturedOffer {
   id: string;
@@ -17,95 +22,147 @@ interface FeaturedOffer {
 }
 
 const BITLABS_KEY = "250f0833-3a86-4232-ae29-9b30026d1820";
+const CPX_APP_ID = "30102";
+const CPX_HASH = "yvxLR6x1Jc1CptNFfmrhzYlAu1XqVfsj";
+
+type MergedSurvey = {
+  id: string;
+  title: string;
+  payout: number;
+  minutes: number | null;
+  source: "bitlabs" | "cpx";
+};
 
 export const Home: React.FC = () => {
   const { user, profile } = useUser();
   const navigate = useNavigate();
 
-  // CLOUD-BASED streak logic (from callable function)
-  const { show, loading, data, runCheckIn, hidePopup } = useDailyCheckIn();
-
-  // Additional client-side gate: "show at most once per day per user"
-  const [showCheckInModal, setShowCheckInModal] = useState(false);
-
   const username =
-    profile?.username || user?.email?.split("@")[0] || "Breadwinner";
+    profile?.username ||
+    user?.email?.split("@")[0] ||
+    "Breadwinner";
 
-  // -----------------------------
-  // DAILY CHECK-IN GATE (LOCAL)
-  // -----------------------------
-  useEffect(() => {
-    if (!user) return;
+  // ---------- DAILY CHECK-IN ----------
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [pendingStreak, setPendingStreak] = useState<number | null>(null);
+  const [pendingBonus, setPendingBonus] = useState<number | null>(null); // percent, e.g. 3.5
+  const [currentStreak, setCurrentStreak] = useState<number | null>(null);
+  const [currentBonus, setCurrentBonus] = useState<number | null>(null);
+  const [checkInSaving, setCheckInSaving] = useState(false);
 
-    try {
-      const todayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-      const storageKey = `rb_checkin_seen_${user.uid}`;
-      const lastSeen = localStorage.getItem(storageKey);
-
-      if (lastSeen === todayKey) {
-        // Already showed the modal for this user today
-        return;
-      }
-
-      // Let the modal be eligible to show today
-      setShowCheckInModal(true);
-    } catch {
-      // If anything fails (private mode, etc), we just don't block UI
-    }
-  }, [user]);
-
-  const markCheckInSeenToday = () => {
-    if (!user) return;
-    try {
-      const todayKey = new Date().toISOString().slice(0, 10);
-      const storageKey = `rb_checkin_seen_${user.uid}`;
-      localStorage.setItem(storageKey, todayKey);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleCloseCheckIn = () => {
-    setShowCheckInModal(false);
-    markCheckInSeenToday();
-    hidePopup(); // also tell the hook to stop showing
-  };
-
-  const handleRunCheckIn = async () => {
-    await runCheckIn(); // calls the callable function, updates Firestore
-    markCheckInSeenToday();
-    setShowCheckInModal(false);
-    hidePopup();
-  };
-
-  // -----------------------------
-  // CURRENT STREAK / BONUS DISPLAY
-  // -----------------------------
-  const streakFromProfile =
-    typeof profile?.dailyStreak === "number" ? profile.dailyStreak : undefined;
-  const bonusFromProfile =
-    typeof profile?.bonusPercent === "number"
-      ? profile.bonusPercent
-      : undefined;
-
-  const currentStreak =
-    typeof data?.dailyStreak === "number"
-      ? data.dailyStreak
-      : streakFromProfile;
-
-  const currentBonus =
-    typeof data?.bonusPercent === "number"
-      ? data.bonusPercent
-      : bonusFromProfile;
-
-  // -----------------------------
-  // FEATURED OFFERS (BitLabs)
-  // -----------------------------
+  // ---------- FEATURED OFFERS ----------
   const [featuredGame, setFeaturedGame] = useState<FeaturedOffer | null>(null);
   const [featuredSurvey, setFeaturedSurvey] = useState<FeaturedOffer | null>(
     null
   );
 
+  // Load / compute daily check-in once user is known
+  useEffect(() => {
+    const loadCheckIn = async () => {
+      if (!user) return;
+
+      try {
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+        const data = snap.exists() ? snap.data() : {};
+
+        const existingStreak = (data.dailyStreak as number | undefined) ?? 0;
+        const existingBonus = (data.bonusPercent as number | undefined) ?? 0;
+
+        // Handle lastCheckIn as Firestore Timestamp or Date/string fallback
+        let lastCheckInDate: Date | null = null;
+        const rawLast = (data.lastCheckIn as any) ?? null;
+        if (rawLast?.toDate) {
+          lastCheckInDate = rawLast.toDate();
+        } else if (typeof rawLast === "string" || rawLast instanceof Date) {
+          lastCheckInDate = new Date(rawLast);
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let needsCheckIn = false;
+        let newStreak = 1;
+
+        if (!lastCheckInDate) {
+          // First time check-in
+          needsCheckIn = true;
+          newStreak = 1;
+        } else {
+          const last = new Date(lastCheckInDate);
+          last.setHours(0, 0, 0, 0);
+          const diffDays = Math.floor(
+            (today.getTime() - last.getTime()) / (1000 * 60 * 60 * 24)
+          );
+
+          if (diffDays === 0) {
+            // Already checked in today
+            needsCheckIn = false;
+            newStreak = existingStreak || 1;
+          } else if (diffDays === 1) {
+            // Continue streak
+            needsCheckIn = true;
+            newStreak = (existingStreak || 0) + 1;
+          } else if (diffDays > 1) {
+            // Streak reset
+            needsCheckIn = true;
+            newStreak = 1;
+          } else {
+            // Future/timezone weirdness, just keep current
+            needsCheckIn = false;
+            newStreak = existingStreak || 1;
+          }
+        }
+
+        // Bonus: +0.5% per day, capped at 10%
+        const calculatedBonus = Math.min(newStreak * 0.5, 10); // percent
+
+        if (needsCheckIn) {
+          setPendingStreak(newStreak);
+          setPendingBonus(calculatedBonus);
+          setShowCheckInModal(true);
+        } else {
+          setCurrentStreak(existingStreak || newStreak);
+          setCurrentBonus(existingBonus || calculatedBonus);
+        }
+      } catch (err) {
+        console.error("Error loading daily check-in:", err);
+      }
+    };
+
+    loadCheckIn();
+  }, [user]);
+
+  const handleConfirmCheckIn = async () => {
+    if (!user || pendingStreak == null || pendingBonus == null) {
+      setShowCheckInModal(false);
+      return;
+    }
+
+    try {
+      setCheckInSaving(true);
+      const userRef = doc(db, "users", user.uid);
+      await setDoc(
+        userRef,
+        {
+          dailyStreak: pendingStreak,
+          bonusPercent: pendingBonus,
+          lastCheckIn: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      setCurrentStreak(pendingStreak);
+      setCurrentBonus(pendingBonus);
+    } catch (err) {
+      console.error("Error saving daily check-in:", err);
+    } finally {
+      setCheckInSaving(false);
+      setShowCheckInModal(false);
+    }
+  };
+
+  // Fetch featured offers (BitLabs) once user is known
   useEffect(() => {
     const loadFeaturedOffers = async () => {
       if (!user) return;
@@ -126,6 +183,7 @@ export const Home: React.FC = () => {
 
         if (!Array.isArray(rawOffers) || rawOffers.length === 0) return;
 
+        // Normalize
         const mapped = rawOffers.map((o) => {
           const payout =
             typeof o.payout === "number"
@@ -139,9 +197,8 @@ export const Home: React.FC = () => {
               ? o.hours_left * 60
               : null;
 
-          const typeStr = (o.type || o.category || "")
-            .toString()
-            .toLowerCase();
+          // crude type guess
+          const typeStr = (o.type || o.category || "").toString().toLowerCase();
           const looksLikeGame =
             typeStr.includes("game") ||
             typeStr.includes("app") ||
@@ -157,16 +214,12 @@ export const Home: React.FC = () => {
           } as FeaturedOffer;
         });
 
-        const games = mapped.filter((m) => m.source === "game");
-        const surveys = mapped.filter((m) => m.source === "survey");
-
         const bestGame =
-          games.sort((a, b) => b.payout - a.payout)[0] || null;
-        const bestSurvey =
-          surveys.sort((a, b) => b.payout - a.payout)[0] || null;
+          mapped
+            .filter((m) => m.source === "game")
+            .sort((a, b) => b.payout - a.payout)[0] || null;
 
         setFeaturedGame(bestGame);
-        setFeaturedSurvey(bestSurvey);
       } catch (err) {
         console.error("Error loading featured offers:", err);
       }
@@ -175,17 +228,152 @@ export const Home: React.FC = () => {
     loadFeaturedOffers();
   }, [user]);
 
+  // Load the single highest paying survey across all providers
+  useEffect(() => {
+    const fetchBitlabsSurveys = async (): Promise<MergedSurvey[]> => {
+      try {
+        const res = await fetch("https://api.bitlabs.ai/v2/client/surveys", {
+          method: "GET",
+          headers: {
+            "X-Api-Token": BITLABS_KEY,
+            "X-User-Id": user?.uid || "UNKNOWN",
+            "X-Api-Sdk": "CUSTOM",
+          },
+        });
+
+        if (!res.ok) return [];
+
+        const data = await res.json();
+        const surveys = (data?.data?.surveys || []) as any[];
+
+        return surveys.map((s) => ({
+          source: "bitlabs" as const,
+          id: String(s.id),
+          title: s.category?.name || "Survey",
+          payout: Number(s.cpi || 0),
+          minutes: typeof s.loi === "number" ? s.loi : null,
+        }));
+      } catch (err) {
+        console.error("Error loading BitLabs surveys for featured:", err);
+        return [];
+      }
+    };
+
+    const fetchCpxSurveys = async (): Promise<MergedSurvey[]> => {
+      try {
+        const ipRes = await fetch("https://api64.ipify.org?format=json");
+        const ipJson = await ipRes.json();
+        const userIP = ipJson?.ip || "0.0.0.0";
+
+        const userAgent =
+          typeof navigator !== "undefined" ? navigator.userAgent : "";
+
+        const url =
+          `https://live-api.cpx-research.com/api/get-surveys.php?` +
+          `app_id=${CPX_APP_ID}` +
+          `&ext_user_id=${encodeURIComponent(user?.uid || "")}` +
+          `&output_method=api` +
+          `&ip_user=${encodeURIComponent(userIP)}` +
+          `&user_agent=${encodeURIComponent(userAgent)}` +
+          `&limit=50` +
+          `&secure_hash=${encodeURIComponent(CPX_HASH)}`;
+
+        const res = await fetch(url);
+        const json = await res.json();
+
+        if (!json?.surveys || !Array.isArray(json.surveys)) {
+          return [];
+        }
+
+        return (json.surveys as any[]).map((s) => {
+          const minutesVal = Number(s.loi ?? s.minutes);
+          const payoutVal = Number(s.payout ?? s.reward_usd ?? 0);
+
+          return {
+            source: "cpx" as const,
+            id: String(s.id),
+            title: s.name || "Survey",
+            payout: Number.isFinite(payoutVal) ? payoutVal : 0,
+            minutes: Number.isFinite(minutesVal) ? minutesVal : null,
+          };
+        });
+      } catch (err) {
+        console.error("Error loading CPX surveys for featured:", err);
+        return [];
+      }
+    };
+
+    const loadTopSurvey = async () => {
+      if (!user) return;
+
+      const [bitlabs, cpx] = await Promise.all([
+        fetchBitlabsSurveys(),
+        fetchCpxSurveys(),
+      ]);
+
+      const merged = [...bitlabs, ...cpx];
+
+      merged.sort((a, b) => b.payout - a.payout);
+      const top = merged[0];
+
+      if (top) {
+        setFeaturedSurvey({
+          id: top.id,
+          title: top.title,
+          payout: top.payout,
+          estMinutes: top.minutes,
+          source: "survey",
+        });
+      } else {
+        setFeaturedSurvey(null);
+      }
+    };
+
+    loadTopSurvey();
+  }, [user]);
+
   return (
     <>
-      {/* DAILY CHECK-IN POPUP (alert-style, blurred background) */}
-      <DailyCheckInModal
-        open={show && showCheckInModal}
-        loading={loading}
-        dailyStreak={currentStreak}
-        bonusPercent={currentBonus}
-        onCheckIn={handleRunCheckIn}
-        onClose={handleCloseCheckIn}
-      />
+      {/* DAILY CHECK-IN POPUP */}
+      {showCheckInModal && pendingStreak != null && pendingBonus != null && (
+        <div className="checkin-overlay">
+          <div className="checkin-modal">
+            <h2 className="checkin-title">Welcome back, {username}! 👋</h2>
+            <p className="checkin-body">
+              Thanks for checking in today. Your daily streak has been updated.
+              All eligible earnings now get a{" "}
+              <span className="bread-word">
+                +{pendingBonus.toFixed(1)}% boost
+              </span>{" "}
+              (up to 10% max).
+            </p>
+
+            <div className="checkin-meta">
+              <div>
+                <span className="checkin-label">Current streak</span>
+                <span className="checkin-value">
+                  {pendingStreak} day{pendingStreak !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <div>
+                <span className="checkin-label">Bonus multiplier</span>
+                <span className="checkin-value">
+                  +{pendingBonus.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="btn-primary checkin-ok-btn"
+              onClick={handleConfirmCheckIn}
+              disabled={checkInSaving}
+            >
+              {checkInSaving ? "Saving…" : "OK, let’s earn"}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="landing-container">
         {/* HERO */}
@@ -238,7 +426,7 @@ export const Home: React.FC = () => {
                 <span className="stat-label">Referral bonus -&gt;</span>
                 <span className="stat-value">Up to $1.00</span>
               </div>
-              {currentStreak != null && currentBonus != null && (
+              {currentStreak && currentBonus != null && (
                 <div className="stat-chip">
                   <span className="stat-label">Daily streak -&gt;</span>
                   <span className="stat-value">
@@ -255,9 +443,9 @@ export const Home: React.FC = () => {
           <TiltCard className="rw-card glass-card games-card earn-card">
             <h2>🎮 Game &amp; App Offers</h2>
             <p>
-              Install and play games from trusted partners. Hit in-game goals
-              and get <span className="bread-word">paid</span>. Everything
-              tracks into your ReadyBread balance.
+              Install and play games from trusted partners. Hit
+              in-game goals and get <span className="bread-word">paid</span>.
+              Everything tracks into your ReadyBread balance.
             </p>
             <br />
             <Link to="/tutorials" className="earn-cta">
@@ -290,7 +478,7 @@ export const Home: React.FC = () => {
             <h2>🧾 Magic Receipts</h2>
             <p>
               Turn your grocery runs into even more earnings. Snap a picture,
-              upload, and if it matches an active offer — that&apos;s extra{" "}
+              upload, and if it matches an active offer - that&apos;s extra{" "}
               <span className="bread-word">bread</span> for you.
             </p>
             <br />
@@ -314,14 +502,14 @@ export const Home: React.FC = () => {
               Tap to learn more
             </Link>
             <Link to="/rewards" className="earn-cta">
-              View rewards &amp; cashouts
+              View rewards & cashouts
             </Link>
           </TiltCard>
         </section>
 
-        {/* FEATURED OFFER 🔥 */}
+        {/* 🔥FEATURED OFFER🔥 */}
         <section className="featured-offer-section">
-          <h3 className="section-heading">FEATURED OFFER 🔥</h3>
+          <h3 className="section-heading">🔥FEATURED OFFERS🔥</h3>
           <div className="featured-offer-grid">
             <div
               className="featured-card glass-card featured-game"
@@ -409,19 +597,19 @@ export const Home: React.FC = () => {
         {/* STRIP */}
         <section className="landing-strip">
           <h2>
-            Logged in, chillin&apos;, and ready to{" "}
+            Logged in, chillin', and ready to{" "}
             <span className="bread-word">earn</span>.
           </h2>
           <p>
             ReadyBread is built to feel more like a game than a chore. Pick your
-            vibe — games, surveys, receipts, or referrals — and keep stacking
-            your bread at your own pace.
+            vibe, games, surveys, receipts, or referrals, and keep stacking your
+            bread at your own pace.
           </p>
         </section>
 
         {/* NEWS / UPDATES (CHANGELOG) */}
         <section className="home-updates">
-          <h3 className="section-heading">Latest updates &amp; changes</h3>
+          <h3 className="section-heading">Latest updates & changes</h3>
           <div className="home-updates-inner glass-card">
             <ChangelogCard />
           </div>
@@ -429,8 +617,7 @@ export const Home: React.FC = () => {
 
         {/* FOOTER */}
         <footer className="landing-footer">
-          © {new Date().getFullYear()} ReadyBread — thanks for being part of the
-          bakery!
+          © {new Date().getFullYear()} ReadyBread - thanks for being part of the bakery!
         </footer>
       </div>
     </>

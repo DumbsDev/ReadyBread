@@ -71,6 +71,37 @@ export const Surveys: React.FC = () => {
     setSurveysLoading(false);
   };
 
+  const resolveUserIP = async (): Promise<string> => {
+    const endpoints = [
+      "https://api.ipify.org?format=json",   // prefer IPv4 for CPX
+      "https://api64.ipify.org?format=json", // fallback IPv6
+    ];
+
+    let ipv6Candidate: string | null = null;
+
+    for (const endpoint of endpoints) {
+      try {
+        const res = await fetch(endpoint);
+        if (!res.ok) continue;
+        const json = await res.json();
+        const ip = json?.ip as string | undefined;
+        if (!ip) continue;
+
+        if (ip.includes(":")) {
+          // Save IPv6 in case IPv4 is unavailable
+          ipv6Candidate = ipv6Candidate || ip;
+          continue;
+        }
+
+        return ip;
+      } catch (err) {
+        console.warn("IP lookup failed:", err);
+      }
+    }
+
+    return ipv6Candidate || "0.0.0.0";
+  };
+
   const loadBitlabsSurveys = async () => {
     try {
       const res = await fetch("https://api.bitlabs.ai/v2/client/surveys", {
@@ -92,24 +123,28 @@ export const Surveys: React.FC = () => {
 
   const loadCpxSurveys = async () => {
     try {
-      // Fetch user's IP (CPX requires ip_user)
-      const ipRes = await fetch("https://api64.ipify.org?format=json");
-      const ipJson = await ipRes.json();
-      const userIP = ipJson?.ip || "0.0.0.0";
+      // Fetch user's IP (CPX requires ip_user) with fallback to IPv4 endpoint
+      const resolvedIP = await resolveUserIP();
+      const ipForCpx = resolvedIP.includes(":") ? "" : resolvedIP; // CPX is picky about IPv6
 
-      const userAgent = navigator.userAgent;
+      const userAgent = navigator.userAgent || "";
 
       const url =
         `https://live-api.cpx-research.com/api/get-surveys.php?` +
         `app_id=${CPX_APP_ID}` +
         `&ext_user_id=${encodeURIComponent(authUser?.uid || "")}` +
         `&output_method=api` +
-        `&ip_user=${encodeURIComponent(userIP)}` +
+        (ipForCpx ? `&ip_user=${encodeURIComponent(ipForCpx)}` : "") +
         `&user_agent=${encodeURIComponent(userAgent)}` +
         `&limit=50` +
         `&secure_hash=${encodeURIComponent(CPX_HASH)}`;
 
       const res = await fetch(url);
+      if (!res.ok) {
+        console.warn("CPX returned non-200 status:", res.status);
+        setCpxSurveys([]);
+        return;
+      }
       const json = await res.json();
 
       if (!json?.surveys || !Array.isArray(json.surveys)) {
