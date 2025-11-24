@@ -1,0 +1,108 @@
+/* ---------------------------
+   TUTORIAL BASE LAYOUT
+---------------------------- */
+
+.tutorials-container {
+  width: 100%;
+  max-width: 1000px;
+  margin: 60px auto;
+  padding: 20px;
+  color: #fff;
+}
+
+.tutorials-title {
+  font-size: 42px;
+  font-weight: 900;
+  background: linear-gradient(90deg, #ffd166, #fffbe8);
+  -webkit-background-clip: text;
+  color: transparent;
+  text-align: center;
+}
+
+.tutorials-sub {
+  text-align: center;
+  opacity: 0.75;
+  margin-top: 8px;
+}
+
+/* ---------------------------
+   CATEGORY GRID
+---------------------------- */
+
+.tutorials-grid {
+  margin-top: 40px;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.tutorial-category-card {
+  padding: 24px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  text-decoration: none;
+  color: #fff;
+  transition: 0.25s ease;
+  backdrop-filter: blur(12px);
+}
+
+.tutorial-category-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-4px);
+}
+
+.tutorial-category-icon {
+  font-size: 38px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+/* ---------------------------
+   QUESTIONS
+---------------------------- */
+
+.question-list {
+  margin-top: 32px;
+  display: grid;
+  gap: 16px;
+}
+
+.question-card {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-decoration: none;
+  color: #fff;
+  transition: 0.25s ease;
+}
+
+.question-card:hover {
+  background: rgba(255, 255, 255, 0.13);
+  transform: translateY(-3px);
+}
+
+/* ---------------------------
+   ARTICLE PAGE
+---------------------------- */
+
+.back-button {
+  display: inline-block;
+  margin-bottom: 18px;
+  color: #ffd166;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.tutorials-article-title {
+  font-size: 34px;
+  font-weight: 800;
+  margin-bottom: 18px;
+}
+
+.article-content p {
+  opacity: 0.85;
+  line-height: 1.55;
+  margin-bottom: 14px;
+}

@@ -10,13 +10,143 @@ const db = admin.firestore();
 // SECRETS
 const OFFERS_SECRET = defineSecret("OFFERS_SECRET");
 
-// Referral constants
+////////////////////////////////////////////////////////////////////////////////
+//  NEW — ADGEM WEBHOOK
+////////////////////////////////////////////////////////////////////////////////
+
+export const adgemWebhook = onRequest(
+  { secrets: [OFFERS_SECRET], region: "us-central1" },
+  async (req, res) => {
+    try {
+      if (req.method !== "GET" && req.method !== "POST") {
+        res.status(405).send("Method not allowed");
+        return;
+      }
+
+      // Validate secret
+      const secretFromRequest =
+        (req.query.secret as string) ??
+        (req.body && req.body.secret);
+
+      const expectedSecret = OFFERS_SECRET.value();
+
+      if (!secretFromRequest || secretFromRequest !== expectedSecret) {
+        console.warn("Invalid secret on AdGem webhook:", secretFromRequest);
+        res.status(403).send("Forbidden");
+        return;
+      }
+
+      // Extract parameters
+      const uid =
+        (req.query.uid as string) ??
+        (req.query.sub_id as string) ??
+        (req.query.user_id as string) ??
+        (req.body && (req.body.uid || req.body.sub_id || req.body.user_id));
+
+      const offerId =
+        (req.query.offer_id as string) ??
+        (req.body && req.body.offer_id);
+
+      const amountRaw =
+        (req.query.amount as string) ??
+        (req.body && req.body.amount);
+
+      const txId =
+        (req.query.transaction_id as string) ??
+        (req.body && req.body.transaction_id);
+
+      if (!uid || !offerId || !amountRaw || !txId) {
+        res.status(400).send("Missing uid / offerId / amount / transaction_id");
+        return;
+      }
+
+      // AdGem sends cents → convert to dollars
+      const payout = Number(amountRaw) / 100;
+      if (!isFinite(payout) || payout <= 0) {
+        res.status(400).send("Invalid payout");
+        return;
+      }
+
+      const txRef = db.collection("completedOffers").doc(txId);
+      const txSnap = await txRef.get();
+
+      // Prevent double-credit
+      if (txSnap.exists) {
+        res.status(200).send("OK (duplicate ignored)");
+        return;
+      }
+
+      // Transaction
+      await db.runTransaction(async (t) => {
+        const userRef = db.collection("users").doc(uid);
+        const userSnap = await t.get(userRef);
+
+        const now = admin.firestore.Timestamp.now();
+        const serverNow = admin.firestore.FieldValue.serverTimestamp();
+
+        const balanceUpdate = {
+          balance: admin.firestore.FieldValue.increment(payout),
+          auditLog: admin.firestore.FieldValue.arrayUnion({
+            type: "adgem",
+            offerId,
+            amount: payout,
+            txId,
+            at: now,
+          }),
+        };
+
+        if (!userSnap.exists) {
+          t.set(
+            userRef,
+            {
+              createdAt: serverNow,
+              ...balanceUpdate,
+            },
+            { merge: true }
+          );
+        } else {
+          t.update(userRef, balanceUpdate);
+        }
+
+        // Offer history
+        t.set(
+          userRef.collection("offers").doc(),
+          {
+            offerId,
+            type: "adgem",
+            amount: payout,
+            txId,
+            createdAt: serverNow,
+          },
+          { merge: true }
+        );
+
+        // Mark this transaction as completed
+        t.set(txRef, {
+          uid,
+          offerId,
+          payout,
+          source: "AdGem",
+          txId,
+          creditedAt: serverNow,
+        });
+      });
+
+      res.status(200).send("OK");
+    } catch (err) {
+      console.error("Error in adgemWebhook:", err);
+      res.status(500).send("Internal error");
+    }
+  }
+);
+
+////////////////////////////////////////////////////////////////////////////////
+//  REFERRALS — /processReferrals
+////////////////////////////////////////////////////////////////////////////////
+
 const REFERRAL_REWARD = 0.25;
 const REFERRAL_CAP = 1.0;
 
-/* ============================================================
-   REFERRALS — /processReferrals
-============================================================ */
 export const processReferrals = functions.https.onRequest(async (req, res) => {
   try {
     const uid = req.query.uid as string;
@@ -90,7 +220,6 @@ export const processReferrals = functions.https.onRequest(async (req, res) => {
       balance: admin.firestore.FieldValue.increment(REFERRAL_REWARD),
     });
 
-    // Record under referred user
     await userRef
       .collection("referrals")
       .doc(referrerId)
@@ -113,7 +242,6 @@ export const processReferrals = functions.https.onRequest(async (req, res) => {
       return;
     }
 
-    // PAY referrer
     await db.collection("users").doc(referrerId).update({
       balance: admin.firestore.FieldValue.increment(REFERRAL_REWARD),
       totalReferralEarnings: admin.firestore.FieldValue.increment(
@@ -141,9 +269,10 @@ export const processReferrals = functions.https.onRequest(async (req, res) => {
   }
 });
 
-/* ============================================================
-   GAME / SURVEY / RECEIPT OFFERS — /gameOfferWebhook
-============================================================ */
+////////////////////////////////////////////////////////////////////////////////
+//  GAME / SURVEY / RECEIPT OFFERS – /gameOfferWebhook
+////////////////////////////////////////////////////////////////////////////////
+
 export const gameOfferWebhook = onRequest(
   { secrets: [OFFERS_SECRET], region: "us-central1" },
   async (req, res) => {
@@ -153,7 +282,6 @@ export const gameOfferWebhook = onRequest(
         return;
       }
 
-      // Get secret sent from offerwall
       const secretFromRequest =
         (req.query.secret as string) ??
         (req.body && req.body.secret);
@@ -166,7 +294,6 @@ export const gameOfferWebhook = onRequest(
         return;
       }
 
-      // Parameters
       const uid =
         (req.query.uid as string) ??
         (req.query.user_id as string) ??
@@ -196,8 +323,8 @@ export const gameOfferWebhook = onRequest(
         const userRef = db.collection("users").doc(uid);
         const userSnap = await tx.get(userRef);
 
-        const serverNow = admin.firestore.FieldValue.serverTimestamp();
         const now = admin.firestore.Timestamp.now();
+        const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
         const balanceUpdate = {
           balance: admin.firestore.FieldValue.increment(payout),
@@ -215,9 +342,7 @@ export const gameOfferWebhook = onRequest(
 
         const startedSnap = await tx.get(startedOfferRef);
 
-        // Already completed?
         if (startedSnap.exists && startedSnap.data()?.status === "completed") {
-          console.log("Already completed, skip:", uid, offerId);
           return;
         }
 
@@ -247,12 +372,15 @@ export const gameOfferWebhook = onRequest(
           { merge: true }
         );
 
-        tx.set(userRef.collection("offers").doc(), {
-          offerId,
-          type: "game",
-          amount: payout,
-          createdAt: serverNow,
-        });
+        tx.set(
+          userRef.collection("offers").doc(),
+          {
+            offerId,
+            type: "game",
+            amount: payout,
+            createdAt: serverNow,
+          }
+        );
       });
 
       res.status(200).send("OK");
@@ -263,10 +391,10 @@ export const gameOfferWebhook = onRequest(
   }
 );
 
-/* ============================================================
-   BITLABS SURVEY CALLBACK — /bitlabsSurveyCallback
-   Expects: secret, uid, offer_id, payout (USD)
-============================================================ */
+////////////////////////////////////////////////////////////////////////////////
+//  BITLABS SURVEY CALLBACK – /bitlabsSurveyCallback
+////////////////////////////////////////////////////////////////////////////////
+
 export const bitlabsSurveyCallback = onRequest(
   { secrets: [OFFERS_SECRET], region: "us-central1" },
   async (req, res) => {
@@ -289,8 +417,10 @@ export const bitlabsSurveyCallback = onRequest(
         (req.query.uid as string) ??
         (req.query.user_id as string) ??
         (req.body && req.body.uid);
+
       const offerId =
         (req.query.offer_id as string) ?? (req.body && req.body.offer_id);
+
       const payoutRaw =
         (req.query.payout as string) ??
         (req.query.reward as string) ??
@@ -355,10 +485,11 @@ export const bitlabsSurveyCallback = onRequest(
     }
   }
 );
-/* ============================================================
-   MAGIC RECEIPTS CALLBACK — /magicReceiptsCallback
-   Expects: secret, uid, receipt_id, payout, tx
-============================================================ */
+
+////////////////////////////////////////////////////////////////////////////////
+//  MAGIC RECEIPTS CALLBACK – /magicReceiptsCallback
+////////////////////////////////////////////////////////////////////////////////
+
 export const magicReceiptsCallback = onRequest(
   { secrets: [OFFERS_SECRET], region: "us-central1" },
   async (req, res) => {
@@ -379,7 +510,6 @@ export const magicReceiptsCallback = onRequest(
         return;
       }
 
-      // Pull fields
       const uid =
         (req.query.uid as string) ??
         (req.query.user_id as string) ??
@@ -427,7 +557,6 @@ export const magicReceiptsCallback = onRequest(
           }),
         };
 
-        // Create or update user doc
         if (!userSnap.exists) {
           tx.set(
             userRef,
@@ -441,7 +570,6 @@ export const magicReceiptsCallback = onRequest(
           tx.update(userRef, balanceUpdate);
         }
 
-        // Save to history
         tx.set(
           userRef.collection("offers").doc(),
           {
@@ -463,10 +591,10 @@ export const magicReceiptsCallback = onRequest(
   }
 );
 
-/* ============================================================
-   MAGIC RECEIPTS CALLBACK — /bitlabsReceiptCallback
-   Expects: secret, uid, offer_id, payout, tx
-============================================================ */
+////////////////////////////////////////////////////////////////////////////////
+//  BITLABS RECEIPT CALLBACK – /bitlabsReceiptCallback
+////////////////////////////////////////////////////////////////////////////////
+
 export const bitlabsReceiptCallback = onRequest(
   { secrets: [OFFERS_SECRET], region: "us-central1" },
   async (req, res) => {
@@ -476,7 +604,6 @@ export const bitlabsReceiptCallback = onRequest(
         return;
       }
 
-      // Validate secret
       const secretFromRequest =
         (req.query.secret as string) ?? (req.body && req.body.secret);
 
@@ -488,7 +615,6 @@ export const bitlabsReceiptCallback = onRequest(
         return;
       }
 
-      // Parameters
       const uid =
         (req.query.uid as string) ??
         (req.query.user_id as string) ??
@@ -531,7 +657,6 @@ export const bitlabsReceiptCallback = onRequest(
           }),
         };
 
-        // Create user doc if for some reason missing
         if (!userSnap.exists) {
           tx.set(
             userRef,
@@ -545,7 +670,6 @@ export const bitlabsReceiptCallback = onRequest(
           tx.update(userRef, balanceUpdate);
         }
 
-        // Save receipt transaction in offers history
         tx.set(
           userRef.collection("offers").doc(),
           {
@@ -566,11 +690,13 @@ export const bitlabsReceiptCallback = onRequest(
   }
 );
 
-// Clean up completed startedOffers after ~24 hours
+////////////////////////////////////////////////////////////////////////////////
+//  CLEANUP — 24H startedOffers cleanup
+////////////////////////////////////////////////////////////////////////////////
+
 export const cleanupCompletedOffers = onSchedule("every 24 hours", async () => {
   const db = admin.firestore();
 
-  // Anything completed more than 24h ago
   const cutoff = admin.firestore.Timestamp.fromDate(
     new Date(Date.now() - 24 * 60 * 60 * 1000)
   );
@@ -587,7 +713,6 @@ export const cleanupCompletedOffers = onSchedule("every 24 hours", async () => {
   for (const userDoc of usersSnap.docs) {
     const startedRef = userDoc.ref.collection("startedOffers");
 
-    // Only completed offers older than 24h
     const completedSnap = await startedRef
       .where("status", "==", "completed")
       .where("completedAt", "<", cutoff)
@@ -615,4 +740,3 @@ export const cleanupCompletedOffers = onSchedule("every 24 hours", async () => {
 
   console.log("cleanupCompletedOffers finished.");
 });
-

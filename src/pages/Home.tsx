@@ -1,115 +1,180 @@
-// src/pages/Home.tsx
-import React from "react";
-import { Link } from "react-router-dom";
-import { ChangelogCard } from "../components/ChangelogCard";
+// import React, { useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import "../home.css";
+import TiltCard from "../components/TiltCard";
 import { useUser } from "../contexts/UserContext";
 
 export const Home: React.FC = () => {
-  const { user } = useUser(); // (optional) now available
+  const { user, profile } = useUser();
+  const navigate = useNavigate();
+
+  const username =
+    profile?.username ||
+    user?.email?.split("@")[0] ||
+    "Breadwinner";
 
   return (
-    <main className="rb-content theme-games home-wrapper">
-      {/* ---------------------- */}
-      {/* TITLE + SLOGAN SECTION */}
-      {/* ---------------------- */}
-      <section className="home-hero rb-card">
-        <h1 className="home-title">
-          Welcome to <span className="accent-wheated">ReadyBread</span>
-        </h1>
-        <p className="home-slogan">Ready to earn some Bread?</p>
+    <div className="landing-container">
+      {/* HERO */}
+      <section className="landing-hero">
+        <div className="landing-hero-inner">
+          <h1 className="landing-title">
+            Ready to get some <span className="bread-word">Bread</span>, {username}?
+          </h1>
 
-        <p className="home-sub">
-          Fast, fun, and rewarding. We're your one way ticket to your fun-money ;)
-        </p>
+          <h2 className="landing-slogan">
+            Jump back into <span className="bread-word">games</span>,{" "}
+            <span className="bread-word">surveys</span>, and{" "}
+            <span className="bread-word">rewards</span>, all in one place.
+          </h2>
 
-        {user && (
-          <p className="home-sub" style={{ opacity: 0.7 }}>
-            Logged in as <b>{user.username}</b>
+          <p className="landing-subtitle">
+            Your balance, offers, receipts, and withdrawals are all tracked in your
+            ReadyBread account. Pick something below and keep the dough rolling in.
           </p>
-        )}
-      </section>
 
-      {/* ---------------------- */}
-      {/* EARNING OPTIONS GRID   */}
-      {/* ---------------------- */}
-      <section className="home-section rb-card home-earn-grid">
-        <h2 className="section-heading">Ready to earn?</h2>
+          <div className="hero-buttons">
+            <button
+              className="btn-primary"
+              type="button"
+              onClick={() => navigate("/dashboard")}
+            >
+              Open Dashboard
+            </button>
+            <button
+              className="btn-secondary"
+              type="button"
+              onClick={() => navigate("/earn")}
+            >
+              View all earning options
+            </button>
+          </div>
 
-        <div className="modern-grid">
-          <Link to="/games" className="modern-card games-card">
-            <div className="modern-icon"><span className="emoji">🎮</span></div>
-            <div className="modern-title-sm">Games</div>
-            <div className="modern-desc">
-              Play games, hit goals, and cash out <i>real money</i>, no strings attached.
+          <div className="landing-stats-row">
+            <div className="stat-chip">
+              <span className="stat-label">Today&apos;s focus -&gt;</span>
+              <span className="stat-value">Earn with games!</span>
             </div>
-          </Link>
-
-          <Link to="/surveys" className="modern-card surveys-card">
-            <div className="modern-icon"><span className="emoji">📋</span></div>
-            <div className="modern-title-sm">Surveys</div>
-            <div className="modern-desc">
-              Answer questions and surveys to make some dough from our verified partners.
+            <div className="stat-chip">
+              <span className="stat-label">Quick win -&gt;</span>
+              <span className="stat-value">Finish a survey!</span>
             </div>
-          </Link>
-
-          <Link to="/rewards" className="modern-card receipts-card">
-            <div className="modern-icon"><span className="emoji">💰</span></div>
-            <div className="modern-title-sm">Cash Out</div>
-            <div className="modern-desc">
-              Withdraw earnings with as little as $3. No points. No withdrawal fees.
+            <div className="stat-chip">
+              <span className="stat-label">Referral bonus -&gt;</span>
+              <span className="stat-value">Up to $1.00</span>
             </div>
-          </Link>
-
-          <Link to="/affiliate" className="modern-card gold-card">
-            <div className="modern-icon"><span className="emoji">🤝</span></div>
-            <div className="modern-title-sm">Affiliates</div>
-            <div className="modern-desc">
-              Discounts on game servers, Steam keys, and more!
-            </div>
-          </Link>
-
-          <Link to="/dashboard" className="modern-card misc-card">
-            <div className="modern-icon"><span className="emoji">📈</span></div>
-            <div className="modern-title-sm">Dashboard</div>
-            <div className="modern-desc">
-              Track your earnings, history, progress, and more — all in one place.
-            </div>
-          </Link>
+          </div>
         </div>
       </section>
 
-      {/* ---------------------- */}
-      {/* MISSION STATEMENT      */}
-      {/* ---------------------- */}
-      <section className="home-section rb-card mission-card">
-        <h2 className="section-heading">Our Mission</h2>
-        <p className="mission-text">
-          ReadyBread is a <b>user-first</b> earning platform built to be simple, fair,
-          and transparent. We don’t use confusing point systems or charge fees.
-          <br /><br />
-          We’re committed to offering <b>reliable cashouts</b>,
-          with <b>zero withdrawal fees</b>.
-          <br /><br />
-          Our goal? To be the most trusted place for the modern generation to earn cash.
+      {/* FEATURE CARDS (LOGGED-IN SHORTCUTS) */}
+      <section className="feature-grid">
+        <TiltCard className="rw-card glass-card games-card earn-card">
+          <h2>🎮 Game &amp; App Offers</h2>
+          <p>
+            Install and play games from partners like BitLabs and AdGem. Hit
+            in-game goals and get <span className="bread-word">paid</span>.
+            Everything tracks into your ReadyBread balance.
+          </p>
+          <br></br>
+          <Link to="/Tutorials" className="earn-cta">Tap to learn more (❗)</Link>
+          <br></br>
+          <Link to="/games" className="earn-cta">
+            Continue with games
+          </Link>
+        </TiltCard>
+
+        <TiltCard className="rw-card glass-card surveys-card earn-card">
+          <h2>📋 Survey Streaks</h2>
+          <p>
+            Fill surveys when you have a few spare minutes, on the bus, in the bathroom, etc. 
+            Great for stacking consistent small hits of <span className="bread-word">bread</span>.
+          </p>
+          <br></br>
+          <Link to="/Tutorials" className="earn-cta">Tap to learn more</Link>
+          <br></br>
+          <Link to="/surveys" className="earn-cta">
+            Continue with surveys
+          </Link>
+        </TiltCard>
+
+        <TiltCard className="rw-card glass-card receipts-card earn-card">
+          <h2>🧾 Magic Receipts</h2>
+          <p>
+            Turn your grocery runs into even more earnings. Snap a picture, upload,
+            and if it matches an active offer - that&apos;s extra{" "}
+            <span className="bread-word">bread</span> for you.
+          </p>
+          <br></br>
+          <Link to="/Tutorials" className="earn-cta">Tap to learn more</Link>
+          <br></br>
+          <Link to="/receipts" className="earn-cta">
+            Upload a receipt
+          </Link>
+        </TiltCard>
+
+        <TiltCard className="rw-card glass-card cashouts-card earn-card">
+          <h2>💸 Satisfying Cashouts</h2>
+          <p>
+            Once you&apos;re happy with your stack, cash out. PayPal, Cash App,
+            or donations to vetted charities, all with zero fees.
+          </p>
+          <br></br>
+          <Link to="/Tutorials" className="earn-cta">Tap to learn more</Link>
+          <Link to="/rewards" className="earn-cta">
+            View rewards & cashouts
+          </Link>
+        </TiltCard>
+      </section>
+
+      {/* REFERRAL & EXTENSION STRIP (LOGGED-IN VIEW) */}
+      <section className="referral-section">
+        <h3 className="section-heading">Boost your bread even faster</h3>
+        <div className="referral-inner glass-card">
+          <div className="referral-left">
+            <h3>🤝 Invite friends, stack bonuses</h3>
+            <p>
+              Share your referral code and earn a bonus each time a friend
+              joins and starts completing offers. Perfect for Discord servers, group
+              chats, and content descriptions.
+            </p>
+            <br></br>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => navigate("/dashboard")}
+            >
+              Open my referral info
+            </button>
+          </div>
+          <div className="referral-right">
+            <h4>🌎 Browser Extension</h4>
+            <p>
+              This feature is still <i>half-baked</i>. Please check back another time.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* STRIP */}
+      <section className="landing-strip">
+        <h2>
+          Logged in, cozy, and ready to{" "}
+          <span className="bread-word">earn your bread</span>.
+        </h2>
+        <p>
+          ReadyBread is built to feel more like a game than a chore. Pick your
+          vibe, games, surveys, receipts, or referrals, Keep stacking
+          your bread at your own pace.
         </p>
       </section>
 
-      <ChangelogCard />
-
-      <div className="changelog-link-wrapper">
-        <a
-          href="https://github.com/DumbsDev/ReadyBread-Changelog"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rb-btn-small"
-        >
-          🔗 View on GitHub
-        </a>
-      </div>
-
-      <footer className="home-footer">
-        <p>© {new Date().getFullYear()} ReadyBread — Ready to earn some Bread?</p>
+      {/* FOOTER */}
+      <footer className="landing-footer">
+        © {new Date().getFullYear()} ReadyBread — thanks for being part of the bakery!
       </footer>
-    </main>
+    </div>
   );
 };
+
+export default Home;

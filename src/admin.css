@@ -76,3 +76,185 @@
   background: #ff1744 !important;
   color: white !important;
 }
+/* ===========================================
+   HOME PAGE — GLASSY NEON UI
+   Matches landing.css but for logged-in users
+=========================================== */
+
+.home-container {
+  width: 100%;
+  padding: 40px 0 120px;
+  color: #fff;
+  background: #000;
+}
+
+/* ---------- HERO ---------- */
+
+.home-hero {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.home-hero-title {
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1.15;
+  background: linear-gradient(90deg, #ffd166, #fffbe8, #ffd166);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 14px;
+  text-shadow: 0 0 25px rgba(255, 209, 102, 0.5);
+}
+
+.home-hero-title .bread-word {
+  background: linear-gradient(90deg, #ffe3a3, #ffffff, #ffe3a3);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.home-hero-sub {
+  opacity: 0.75;
+  max-width: 650px;
+  margin: 0 auto 20px;
+  font-size: 18px;
+}
+
+/* ---------- Emoji Strip ---------- */
+
+.emoji-strip {
+  width: 100%;
+  overflow: hidden;
+  margin-top: 25px;
+}
+
+.emoji-track {
+  display: flex;
+  gap: 40px;
+  animation: emojiScroll 20s linear infinite;
+}
+
+.emoji-track img {
+  width: 48px;
+  height: 48px;
+  filter: drop-shadow(0 0 10px rgba(255, 209, 102, 0.4));
+}
+
+@keyframes emojiScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ---------- SHORTCUT GRID ---------- */
+
+.home-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 22px;
+  max-width: 1050px;
+  margin: 60px auto;
+  padding: 0 20px;
+}
+
+.action-card {
+  padding: 24px;
+  border-radius: 18px;
+  backdrop-filter: blur(14px);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  text-align: center;
+  cursor: pointer;
+  transition: 0.25s;
+}
+
+.action-card:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-4px);
+}
+
+.action-emoji {
+  font-size: 40px;
+  margin-bottom: 6px;
+}
+
+/* ---------- STATS ---------- */
+
+.home-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.stats-card {
+  padding: 26px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.stats-card h3 {
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.stats-card ul {
+  margin: 0;
+  padding-left: 18px;
+  opacity: 0.8;
+}
+
+/* ---------- REFERRAL ---------- */
+
+.home-referral {
+  max-width: 700px;
+  margin: 50px auto;
+  padding: 0 20px;
+}
+
+.referral-card {
+  padding: 30px;
+  border-radius: 18px;
+  backdrop-filter: blur(14px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  text-align: center;
+}
+
+.ref-btn {
+  padding: 12px 28px;
+  margin-top: 16px;
+  border-radius: 10px;
+  font-weight: bold;
+  background: #ffd166;
+  border: none;
+  cursor: pointer;
+  color: #1a1a1a;
+  transition: 0.25s;
+}
+
+.ref-btn:hover {
+  background: #ffe7a2;
+}
+
+/* ---------- CHANGELOG ---------- */
+
+.home-changelog {
+  max-width: 700px;
+  margin: 50px auto;
+  padding: 0 20px;
+}
+
+/* TiltCard base styling */
+.tilt-card-wrapper {
+  border-radius: 18px;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+
+.tilt-card-wrapper:hover {
+  filter: drop-shadow(0 0 12px rgba(255, 209, 102, 0.25));
+}

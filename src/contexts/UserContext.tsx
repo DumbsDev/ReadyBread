@@ -45,6 +45,7 @@ interface UserContextType {
   balance: number;                 // always a number
   loading: boolean;                // global loading state
   admin: boolean;                  // admin boolean
+  authReady: boolean;              // true once Firebase auth has initialized
   refreshProfile: () => Promise<void>;
 }
 
@@ -58,6 +59,7 @@ const UserContext = createContext<UserContextType>({
   balance: 0,
   loading: true,
   admin: false,
+  authReady: false,
   refreshProfile: async () => {},
 });
 
@@ -71,6 +73,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [authReady, setAuthReady] = useState(false); // ensure we don't gate pages before auth initializes
 
   /* ------------------------------------------------------------
      AUTH LISTENER (firebase auth)
@@ -78,6 +81,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setAuthUser(u);
+      setAuthReady(true);
       if (!u) {
         setProfile(null);
         setBalance(0);
@@ -90,12 +94,19 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
      FIRESTORE PROFILE LISTENER (live)
   ------------------------------------------------------------ */
   useEffect(() => {
+    // Wait until Firebase auth has resolved (prevents premature "not logged in" flashes)
+    if (!authReady) return;
+
+    // If the user is not signed in, stop loading after clearing profile/balance
     if (!authUser) {
       setProfile(null);
       setBalance(0);
       setLoading(false);
       return;
     }
+
+    // User exists: begin loading profile
+    setLoading(true);
 
     const ref = doc(db, "users", authUser.uid);
 
@@ -116,7 +127,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     );
 
     return () => unsub();
-  }, [authUser]);
+  }, [authUser, authReady]);
 
   /* ------------------------------------------------------------
      MANUAL PROFILE REFRESH (optional but useful)
@@ -164,6 +175,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         balance,
         loading,
         admin,
+        authReady,
         refreshProfile,
       }}
     >

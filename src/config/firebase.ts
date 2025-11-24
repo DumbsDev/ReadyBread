@@ -3,8 +3,12 @@
 // We import from the NEW Firebase v9+ modular SDK (not compat mode)
 
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import type { Auth } from 'firebase/auth';
+import {
+  getAuth,
+  setPersistence,
+  browserLocalPersistence,
+  type Auth,
+} from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 
 // Your Firebase project configuration
@@ -23,5 +27,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Export auth and database instances so other files can use them
-export const auth: Auth = getAuth(app);
+const authInstance: Auth = getAuth(app);
+void setPersistence(authInstance, browserLocalPersistence).catch((err) => {
+  console.warn("Failed to set auth persistence to local:", err);
+});
+
+export const auth: Auth = authInstance;
 export const db: Firestore = getFirestore(app);

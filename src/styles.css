@@ -1,4 +1,4 @@
-/* ---------------------------------------------------
+﻿/* ---------------------------------------------------
    BRAND COLORS
 ---------------------------------------------------- */
 :root {
@@ -73,7 +73,7 @@ body {
         drop-shadow(0 0 12px rgba(255, 163, 40, 0.5));
 }
 
-/* ─── Swipeable Nav Bar ─────────────────────────── */
+/* â”€â”€â”€ Swipeable Nav Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .rb-nav {
     display: flex;
     overflow-x: auto;
@@ -104,7 +104,7 @@ body {
     color: var(--charred-wheat);
 }
 
-/* ─── Balance Box ─────────────────────────────── */
+/* â”€â”€â”€ Balance Box â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .rb-balance {
     background: var(--charred-wheat);
     padding: 10px 16px;
@@ -254,7 +254,7 @@ button:hover {
 }
 
 /* ---------------------------------------------------
-   EARN PAGE — Shell + Cards
+   EARN PAGE â€” Shell + Cards
 ---------------------------------------------------- */
 
 /* Shell wrapper */
@@ -665,7 +665,7 @@ button:hover {
     text-align: left;
 }
 
-/* “Welcome to ReadyBread” */
+/* â€œWelcome to ReadyBreadâ€ */
 .home-title {
     font-size: 2rem;           /* a bit smaller than before */
     font-weight: 800;
@@ -674,7 +674,7 @@ button:hover {
     text-align: center;
 }
 
-/* “Ready to earn some Bread?” */
+/* â€œReady to earn some Bread?â€ */
 .home-slogan {
     font-size: 1.1rem;
     font-weight: 700;
@@ -697,7 +697,7 @@ button:hover {
     margin-top: 12px;
 }
 
-/* Make rb-card on home feel like earn’s modern cards */
+/* Make rb-card on home feel like earnâ€™s modern cards */
 .home-section.rb-card,
 .home-hero.rb-card {
     background: rgba(255, 204, 120, 0.05);
@@ -1983,7 +1983,7 @@ body {
 }
 
 /* ---------------------------------------------------
-   DASHBOARD v2 — Compact + Mobile Optimized
+   DASHBOARD v2 â€” Compact + Mobile Optimized
 ---------------------------------------------------- */
 
 /* Make the dashboard wrapper full-height and scrollable */
@@ -2052,7 +2052,7 @@ body {
     border-radius: 999px;
 }
 
-/* Active tab — slightly smaller shadow on mobile */
+/* Active tab â€” slightly smaller shadow on mobile */
 .dash-tab-active {
     box-shadow: 0 4px 10px rgba(0,0,0,0.45) !important;
     transform: translateY(-1px) !important;
@@ -2109,7 +2109,7 @@ body {
 }
 
 /* ---------------------------------------------------
-   Dashboard v3 — Compact Layout Fix (Non-intrusive)
+   Dashboard v3 â€” Compact Layout Fix (Non-intrusive)
    Keeps top scrollable navbar + balance box intact
 ---------------------------------------------------- */
 
@@ -2463,7 +2463,7 @@ body {
 }
 
 /* ======================================================
-   ADMIN PANEL — GLASS + NEON EFFECTS
+   ADMIN PANEL â€” GLASS + NEON EFFECTS
    ====================================================== */
 
 /* Admin container */
@@ -2835,7 +2835,7 @@ body {
 }
 
 /* ---------------------------
-   BUTTON — DANGER STYLE
+   BUTTON â€” DANGER STYLE
 --------------------------- */
 
 .rb-btn-danger {
@@ -2864,4 +2864,242 @@ body {
 
 .mt-20 {
   margin-top: 20px;
+}
+
+/* ---------------------------------------------------
+   HOME PAGE (landing-inspired glass theme)
+---------------------------------------------------- */
+.home-container {
+  width: 100%;
+  min-height: 100vh;
+  padding: 40px 0 120px;
+  color: #f5f7ff;
+  background: radial-gradient(circle at top, #1b1205 0, #050507 45%, #000 100%);
+}
+
+.home-hero {
+  text-align: center;
+  padding: 40px 20px 10px;
+}
+
+.home-hero-title {
+  font-size: clamp(32px, 4vw, 46px);
+  font-weight: 900;
+  line-height: 1.12;
+  background: linear-gradient(90deg, #ffe9a6, #ffffff, #ffe9a6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 25px rgba(255, 209, 102, 0.45);
+  margin-bottom: 14px;
+}
+
+.home-hero-sub {
+  max-width: 700px;
+  margin: 0 auto;
+  opacity: 0.8;
+  font-size: 17px;
+}
+
+.home-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 22px;
+  max-width: 1100px;
+  margin: 60px auto;
+  padding: 0 20px;
+}
+
+.action-card {
+  padding: 24px;
+  border-radius: 18px;
+  background: radial-gradient(
+      circle at 20% 20%,
+      rgba(255, 209, 102, 0.18),
+      transparent 55%
+    ),
+    rgba(10, 8, 4, 0.9);
+  border: 1px solid rgba(255, 209, 102, 0.25);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(14px);
+  text-align: center;
+  cursor: pointer;
+  transition: 0.25s ease;
+  color: #f7f7ff;
+}
+
+.action-card:hover {
+  border-color: rgba(255, 209, 102, 0.6);
+  box-shadow: 0 18px 40px rgba(255, 209, 102, 0.32);
+  transform: translateY(-4px);
+  color: #ffffff;
+}
+
+.action-emoji {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.home-actions h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.home-actions p {
+  margin: 0;
+  opacity: 0.8;
+  font-size: 14px;
+}
+
+.home-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  max-width: 1000px;
+  margin: 30px auto;
+  padding: 0 20px;
+}
+
+.stats-card {
+  padding: 24px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+}
+
+.stats-card h3 {
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+
+.stats-card ul {
+  margin: 0;
+  padding-left: 18px;
+  opacity: 0.82;
+}
+
+.home-referral {
+  max-width: 760px;
+  margin: 50px auto;
+  padding: 0 20px;
+}
+
+.referral-card {
+  padding: 28px;
+  border-radius: 18px;
+  backdrop-filter: blur(14px);
+  background: radial-gradient(
+      circle at 18% 18%,
+      rgba(255, 209, 102, 0.18),
+      transparent 55%
+    ),
+    rgba(12, 10, 8, 0.92);
+  border: 1px solid rgba(255, 209, 102, 0.25);
+  text-align: center;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.6);
+}
+
+.referral-card h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.referral-card p {
+  margin: 0;
+  opacity: 0.86;
+}
+
+.ref-btn {
+  padding: 12px 28px;
+  margin-top: 16px;
+  border-radius: 10px;
+  font-weight: bold;
+  background: linear-gradient(120deg, #ffd166, #fff3c0);
+  border: none;
+  cursor: pointer;
+  color: #1a1a1a;
+  transition: 0.25s;
+}
+
+.ref-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(255, 209, 102, 0.35);
+}
+
+.home-changelog {
+  max-width: 760px;
+  margin: 40px auto 0;
+  padding: 0 20px;
+}
+
+.home-cta-row {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.home-cta {
+  padding: 14px 26px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 15px;
+  text-decoration: none;
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  background: linear-gradient(120deg, #ffd166, #fff3c0);
+  color: #1a1a1a;
+  box-shadow: 0 10px 26px rgba(255, 209, 102, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-cta.secondary {
+  background: rgba(0, 0, 0, 0.4);
+  color: #ffe9a6;
+  border: 1px solid rgba(255, 233, 166, 0.4);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4);
+}
+
+.home-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(255, 209, 102, 0.45);
+}
+
+.home-feature-grid {
+  max-width: 1100px;
+  margin: 50px auto 0;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.home-feature-card {
+  padding: 22px;
+  border-radius: 18px;
+  color: #f5f7ff;
+}
+
+.home-feature-card h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.home-feature-card p {
+  margin: 0;
+  opacity: 0.86;
+  font-size: 14px;
+}
+
+.home-feature-card .chip {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 10px;
+  font-size: 12px;
+  color: #f5f7ff;
 }
