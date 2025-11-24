@@ -34,3 +34,4 @@ void setPersistence(authInstance, browserLocalPersistence).catch((err) => {
 
 export const auth: Auth = authInstance;
 export const db: Firestore = getFirestore(app);
+export { app }

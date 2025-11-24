@@ -20,7 +20,7 @@ export interface RBUser {
   // Moderation / admin flags
   warnings?: number;
   banned?: boolean;
-  isBanned?: boolean;              // Some components use banned, others use isBanned
+  isBanned?: boolean; // Some components use banned, others use isBanned
   admin?: boolean;
 
   // Timestamps
@@ -37,6 +37,11 @@ export interface RBUser {
 
   // Dashboard + Account features
   shortcutBonusClaimed?: boolean;
+
+  // 🔥 Daily streak bonus (server-managed)
+  dailyStreak?: number;   // 1, 2, 3... etc.
+  bonusPercent?: number;  // e.g. 0, 0.5, 1.0 ... capped at 10
+  lastCheckIn?: any;      // Firestore Timestamp
 
   // Audit trail (admin only)
   auditLog?: any[];

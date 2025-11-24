@@ -7,11 +7,41 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 admin.initializeApp();
 const db = admin.firestore();
 
-// SECRETS
+/* ============================================================
+   STREAK BONUS HELPERS
+============================================================ */
+
+function clampBonusPercent(raw: any): number {
+  if (typeof raw !== "number" || !isFinite(raw)) return 0;
+  if (raw < 0) return 0;
+  if (raw > 10) return 10; // cap streak bonus at +10%
+  return raw;
+}
+
+// basePayout (from partner) * (1 + bonusPercent/100)
+function applyStreakBonus(basePayout: number, bonusPercentRaw: any) {
+  const bonusPercent = clampBonusPercent(bonusPercentRaw);
+  const multiplier = 1 + bonusPercent / 100;
+
+  const finalRaw = basePayout * multiplier;
+  const final = Math.round(finalRaw * 100) / 100; // round to cents
+  const bonusAmount = Math.max(0, final - basePayout);
+
+  return {
+    base: basePayout,
+    bonusPercent,
+    final,
+    bonusAmount,
+  };
+}
+
+/* ============================================================
+   SECRETS
+============================================================ */
 const OFFERS_SECRET = defineSecret("OFFERS_SECRET");
 
 ////////////////////////////////////////////////////////////////////////////////
-//  NEW — ADGEM WEBHOOK
+//  ADGEM WEBHOOK — with streak bonus
 ////////////////////////////////////////////////////////////////////////////////
 
 export const adgemWebhook = onRequest(
@@ -23,11 +53,9 @@ export const adgemWebhook = onRequest(
         return;
       }
 
-      // Validate secret
       const secretFromRequest =
         (req.query.secret as string) ??
         (req.body && req.body.secret);
-
       const expectedSecret = OFFERS_SECRET.value();
 
       if (!secretFromRequest || secretFromRequest !== expectedSecret) {
@@ -36,7 +64,6 @@ export const adgemWebhook = onRequest(
         return;
       }
 
-      // Extract parameters
       const uid =
         (req.query.uid as string) ??
         (req.query.sub_id as string) ??
@@ -60,9 +87,9 @@ export const adgemWebhook = onRequest(
         return;
       }
 
-      // AdGem sends cents → convert to dollars
-      const payout = Number(amountRaw) / 100;
-      if (!isFinite(payout) || payout <= 0) {
+      // AdGem sends cents; convert to USD
+      const basePayout = Number(amountRaw) / 100;
+      if (!isFinite(basePayout) || basePayout <= 0) {
         res.status(400).send("Invalid payout");
         return;
       }
@@ -70,13 +97,12 @@ export const adgemWebhook = onRequest(
       const txRef = db.collection("completedOffers").doc(txId);
       const txSnap = await txRef.get();
 
-      // Prevent double-credit
+      // Prevent double credit
       if (txSnap.exists) {
         res.status(200).send("OK (duplicate ignored)");
         return;
       }
 
-      // Transaction
       await db.runTransaction(async (t) => {
         const userRef = db.collection("users").doc(uid);
         const userSnap = await t.get(userRef);
@@ -84,12 +110,19 @@ export const adgemWebhook = onRequest(
         const now = admin.firestore.Timestamp.now();
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
+        const bonusPercentRaw = userSnap.exists ? userSnap.data()?.bonusPercent : 0;
+        const { final, base, bonusAmount, bonusPercent } =
+          applyStreakBonus(basePayout, bonusPercentRaw);
+
         const balanceUpdate = {
-          balance: admin.firestore.FieldValue.increment(payout),
+          balance: admin.firestore.FieldValue.increment(final),
           auditLog: admin.firestore.FieldValue.arrayUnion({
             type: "adgem",
             offerId,
-            amount: payout,
+            amount: final,
+            baseAmount: base,
+            bonusAmount,
+            bonusPercent,
             txId,
             at: now,
           }),
@@ -98,34 +131,35 @@ export const adgemWebhook = onRequest(
         if (!userSnap.exists) {
           t.set(
             userRef,
-            {
-              createdAt: serverNow,
-              ...balanceUpdate,
-            },
+            { createdAt: serverNow, ...balanceUpdate },
             { merge: true }
           );
         } else {
           t.update(userRef, balanceUpdate);
         }
 
-        // Offer history
         t.set(
           userRef.collection("offers").doc(),
           {
             offerId,
             type: "adgem",
-            amount: payout,
+            amount: final,
+            baseAmount: base,
+            bonusAmount,
+            bonusPercent,
             txId,
             createdAt: serverNow,
           },
           { merge: true }
         );
 
-        // Mark this transaction as completed
         t.set(txRef, {
           uid,
           offerId,
-          payout,
+          payout: final,
+          baseAmount: base,
+          bonusAmount,
+          bonusPercent,
           source: "AdGem",
           txId,
           creditedAt: serverNow,
@@ -141,7 +175,7 @@ export const adgemWebhook = onRequest(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
-//  REFERRALS — /processReferrals
+//  REFERRALS — unchanged
 ////////////////////////////////////////////////////////////////////////////////
 
 const REFERRAL_REWARD = 0.25;
@@ -270,7 +304,7 @@ export const processReferrals = functions.https.onRequest(async (req, res) => {
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-//  GAME / SURVEY / RECEIPT OFFERS – /gameOfferWebhook
+//  GAME OFFER WEBHOOK (BitLabs Games) — with streak bonus
 ////////////////////////////////////////////////////////////////////////////////
 
 export const gameOfferWebhook = onRequest(
@@ -285,7 +319,6 @@ export const gameOfferWebhook = onRequest(
       const secretFromRequest =
         (req.query.secret as string) ??
         (req.body && req.body.secret);
-
       const expectedSecret = OFFERS_SECRET.value();
 
       if (!secretFromRequest || secretFromRequest !== expectedSecret) {
@@ -313,8 +346,8 @@ export const gameOfferWebhook = onRequest(
         return;
       }
 
-      const payout = Number(payoutRaw);
-      if (!isFinite(payout) || payout <= 0) {
+      const basePayout = Number(payoutRaw);
+      if (!isFinite(basePayout) || basePayout <= 0) {
         res.status(400).send("Invalid payout");
         return;
       }
@@ -326,12 +359,19 @@ export const gameOfferWebhook = onRequest(
         const now = admin.firestore.Timestamp.now();
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
+        const bonusPercentRaw = userSnap.exists ? userSnap.data()?.bonusPercent : 0;
+        const { final, base, bonusAmount, bonusPercent } =
+          applyStreakBonus(basePayout, bonusPercentRaw);
+
         const balanceUpdate = {
-          balance: admin.firestore.FieldValue.increment(payout),
+          balance: admin.firestore.FieldValue.increment(final),
           auditLog: admin.firestore.FieldValue.arrayUnion({
             type: "game_offer",
             offerId,
-            amount: payout,
+            amount: final,
+            baseAmount: base,
+            bonusAmount,
+            bonusPercent,
             at: now,
           }),
         };
@@ -349,10 +389,7 @@ export const gameOfferWebhook = onRequest(
         if (!userSnap.exists) {
           tx.set(
             userRef,
-            {
-              createdAt: serverNow,
-              ...balanceUpdate,
-            },
+            { createdAt: serverNow, ...balanceUpdate },
             { merge: true }
           );
         } else {
@@ -365,7 +402,7 @@ export const gameOfferWebhook = onRequest(
             status: "completed",
             completedAt: serverNow,
             lastUpdatedAt: serverNow,
-            totalPayout: payout,
+            totalPayout: final,
             title: "Offer",
             type: "game",
           },
@@ -377,7 +414,10 @@ export const gameOfferWebhook = onRequest(
           {
             offerId,
             type: "game",
-            amount: payout,
+            amount: final,
+            baseAmount: base,
+            bonusAmount,
+            bonusPercent,
             createdAt: serverNow,
           }
         );
@@ -392,7 +432,7 @@ export const gameOfferWebhook = onRequest(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
-//  BITLABS SURVEY CALLBACK – /bitlabsSurveyCallback
+//  BITLABS SURVEY CALLBACK — with streak bonus
 ////////////////////////////////////////////////////////////////////////////////
 
 export const bitlabsSurveyCallback = onRequest(
@@ -407,6 +447,7 @@ export const bitlabsSurveyCallback = onRequest(
       const secretFromRequest =
         (req.query.secret as string) ?? (req.body && req.body.secret);
       const expectedSecret = OFFERS_SECRET.value();
+
       if (!secretFromRequest || secretFromRequest !== expectedSecret) {
         console.warn("Invalid secret on survey callback:", secretFromRequest);
         res.status(403).send("Forbidden");
@@ -431,8 +472,8 @@ export const bitlabsSurveyCallback = onRequest(
         return;
       }
 
-      const payout = Number(payoutRaw);
-      if (!isFinite(payout) || payout <= 0) {
+      const basePayout = Number(payoutRaw);
+      if (!isFinite(basePayout) || basePayout <= 0) {
         res.status(400).send("Invalid payout");
         return;
       }
@@ -443,12 +484,19 @@ export const bitlabsSurveyCallback = onRequest(
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
         const now = admin.firestore.Timestamp.now();
 
+        const bonusPercentRaw = userSnap.exists ? userSnap.data()?.bonusPercent : 0;
+        const { final, base, bonusAmount, bonusPercent } =
+          applyStreakBonus(basePayout, bonusPercentRaw);
+
         const balanceUpdate = {
-          balance: admin.firestore.FieldValue.increment(payout),
+          balance: admin.firestore.FieldValue.increment(final),
           auditLog: admin.firestore.FieldValue.arrayUnion({
             type: "survey",
             offerId,
-            amount: payout,
+            amount: final,
+            baseAmount: base,
+            bonusAmount,
+            bonusPercent,
             at: now,
           }),
         };
@@ -456,10 +504,7 @@ export const bitlabsSurveyCallback = onRequest(
         if (!userSnap.exists) {
           tx.set(
             userRef,
-            {
-              createdAt: serverNow,
-              ...balanceUpdate,
-            },
+            { createdAt: serverNow, ...balanceUpdate },
             { merge: true }
           );
         } else {
@@ -471,7 +516,10 @@ export const bitlabsSurveyCallback = onRequest(
           {
             offerId,
             type: "survey",
-            amount: payout,
+            amount: final,
+            baseAmount: base,
+            bonusAmount,
+            bonusPercent,
             createdAt: serverNow,
           },
           { merge: true }
@@ -487,7 +535,7 @@ export const bitlabsSurveyCallback = onRequest(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
-//  MAGIC RECEIPTS CALLBACK – /magicReceiptsCallback
+//  MAGIC RECEIPTS CALLBACK — with streak bonus
 ////////////////////////////////////////////////////////////////////////////////
 
 export const magicReceiptsCallback = onRequest(
@@ -501,7 +549,6 @@ export const magicReceiptsCallback = onRequest(
 
       const secretFromRequest =
         (req.query.secret as string) ?? (req.body && req.body.secret);
-
       const expectedSecret = OFFERS_SECRET.value();
 
       if (!secretFromRequest || secretFromRequest !== expectedSecret) {
@@ -533,8 +580,8 @@ export const magicReceiptsCallback = onRequest(
         return;
       }
 
-      const payout = Number(payoutRaw);
-      if (!isFinite(payout) || payout <= 0) {
+      const basePayout = Number(payoutRaw);
+      if (!isFinite(basePayout) || basePayout <= 0) {
         res.status(400).send("Invalid payout");
         return;
       }
@@ -546,12 +593,19 @@ export const magicReceiptsCallback = onRequest(
         const now = admin.firestore.Timestamp.now();
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
+        const bonusPercentRaw = userSnap.exists ? userSnap.data()?.bonusPercent : 0;
+        const { final, base, bonusAmount, bonusPercent } =
+          applyStreakBonus(basePayout, bonusPercentRaw);
+
         const balanceUpdate = {
-          balance: admin.firestore.FieldValue.increment(payout),
+          balance: admin.firestore.FieldValue.increment(final),
           auditLog: admin.firestore.FieldValue.arrayUnion({
             type: "magic_receipt",
             receiptId,
-            amount: payout,
+            amount: final,
+            baseAmount: base,
+            bonusAmount,
+            bonusPercent,
             txId,
             at: now,
           }),
@@ -560,10 +614,7 @@ export const magicReceiptsCallback = onRequest(
         if (!userSnap.exists) {
           tx.set(
             userRef,
-            {
-              createdAt: serverNow,
-              ...balanceUpdate,
-            },
+            { createdAt: serverNow, ...balanceUpdate },
             { merge: true }
           );
         } else {
@@ -575,7 +626,10 @@ export const magicReceiptsCallback = onRequest(
           {
             receiptId,
             type: "magic_receipt",
-            amount: payout,
+            amount: final,
+            baseAmount: base,
+            bonusAmount,
+            bonusPercent,
             txId,
             createdAt: serverNow,
           },
@@ -592,7 +646,7 @@ export const magicReceiptsCallback = onRequest(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
-//  BITLABS RECEIPT CALLBACK – /bitlabsReceiptCallback
+//  BITLABS RECEIPT CALLBACK — with streak bonus
 ////////////////////////////////////////////////////////////////////////////////
 
 export const bitlabsReceiptCallback = onRequest(
@@ -606,7 +660,6 @@ export const bitlabsReceiptCallback = onRequest(
 
       const secretFromRequest =
         (req.query.secret as string) ?? (req.body && req.body.secret);
-
       const expectedSecret = OFFERS_SECRET.value();
 
       if (!secretFromRequest || secretFromRequest !== expectedSecret) {
@@ -634,8 +687,8 @@ export const bitlabsReceiptCallback = onRequest(
         return;
       }
 
-      const payout = Number(payoutRaw);
-      if (!isFinite(payout) || payout <= 0) {
+      const basePayout = Number(payoutRaw);
+      if (!isFinite(basePayout) || basePayout <= 0) {
         res.status(400).send("Invalid payout");
         return;
       }
@@ -647,12 +700,19 @@ export const bitlabsReceiptCallback = onRequest(
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
         const now = admin.firestore.Timestamp.now();
 
+        const bonusPercentRaw = userSnap.exists ? userSnap.data()?.bonusPercent : 0;
+        const { final, base, bonusAmount, bonusPercent } =
+          applyStreakBonus(basePayout, bonusPercentRaw);
+
         const balanceUpdate = {
-          balance: admin.firestore.FieldValue.increment(payout),
+          balance: admin.firestore.FieldValue.increment(final),
           auditLog: admin.firestore.FieldValue.arrayUnion({
             type: "magic_receipt",
             offerId,
-            amount: payout,
+            amount: final,
+            baseAmount: base,
+            bonusAmount,
+            bonusPercent,
             at: now,
           }),
         };
@@ -660,10 +720,7 @@ export const bitlabsReceiptCallback = onRequest(
         if (!userSnap.exists) {
           tx.set(
             userRef,
-            {
-              createdAt: serverNow,
-              ...balanceUpdate,
-            },
+            { createdAt: serverNow, ...balanceUpdate },
             { merge: true }
           );
         } else {
@@ -675,7 +732,10 @@ export const bitlabsReceiptCallback = onRequest(
           {
             offerId,
             type: "magic_receipt",
-            amount: payout,
+            amount: final,
+            baseAmount: base,
+            bonusAmount,
+            bonusPercent,
             createdAt: serverNow,
           },
           { merge: true }
@@ -691,7 +751,89 @@ export const bitlabsReceiptCallback = onRequest(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
-//  CLEANUP — 24H startedOffers cleanup
+//  DAILY CHECK-IN — callable function (server-only streak update)
+////////////////////////////////////////////////////////////////////////////////
+
+export const dailyCheckIn = functions.https.onCall(async (request) => {
+  if (!request.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "You must be logged in to check in."
+    );
+  }
+
+  const uid = request.auth.uid;
+  const userRef = db.collection("users").doc(uid);
+  const snap = await userRef.get();
+
+  const now = admin.firestore.Timestamp.now();
+  const nowDate = now.toDate();
+
+  let dailyStreak = 0;
+  let bonusPercent = 0;
+  let lastCheckIn: admin.firestore.Timestamp | null = null;
+
+  if (snap.exists) {
+    const data = snap.data() || {};
+    dailyStreak = typeof data.dailyStreak === "number" ? data.dailyStreak : 0;
+    bonusPercent = typeof data.bonusPercent === "number" ? data.bonusPercent : 0;
+    lastCheckIn = data.lastCheckIn || null;
+  }
+
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+  let updated = false;
+  let reset = false;
+
+  if (!lastCheckIn) {
+    // first ever check-in
+    dailyStreak = 1;
+    bonusPercent = 0.5;
+    updated = true;
+  } else {
+    const lastDate = lastCheckIn.toDate();
+    const diffMs = nowDate.getTime() - lastDate.getTime();
+    const diffDays = diffMs / ONE_DAY_MS;
+
+    if (diffDays < 0.75) {
+      // already checked in "today" (within ~18h window)
+      updated = false;
+    } else if (diffDays < 1.75) {
+      // next day: increment
+      dailyStreak = dailyStreak + 1;
+      bonusPercent = clampBonusPercent(bonusPercent + 0.5);
+      updated = true;
+    } else {
+      // missed too long: reset
+      dailyStreak = 1;
+      bonusPercent = 0.5;
+      reset = true;
+      updated = true;
+    }
+  }
+
+  if (updated) {
+    await userRef.set(
+      {
+        dailyStreak,
+        bonusPercent,
+        lastCheckIn: now,
+      },
+      { merge: true }
+    );
+  }
+
+  return {
+    updated,
+    reset,
+    dailyStreak,
+    bonusPercent,
+    lastCheckIn: now.toMillis(),
+  };
+});
+
+////////////////////////////////////////////////////////////////////////////////
+//  CLEANUP — 24H startedOffers cleanup (unchanged)
 ////////////////////////////////////////////////////////////////////////////////
 
 export const cleanupCompletedOffers = onSchedule("every 24 hours", async () => {
@@ -732,9 +874,7 @@ export const cleanupCompletedOffers = onSchedule("every 24 hours", async () => {
     });
   }
 
-  if (writeCount > 0) {
-    commits.push(batch.commit());
-  }
+  if (writeCount > 0) commits.push(batch.commit());
 
   await Promise.all(commits);
 

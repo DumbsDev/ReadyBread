@@ -15,7 +15,7 @@ export const TOS: React.FC = () => {
 
       <h2>1. Eligibility</h2>
       <ul>
-        <li>You must be at least 13 years old.</li>
+        <li>You must be at least 18 years old, or 16+ with parental consent.</li>
         <li>You must be a real person (no bots or automation).</li>
         <li>Only one account per person/device is allowed.</li>
         <li>VPNs or proxies may not be used to manipulate offers.</li>
@@ -30,6 +30,7 @@ export const TOS: React.FC = () => {
         <li>Your password must remain confidential.</li>
         <li>You are responsible for all actions under your account.</li>
         <li>Your email must remain active and verified.</li>
+        <li>Understand that ReadyBread is not a bank, and user funds are not insured. Earnings only come from third-party providers.</li>
       </ul>
 
       <p>We may suspend or terminate accounts for:</p>

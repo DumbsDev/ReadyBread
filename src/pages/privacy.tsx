@@ -21,8 +21,10 @@ export const Privacy: React.FC = () => {
         <li>Email address</li>
         <li>Password (securely hashed)</li>
         <li>Username</li>
-        <li>Referral code (optional)</li>
+        <li>Referral code</li>
         <li>Support messages</li>
+        <li>Unique device  fingerprint (to detect fraud)</li>
+        <li>Ban timestamps, if you are to be banned.</li>
       </ul>
 
       <h3>1.2 Automatically Collected Data</h3>
