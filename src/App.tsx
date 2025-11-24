@@ -75,7 +75,7 @@ export const AppInner: React.FC = () => {
       <Header user={user} />
 
       {/* Balance shows only when logged in + profile loaded */}
-      {user && profile && <Balance balance={balance} />}
+      {user && profile && <Balance balance={balance} user={user} />}
 
       <Routes>
         {/* Public landing page */}

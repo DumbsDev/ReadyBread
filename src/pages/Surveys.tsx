@@ -1,26 +1,37 @@
 // src/pages/Surveys.tsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
 import { useUser } from "../contexts/UserContext";
 import type { Survey } from "../types";
+import "../surveys.css";
 
 type SortMode = "best" | "payout" | "length" | "random";
 
+interface CPXSurvey {
+  id: string;
+  name: string;
+  minutes: number;
+  payout: number;
+  click_url: string;
+  country?: string;
+}
+
 export const Surveys: React.FC = () => {
-  // Pull user from global UserContext
   const { authUser, loading: userLoading } = useUser();
 
-  const [surveys, setSurveys] = useState<Survey[]>([]);
+  const [bitlabsSurveys, setBitlabsSurveys] = useState<Survey[]>([]);
+  const [cpxSurveys, setCpxSurveys] = useState<CPXSurvey[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>("best");
   const [surveysLoading, setSurveysLoading] = useState(true);
 
   const navigate = useNavigate();
 
   const BITLABS_API_KEY = "250f0833-3a86-4232-ae29-9b30026d1820";
+  const CPX_APP_ID = "30102";
+  const CPX_HASH = "yvxLR6x1Jc1CptNFfmrhzYlAu1XqVfsj";
 
   /* ---------------------------------------------------
-     LOGIN / VERIFICATION CHECK
+     LOGIN CHECK
   --------------------------------------------------- */
   useEffect(() => {
     if (userLoading) return;
@@ -30,21 +41,28 @@ export const Surveys: React.FC = () => {
       navigate("/login");
       return;
     }
+
     if (!authUser.emailVerified) {
       alert("Please verify your email before earning.");
       navigate("/login");
       return;
     }
 
-    loadSurveys();
+    loadAllSurveys();
   }, [authUser, userLoading, navigate]);
 
   /* ---------------------------------------------------
-     LOAD SURVEYS FROM BITLABS
+     LOAD SURVEYS (BitLabs + CPX)
   --------------------------------------------------- */
-  const loadSurveys = async () => {
+  const loadAllSurveys = async () => {
     setSurveysLoading(true);
 
+    await Promise.all([loadBitlabsSurveys(), loadCpxSurveys()]);
+
+    setSurveysLoading(false);
+  };
+
+  const loadBitlabsSurveys = async () => {
     try {
       const res = await fetch("https://api.bitlabs.ai/v2/client/surveys", {
         method: "GET",
@@ -56,27 +74,93 @@ export const Surveys: React.FC = () => {
       });
 
       const data = await res.json();
-      setSurveys(data?.data?.surveys || []);
+      const surveys = data?.data?.surveys || [];
+      setBitlabsSurveys(surveys);
     } catch (err) {
-      console.error("Error loading surveys:", err);
-      setSurveys([]);
-    } finally {
-      setSurveysLoading(false);
+      console.error("Error loading BitLabs surveys:", err);
+      setBitlabsSurveys([]);
     }
   };
 
+const loadCpxSurveys = async () => {
+  try {
+    // 1. Get user's IP (CPX requires it)
+    const ipRes = await fetch("https://api64.ipify.org?format=json");
+    const ipJson = await ipRes.json();
+    const userIP = ipJson?.ip || "8.8.8.8"; // fallback safe IP
+
+    // 2. User agent
+    const userAgent = navigator.userAgent;
+
+    // 3. Build CPX URL
+    const url =
+      `https://live-api.cpx-research.com/api/get-surveys.php?` +
+      `app_id=${CPX_APP_ID}` +
+      `&ext_user_id=${authUser?.uid}` +
+      `&output_method=api` +
+      `&limit=50` +
+      `&ip_user=${encodeURIComponent(userIP)}` +
+      `&user_agent=${encodeURIComponent(userAgent)}` +
+      `&secure_hash=${CPX_HASH}`;
+
+    const res = await fetch(url);
+    const json = await res.json();
+
+    if (!json?.surveys || !Array.isArray(json.surveys)) {
+      console.warn("CPX returned no surveys:", json);
+      setCpxSurveys([]);
+      return;
+    }
+
+    const mapped = json.surveys.map((s: any) => ({
+      id: String(s?.id),
+      name: s?.name || "Survey",
+      minutes: Number(s?.loi || 10),
+      payout: Number(s?.reward_usd || 0),
+      click_url: s?.link || "#",
+      country: s?.country || "?",
+    })) as CPXSurvey[];
+
+    setCpxSurveys(mapped);
+  } catch (err) {
+    console.error("Error loading CPX surveys:", err);
+    setCpxSurveys([]);
+  }
+};
+
+
   /* ---------------------------------------------------
-     SORT SURVEYS
+     MERGE + SORT SURVEYS
   --------------------------------------------------- */
-  const getSortedSurveys = (): Survey[] => {
-    const sorted = [...surveys];
+  const mergedSurveys = [
+    ...bitlabsSurveys.map((s) => ({
+      source: "bitlabs",
+      id: s.id,
+      payout: Number(s.cpi || 0),
+      minutes: Number(s.loi || 0),
+      category: s.category?.name || "Survey",
+      click_url: s.click_url,
+      country: s.country,
+    })),
+    ...cpxSurveys.map((s) => ({
+      source: "cpx",
+      id: s.id,
+      payout: s.payout,
+      minutes: s.minutes,
+      category: s.name,
+      click_url: s.click_url,
+      country: s.country,
+    })),
+  ];
+
+  const getSortedSurveys = () => {
+    const sorted = [...mergedSurveys];
 
     if (sortMode === "payout") {
-      sorted.sort((a, b) => Number(b.cpi || 0) - Number(a.cpi || 0));
+      sorted.sort((a, b) => b.payout - a.payout);
     } else if (sortMode === "length") {
-      sorted.sort((a, b) => Number(a.loi || 0) - Number(b.loi || 0));
+      sorted.sort((a, b) => a.minutes - b.minutes);
     } else if (sortMode === "random") {
-      // Fisher-Yates shuffle
       for (let i = sorted.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [sorted[i], sorted[j]] = [sorted[j], sorted[i]];
@@ -86,20 +170,11 @@ export const Surveys: React.FC = () => {
     return sorted;
   };
 
-  const sortedSurveys = getSortedSurveys();
+  const finalSurveys = getSortedSurveys();
 
-  /* ---------------------------------------------------
-     HEADER METRICS
-  --------------------------------------------------- */
-  const totalSurveys = surveys.length;
-  const bestPayout = surveys.length
-    ? Math.max(
-        ...surveys.map((s) =>
-          Number(
-            s.cpi || (typeof s.value === "string" ? s.value.replace("$", "") : 0)
-          )
-        )
-      )
+  const totalSurveys = finalSurveys.length;
+  const bestPayout = finalSurveys.length
+    ? Math.max(...finalSurveys.map((s) => s.payout))
     : 0;
 
   if (userLoading) {
@@ -112,49 +187,29 @@ export const Surveys: React.FC = () => {
     );
   }
 
-  if (!authUser) {
-    return (
-      <main className="rb-content theme-surveys">
-        <section className="earn-shell">
-          <p className="rb-section-sub">Please log in to access surveys.</p>
-        </section>
-      </main>
-    );
-  }
-
   /* ---------------------------------------------------
      RENDER
   --------------------------------------------------- */
   return (
     <main className="rb-content theme-surveys">
       <section className="earn-shell">
-        {/* Header / Sort bar */}
+
+        {/* HEADER */}
         <div className="earn-header">
           <div>
             <h2 className="rb-section-title">
               <span className="emoji">💭</span> Surveys Fresh From The Oven
             </h2>
             <p className="rb-section-sub">
-              Complete surveys from our partners and earn some quick dough.
+              Complete surveys from BitLabs & CPX to earn dough instantly.
             </p>
 
-            {/* Live stats chips */}
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "8px",
-                marginTop: "10px",
-                fontSize: "13px",
-                opacity: 0.9,
-              }}
-            >
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "10px", fontSize: "13px" }}>
               <span className="chip chip-time">
                 {totalSurveys > 0
                   ? `${totalSurveys} live surveys`
                   : "Checking for surveys…"}
               </span>
-
               {bestPayout > 0 && (
                 <span className="chip chip-payout">
                   Top payout ~ ${bestPayout.toFixed(2)}
@@ -163,24 +218,21 @@ export const Surveys: React.FC = () => {
             </div>
           </div>
 
-          {/* Sorting buttons */}
+          {/* SORT */}
           <div className="earn-sort">
             <span className="earn-sort-label">Sort by:</span>
-
             {(["best", "payout", "length", "random"] as SortMode[]).map(
-              (mode) => (
+              (m) => (
                 <button
-                  key={mode}
-                  className={`sort-btn ${
-                    sortMode === mode ? "sort-active" : ""
-                  }`}
-                  onClick={() => setSortMode(mode)}
+                  key={m}
+                  className={`sort-btn ${sortMode === m ? "sort-active" : ""}`}
+                  onClick={() => setSortMode(m)}
                 >
-                  {mode === "best"
+                  {m === "best"
                     ? "Best match"
-                    : mode === "payout"
+                    : m === "payout"
                     ? "Highest pay"
-                    : mode === "length"
+                    : m === "length"
                     ? "Shortest"
                     : "Random"}
                 </button>
@@ -189,51 +241,44 @@ export const Surveys: React.FC = () => {
           </div>
         </div>
 
-        {/* Survey list */}
-        <div id="survey-list" className="survey-list">
+        {/* SURVEY LIST */}
+        <div id="survey-list" className="survey-list two-column">
           {surveysLoading ? (
             <div className="survey-empty">Loading surveys...</div>
-          ) : sortedSurveys.length === 0 ? (
-            <div className="survey-empty">
-              No surveys available right now. Try again soon.
-            </div>
+          ) : finalSurveys.length === 0 ? (
+            <div className="survey-empty">No surveys available right now.</div>
           ) : (
-            sortedSurveys.map((survey) => {
-              const minutes = survey.loi
-                ? Number(survey.loi).toFixed(0)
-                : "?";
-
-              const payout =
-                survey.value || `$${Number(survey.cpi || 0).toFixed(2)}`;
+            finalSurveys.map((s) => {
+              const borderColor = s.source === "cpx" ? "#02c59a" : "#0000D1";
+              const minutes = s.minutes || "?";
+              const payout = `$${Number(s.payout).toFixed(2)}`;
 
               return (
                 <div
-                  key={survey.id}
+                  key={`${s.source}-${s.id}`}
                   className="survey-card rb-card modern-card"
+                  style={{
+                    border: `2px solid ${borderColor}`,
+                    boxShadow: `0 0 8px ${borderColor}55`,
+                  }}
                 >
                   <div className="survey-main">
-                    <h3 className="glow-soft">
-                      {survey.category?.name || "Survey"}
-                    </h3>
+                    <h3 className="glow-soft">{s.category}</h3>
 
-                    {/* Payout & time badges */}
                     <div className="offer-tags" style={{ marginTop: "4px" }}>
                       <span className="chip chip-payout">{payout}</span>
                       <span className="chip chip-time">~{minutes} min</span>
                     </div>
 
-                    <p
-                      className="survey-meta"
-                      style={{ marginTop: "6px", fontSize: "13px" }}
-                    >
-                      <span>Country: {survey.country || "?"}</span>
+                    <p className="survey-meta" style={{ marginTop: "6px", fontSize: "13px" }}>
+                      <span>Country: {s.country || "?"}</span>
                     </p>
                   </div>
 
                   <div className="survey-actions">
                     <button
                       className="survey-start-btn"
-                      onClick={() => window.open(survey.click_url, "_blank")}
+                      onClick={() => window.open(s.click_url, "_blank")}
                     >
                       Start survey
                     </button>
@@ -247,3 +292,5 @@ export const Surveys: React.FC = () => {
     </main>
   );
 };
+
+export default Surveys;

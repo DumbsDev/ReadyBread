@@ -111,7 +111,7 @@ body {
     border-radius: 10px;
     text-align: center;
     width: fit-content;
-    margin: 10px auto 20px;
+    margin: 0;
     font-size: 20px;
     font-weight: bold;
     color: var(--golden-toast);
@@ -120,6 +120,7 @@ body {
     transition: box-shadow 0.3s ease, transform 0.3s ease;
     --digit-height: 1.35em;
     --digit-width: 0.58em;
+    letter-spacing: 0.01em;
     font-variant-numeric: tabular-nums;
 }
 
@@ -3038,9 +3039,11 @@ body {
 }
 
 .rb-balance-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 10px auto 20px;
 }
 
 .rb-streak-chip {

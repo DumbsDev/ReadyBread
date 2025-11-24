@@ -880,3 +880,5 @@ export const cleanupCompletedOffers = onSchedule("every 24 hours", async () => {
 
   console.log("cleanupCompletedOffers finished.");
 });
+
+export { cpxPostback } from "./cpxPostback";

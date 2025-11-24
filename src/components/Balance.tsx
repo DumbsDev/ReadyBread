@@ -1,16 +1,28 @@
 // src/components/Balance.tsx
-// Animated balance display + daily streak indicator + bonus percent
+// Animated balance display + left-side streak chip (Freecash style)
 
 import React, { useEffect, useRef, useState } from "react";
-import { db } from "../config/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import "../home.css";
+import "../styles.css";
 
 interface BalanceProps {
-  balance: number; // USD balance
-  user?: any;      // user object (uid needed)
+  balance: number;
+  user?: any;
 }
 
 const DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+const getStreakEmoji = (value: number) => {
+  if (value >= 7) return "\uD83D\uDD25"; // fire
+  if (value >= 4) return "\u2601\uFE0F"; // cloud
+  return "\u2744\uFE0F"; // snow
+};
+
+const getStreakVariant = (value: number) => {
+  if (value >= 7) return "fire";
+  if (value >= 4) return "cloud";
+  return "snow";
+};
 
 const RollingDigit: React.FC<{ value: number }> = ({ value }) => {
   const safeValue = Number.isFinite(value) ? value : 0;
@@ -36,43 +48,18 @@ export const Balance: React.FC<BalanceProps> = ({ balance, user }) => {
   const [isPulsing, setIsPulsing] = useState(false);
   const previous = useRef<number | null>(null);
 
-  // ---------- DAILY STREAK ----------
-  const [streak, setStreak] = useState<number>(0);
-  const [bonusPercent, setBonusPercent] = useState<number>(0);
-  const [streakIcon, setStreakIcon] = useState<string>("❄️");
+  const streakFromUser =
+    typeof user?.dailyStreak === "number"
+      ? user.dailyStreak
+      : typeof user?.profile?.dailyStreak === "number"
+      ? user.profile.dailyStreak
+      : 0;
 
-  useEffect(() => {
-    if (!user?.uid) return;
+  const streak = Math.max(0, streakFromUser);
+  const streakIcon = getStreakEmoji(streak);
+  const streakVariant = getStreakVariant(streak);
 
-    const loadStreak = async () => {
-      try {
-        const ref = doc(db, "users", user.uid);
-        const snap = await getDoc(ref);
-
-        if (!snap.exists()) return;
-
-        const data = snap.data();
-        const s = data.dailyStreak ?? 0;
-        const bonus = data.bonusPercent ?? 0;
-
-        setStreak(s);
-        setBonusPercent(bonus);
-
-        // 🧊 1–3 days
-        if (s >= 1 && s <= 3) setStreakIcon("❄️");
-        // ☁️ 4–7 days
-        else if (s >= 4 && s <= 7) setStreakIcon("☁️");
-        // 🔥 8+ days
-        else if (s >= 8) setStreakIcon("🔥");
-      } catch (err) {
-        console.error("Error loading streak:", err);
-      }
-    };
-
-    loadStreak();
-  }, [user]);
-
-  // ---------- ORIGINAL PULSE ANIMATION ----------
+  // ---------- PULSE ANIMATION ----------
   useEffect(() => {
     const hasChanged =
       previous.current !== null && Math.abs(balance - previous.current) > 0.0001;
@@ -95,12 +82,20 @@ export const Balance: React.FC<BalanceProps> = ({ balance, user }) => {
     previous.current = balance;
   }, [balance]);
 
-  // ---------- FORMATTED BALANCE ----------
   const formatted = balance.toFixed(2);
   const chars = formatted.split("");
 
   return (
-    <div className={`rb-balance-wrapper`}>
+    <div className="rb-balance-wrapper fc-layout">
+      {/* LEFT-SIDE STREAK BOX */}
+      <div
+        className={`fc-streak-box fc-streak--${streakVariant}`}
+        aria-label={`Current streak ${streak} day${streak === 1 ? "" : "s"}`}
+      >
+        <span className="fc-streak-emoji">{streakIcon}</span>
+        <span className="fc-streak-days">{streak}</span>
+      </div>
+
       {/* BALANCE */}
       <div
         className={`rb-balance ${isPulsing ? "rb-balance-pulse" : ""}`}
@@ -134,15 +129,6 @@ export const Balance: React.FC<BalanceProps> = ({ balance, user }) => {
           </div>
         </div>
       </div>
-
-      {/* DAILY STREAK DISPLAY */}
-      {streak > 0 && (
-        <div className="rb-streak-chip" title="Daily streak bonus">
-          <span className="streak-icon">{streakIcon}</span>
-          <span className="streak-count">{streak}d</span>
-          <span className="streak-bonus">+{bonusPercent.toFixed(1)}%</span>
-        </div>
-      )}
     </div>
   );
 };
