@@ -1,6 +1,7 @@
-﻿import React, { useRef } from "react";
-import { Link } from "react-router-dom";
+import React, { useRef } from "react";
+import { Link, Navigate } from "react-router-dom";
 import "../landing.css";
+import { useUser } from "../contexts/UserContext";
 
 interface TiltCardProps {
   className?: string;
@@ -49,7 +50,21 @@ const TiltCard: React.FC<TiltCardProps> = ({ className = "", children }) => {
   );
 };
 
+const payoutProofs = [
+  { user: "Sle*******", amount: 7.21, method: "Cash App", date: "Nov 25, 2025", note: "Surveys" },
+  { user: "Mik********", amount: 3, method: "Cash App", date: "Nov 24, 2025", note: "Referrals and surveys" },
+  { user: "Wai********", amount: 3, method: "Donation", date: "Nov 23, 2025", note: "Surveys" },
+  { user: "The***********", amount: 11.32, method: "PayPal", date: "Nov 22, 2025", note: "Surveys" },
+];
+
 export const Landing: React.FC = () => {
+  const { user, authUser, authReady } = useUser();
+
+  // If a signed-in user lands here directly, send them home right away.
+  if (authReady && (authUser || user)) {
+    return <Navigate to="/home" replace />;
+  }
+
   return (
     <div className="landing-container">
       {/* HERO */}
@@ -91,7 +106,7 @@ export const Landing: React.FC = () => {
           <div className="landing-stats-row">
             <div className="stat-chip">
               <span className="stat-label">Payouts from</span>
-              <span className="stat-value">$3 — $50.00+</span>
+              <span className="stat-value">$3 - $50.00+</span>
             </div>
             <div className="stat-chip">
               <span className="stat-label">Supported</span>
@@ -99,7 +114,7 @@ export const Landing: React.FC = () => {
             </div>
             <div className="stat-chip">
               <span className="stat-label">Designed to be</span>
-              <span className="stat-value">totally user first.</span>
+              <span className="stat-value">Totally User First.</span>
             </div>
           </div>
         </div>
@@ -110,7 +125,7 @@ export const Landing: React.FC = () => {
         <TiltCard className="rw-card glass-card games-card earn-card">
           <h2>🎮 Game &amp; App Offers</h2>
           <p>
-            Install and play games from partners like BitLabs and AdGem. Hit
+            Install and play games from our trust partners. Hit
             in-game goals and get <span className="bread-word">paid</span>.
           </p>
           <ul className="feature-list">
@@ -177,7 +192,7 @@ export const Landing: React.FC = () => {
             <span className="step-pill">Step 1</span>
             <h4>Create your free account</h4>
             <p>
-              Sign up in just <span className="bread-accent">seconds</span>. Only an email and password required.
+              Sign up in just <span className="bread-accent">seconds</span>. Earn for months.
             </p>
           </TiltCard>
           <TiltCard className="how-card glass-card">
@@ -199,6 +214,80 @@ export const Landing: React.FC = () => {
         </div>
       </section>
 
+      {/* TRUST & SOCIAL PROOF */}
+      <section className="trust-section">
+        <h3 className="section-heading">Built for partners and real players</h3>
+        <div className="trust-grid">
+          <TiltCard className="trust-card glass-card">
+            <h4>Proof of payout</h4>
+            <p>See anonymized payout screenshots and logs. We process cashouts daily.</p>
+            <a href="#proof" className="earn-cta">
+              Jump to proof
+            </a>
+          </TiltCard>
+          <TiltCard className="trust-card glass-card">
+            <h4>Anti-fraud baked in</h4>
+            <p>Friendly checks with warnings (no IP blocks), plus server-side validation for offer quality.</p>
+            <Link to="/anti-fraud" className="earn-cta">
+              Read policy
+            </Link>
+          </TiltCard>
+          <TiltCard className="trust-card glass-card">
+            <h4>Community receipts</h4>
+            <p>Active socials, sharing tips and user experiences.</p>
+            <div className="social-links">
+              <a href="https://x.com/@Ready_Bread" target="_blank" rel="noreferrer">
+                X (formerly known as twitter)
+              </a>
+              <a href="https://tiktok.com/@ready_bread" target="_blank" rel="noreferrer">
+                TikTok
+              </a>
+              <a href="https://instagram.com/@ready_bread" target="_blank" rel="noreferrer">
+                Instagram
+              </a>
+              <a href="#proof">Recent payouts</a>
+            </div>
+          </TiltCard>
+        </div>
+      </section>
+
+      {/* PROOF EMBED */}
+      <section className="partners-strip" id="proof">
+        <div className="partners-inner glass-card">
+          <h3>Proof of payout (live snaps)</h3>
+          <p className="partner-note">We pay out daily. Usernames are blurred; full logs available to partners on request.</p>
+          <div className="proof-grid">
+            {payoutProofs.map((proof) => (
+              <div key={proof.user + proof.date} className="rb-card modern-card proof-card">
+                <div className="proof-top">
+                  <span className="proof-amount">${proof.amount.toFixed(2)}</span>
+                  <span className="proof-method">{proof.method}</span>
+                </div>
+                <p className="proof-user">{proof.user}</p>
+                <p className="proof-note">{proof.note}</p>
+                <p className="proof-date">{proof.date}</p>
+                <div className="proof-screenshot">
+                  <div className="proof-watermark">RECENT PAYOUT</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* PARTNER LINEUP */}
+      <section className="partners-strip">
+        <div className="partners-inner glass-card">
+          <h3>Offerwall lineup ready for approval</h3>
+          <div className="partner-badges">
+            <span>Major offerwalls are either already implemented, or ready to be at any moment.</span>
+          </div>
+          <p className="partner-note">
+            Shared Wi-Fi and dorm networks are allowed. VPN/proxy use may reduce offer availability. We share fraud logs with partners on request.
+          </p>
+        </div>
+      </section>
+
       {/* REFERRAL & EXTENSION STRIP */}
       <section className="referral-section">
         <h3 className="section-heading">Earn & Save Even More</h3>
@@ -216,7 +305,7 @@ export const Landing: React.FC = () => {
             <p>
               Turn every new tab into a ReadyBread hub. Quick access to offers,
               your balance, and a one-time install bonus when you link it to
-              your account.
+              your account (In-progress).
             </p>
           </div>
         </div>

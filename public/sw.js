@@ -1,4 +1,4 @@
-const CACHE_NAME = "readybread-static-v1";
+const CACHE_NAME = "readybread-static-v2";
 const PRECACHE_URLS = [
   "/",
   "/manifest.webmanifest",
@@ -35,7 +35,21 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
+  const url = new URL(request.url);
+  const isStaticAsset = url.pathname.startsWith("/assets/");
+
+  // Skip asset requests so they always hit the dev/preview server fresh.
+  if (isStaticAsset) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request))
+    caches
+      .match(request)
+      .then((cached) => cached || fetch(request))
+      .catch((err) => {
+        console.error("SW fetch error", err);
+        throw err;
+      })
   );
 });

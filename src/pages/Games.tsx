@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { db } from "../config/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useUser } from "../contexts/UserContext";
+import { AntiFraudGate } from "../components/AntiFraudGate";
 
 interface Offer {
   id: string;
@@ -243,7 +244,8 @@ export const Games: React.FC = () => {
   });
 
   return (
-    <main className="rb-content theme-games">
+    <AntiFraudGate featureName="game offers">
+      <main className="rb-content theme-games">
       <section className="earn-shell">
         <div className="earn-header">
           <div>
@@ -452,5 +454,6 @@ export const Games: React.FC = () => {
         )}
       </section>
     </main>
+    </AntiFraudGate>
   );
 };

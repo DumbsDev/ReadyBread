@@ -864,7 +864,8 @@ button:hover {
     display: flex;
     gap: 14px;
     overflow-x: auto;
-    padding-bottom: 4px;
+    padding-top: 6px;
+    padding-bottom: 10px;
     margin: 0 -6px;
     padding-left: 6px;
     padding-right: 6px;
@@ -965,6 +966,10 @@ button:hover {
 
 .rw-pill-cashapp {
     background: linear-gradient(135deg, #00c244dd, #00c24422);
+}
+
+.rw-pill-bitcoin {
+    background: linear-gradient(135deg, #f7931add, #f7931a25);
 }
 
 .rw-pill-dwb {
@@ -1080,6 +1085,33 @@ button:hover {
     background: var(--burnt-toast);
     color: var(--soft-sugar);
     box-sizing: border-box;
+}
+
+.crypto-fee-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.crypto-fee-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(255, 209, 102, 0.15);
+    border: 1px solid rgba(255, 209, 102, 0.5);
+    color: var(--soft-sugar);
+    font-size: 12px;
+    cursor: default;
+}
+
+.crypto-fee-note {
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.85);
+    margin-top: 6px;
+    margin-bottom: 6px;
 }
 
 .rb-modal-actions {
@@ -3070,4 +3102,211 @@ body {
 .streak-bonus {
   font-weight: 700;
   color: var(--golden-toast, #ffd166);
+}
+
+/* -------- Anti-fraud / VPN gate -------- */
+.anti-fraud-shell {
+  display: flex;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+.anti-fraud-card {
+  max-width: 720px;
+  width: 100%;
+  background: linear-gradient(145deg, rgba(18, 16, 12, 0.9), rgba(12, 12, 18, 0.9));
+  border: 1px solid rgba(255, 209, 102, 0.28);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.55);
+}
+
+.anti-fraud-list {
+  margin: 12px 0 8px;
+  padding-left: 18px;
+  opacity: 0.85;
+}
+
+.anti-fraud-list li {
+  margin-bottom: 6px;
+}
+
+.anti-fraud-meta {
+  font-size: 12px;
+  opacity: 0.65;
+  margin-top: 8px;
+}
+
+.anti-fraud-banner {
+  background: #1b1205;
+  color: #ffd166;
+  border: 1px dashed rgba(255, 209, 102, 0.6);
+  padding: 10px 14px;
+  text-align: center;
+  font-size: 13px;
+}
+
+/* -------- Offer wall hub -------- */
+.offerwall-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.offerwall-card {
+  border: 1px solid rgba(255, 209, 102, 0.25);
+}
+
+.offerwall-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.status-chip {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 209, 102, 0.18);
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  font-size: 12px;
+  color: #ffd166;
+}
+
+.offerwall-note {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.offerwall-desc {
+  opacity: 0.88;
+  margin: 8px 0 12px;
+}
+
+.missing-keys {
+  font-size: 12px;
+  color: #ffb4a2;
+  border: 1px dashed rgba(255, 180, 162, 0.6);
+  padding: 6px 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.offerwall-actions .offerwall-small {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 6px;
+}
+
+.offerwall-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* -------- Proof of payout -------- */
+.proof-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin: 14px 0;
+}
+
+.proof-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.proof-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.proof-amount {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.proof-method {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.proof-user {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.proof-note {
+  opacity: 0.8;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.proof-date {
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+.proof-screenshot {
+  margin-top: 10px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.18), rgba(124, 194, 255, 0.12));
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.proof-watermark {
+  font-size: 12px;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.proof-list {
+  margin-top: 10px;
+  padding-left: 18px;
+  opacity: 0.85;
+}
+
+/* -------- Footer -------- */
+.rb-footer {
+  background: #0d0d0f;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 22px 20px 28px;
+  margin-top: 24px;
+}
+
+.footer-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.footer-col h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.footer-col a {
+  display: block;
+  color: #e6e6e6;
+  opacity: 0.8;
+  text-decoration: none;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.footer-col a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.footer-note {
+  margin-top: 12px;
+  font-size: 12px;
+  opacity: 0.7;
 }

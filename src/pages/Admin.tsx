@@ -29,6 +29,8 @@ interface CashoutRow {
   createdAt?: any;
   paypalEmail?: string | null;
   cashappTag?: string | null;
+  bitcoinAddress?: string | null;
+  cryptoFee?: number | null;
   denialReason?: string | null;
   refunded?: boolean;
   ref: QueryDocumentSnapshot<unknown, DocumentData>["ref"];
@@ -92,6 +94,7 @@ export const Admin: React.FC = () => {
     fallbackUid = "unknown"
   ): CashoutRow => {
     const data = (docSnap.data() || {}) as Record<string, any>;
+    const cryptoFee = parseAmount(data.cryptoFee);
 
     return {
       id: docSnap.id,
@@ -107,6 +110,9 @@ export const Admin: React.FC = () => {
       paypalEmail:
         typeof data.paypalEmail === "string" ? data.paypalEmail : null,
       cashappTag: typeof data.cashappTag === "string" ? data.cashappTag : null,
+      bitcoinAddress:
+        typeof data.bitcoinAddress === "string" ? data.bitcoinAddress : null,
+      cryptoFee: Number.isFinite(cryptoFee) && cryptoFee > 0 ? cryptoFee : null,
       denialReason:
         typeof data.denialReason === "string" ? data.denialReason : null,
       refunded: Boolean(data.refunded),
@@ -399,12 +405,14 @@ export const Admin: React.FC = () => {
           return;
         }
 
+        const refundAmount = actionRow.amount + (actionRow.cryptoFee || 0);
+
         if (refundOnDeny) {
           const userRef = doc(db, "users", actionRow.userId);
           const uSnap = await getDoc(userRef);
           if (uSnap.exists()) {
             const bal = Number(uSnap.data().balance || 0);
-            await updateDoc(userRef, { balance: bal + actionRow.amount });
+            await updateDoc(userRef, { balance: bal + refundAmount });
           }
         }
 
@@ -529,6 +537,16 @@ export const Admin: React.FC = () => {
                   <p>
                     <b>Method:</b> {row.method}
                   </p>
+                  {row.cryptoFee ? (
+                    <p>
+                      <b>Crypto fee:</b> ${row.cryptoFee.toFixed(2)}
+                    </p>
+                  ) : null}
+                  {row.bitcoinAddress && (
+                    <p>
+                      <b>BTC:</b> {row.bitcoinAddress}
+                    </p>
+                  )}
                   {row.charityName && (
                     <p>
                       <b>Charity:</b> {row.charityName}
@@ -605,6 +623,16 @@ export const Admin: React.FC = () => {
                   <p>
                     <b>Method:</b> {row.method}
                   </p>
+                  {row.cryptoFee ? (
+                    <p>
+                      <b>Crypto fee:</b> ${row.cryptoFee.toFixed(2)}
+                    </p>
+                  ) : null}
+                  {row.bitcoinAddress && (
+                    <p>
+                      <b>BTC:</b> {row.bitcoinAddress}
+                    </p>
+                  )}
                   <p>
                     <b>Status:</b>{" "}
                     <span className={`status-tag status-${statusClass}`}>
@@ -687,6 +715,18 @@ export const Admin: React.FC = () => {
               <b>User:</b> {actionRow.userId} <br />
               <b>Amount:</b> ${actionRow.amount.toFixed(2)} via{" "}
               {actionRow.method}
+              {actionRow.cryptoFee ? (
+                <>
+                  <br />
+                  <b>Crypto fee:</b> ${actionRow.cryptoFee.toFixed(2)}
+                </>
+              ) : null}
+              {actionRow.bitcoinAddress ? (
+                <>
+                  <br />
+                  <b>BTC:</b> {actionRow.bitcoinAddress}
+                </>
+              ) : null}
             </p>
 
             {actionType === "deny" && (
@@ -704,7 +744,10 @@ export const Admin: React.FC = () => {
                     checked={refundOnDeny}
                     onChange={(e) => setRefundOnDeny(e.target.checked)}
                   />
-                  Refund ${actionRow.amount.toFixed(2)} back to user
+                  Refund $
+                  {(actionRow.amount + (actionRow.cryptoFee || 0)).toFixed(2)}{" "}
+                  back to user
+                  {actionRow.cryptoFee ? " (includes crypto fee)" : ""}
                 </label>
               </>
             )}

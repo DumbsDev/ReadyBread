@@ -89,7 +89,7 @@
 .emoji-icon {
   width: 62px;
   height: 62px;
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.15));
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.15));
 }
 
 @keyframes scrollEmojis {
@@ -425,6 +425,78 @@
   background: rgba(255, 209, 102, 0.12);
   color: var(--earn-accent, #ffd166);
   border: 1px solid rgba(255, 209, 102, 0.45);
+}
+
+/* ------------------------------ */
+/* TRUST / SOCIAL PROOF */
+/* ------------------------------ */
+.trust-section {
+  max-width: 1200px;
+  margin: 70px auto 0;
+  padding: 0 20px;
+}
+
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.trust-card {
+  min-height: 200px;
+}
+
+.social-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.social-links a {
+  color: #ffd166;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.social-links a:hover {
+  text-decoration: underline;
+}
+
+/* ------------------------------ */
+/* PARTNER STRIP */
+/* ------------------------------ */
+.partners-strip {
+  max-width: 1200px;
+  margin: 50px auto 0;
+  padding: 0 20px;
+}
+
+.partners-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.partner-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.partner-badges span {
+  background: rgba(255, 209, 102, 0.15);
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  color: #ffe9a6;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.partner-note {
+  font-size: 13px;
+  opacity: 0.8;
 }
 
 /* ------------------------------ */

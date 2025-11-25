@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import type { Survey } from "../types";
 import "../surveys.css";
+import { AntiFraudGate } from "../components/AntiFraudGate";
 
 type SortMode = "best" | "payout" | "length" | "random";
 
@@ -59,7 +60,7 @@ export const Surveys: React.FC = () => {
       return;
     }
 
-    loadAllSurveys();
+    void loadAllSurveys();
   }, [authUser, userLoading, navigate]);
 
   /* ---------------------------------------------------
@@ -69,14 +70,14 @@ export const Surveys: React.FC = () => {
     setSurveysLoading(true);
     await Promise.all([
       SHOW_BITLABS_SURVEYS ? loadBitlabsSurveys() : Promise.resolve(),
-      loadCpxSurveys()
+      loadCpxSurveys(),
     ]);
     setSurveysLoading(false);
   };
 
   const resolveUserIP = async (): Promise<string> => {
     const endpoints = [
-      "https://api.ipify.org?format=json",   // prefer IPv4 for CPX
+      "https://api.ipify.org?format=json", // prefer IPv4 for CPX
       "https://api64.ipify.org?format=json", // fallback IPv6
     ];
 
@@ -91,7 +92,6 @@ export const Surveys: React.FC = () => {
         if (!ip) continue;
 
         if (ip.includes(":")) {
-          // Save IPv6 in case IPv4 is unavailable
           ipv6Candidate = ipv6Candidate || ip;
           continue;
         }
@@ -112,8 +112,8 @@ export const Surveys: React.FC = () => {
         headers: {
           "X-Api-Token": BITLABS_API_KEY,
           "X-User-Id": authUser?.uid || "UNKNOWN",
-          "X-Api-Sdk": "CUSTOM"
-        }
+          "X-Api-Sdk": "CUSTOM",
+        },
       });
       const data = await res.json();
       const surveys = data?.data?.surveys || [];
@@ -162,7 +162,7 @@ export const Surveys: React.FC = () => {
         minutes: Number(s.loi || s.minutes || 10),
         payout: Number(s.payout || s.reward_usd || 0),
         click_url: String(s.href || s.link) || "",
-        country: s.country || "?"
+        country: s.country || "?",
       }));
       setCpxSurveys(mapped);
     } catch (err) {
@@ -204,7 +204,7 @@ export const Surveys: React.FC = () => {
           minutes: Number(s.loi || 0),
           category: s.category?.name || "Survey",
           click_url: s.click_url,
-          country: s.country || "?"
+          country: s.country || "?",
         }))
       : []),
     ...cpxSurveys.map((s): MergedSurvey => ({
@@ -214,7 +214,7 @@ export const Surveys: React.FC = () => {
       minutes: s.minutes,
       category: s.name,
       click_url: s.click_url,
-      country: s.country
+      country: s.country,
     })),
   ];
 
@@ -236,110 +236,121 @@ export const Surveys: React.FC = () => {
   const finalSurveys = getSortedSurveys();
 
   const totalSurveys = finalSurveys.length;
-  const bestPayout = finalSurveys.length ? Math.max(...finalSurveys.map((s) => s.payout)) : 0;
+  const bestPayout = finalSurveys.length
+    ? Math.max(...finalSurveys.map((s) => s.payout))
+    : 0;
 
   if (userLoading) {
     return (
       <main className="rb-content theme-surveys">
         <section className="earn-shell">
-          <p className="rb-section-sub">Checking your account…</p>
+          <p className="rb-section-sub">Checking your account...</p>
         </section>
       </main>
     );
   }
 
   return (
-    <main className="rb-content theme-surveys">
-      <section className="earn-shell">
-        {/* Header */}
-        <div className="earn-header">
-          <div>
-            <h2 className="rb-section-title">
-              <span className="emoji">💭</span> Surveys Fresh From The Oven
-            </h2>
-            <p className="rb-section-sub">
-              Complete surveys from BitLabs & CPX to earn dough instantly.
-            </p>
+    <AntiFraudGate featureName="surveys">
+      <main className="rb-content theme-surveys">
+        <section className="earn-shell">
+          {/* Header */}
+          <div className="earn-header">
+            <div>
+              <h2 className="rb-section-title">
+                <span className="emoji">dY'-</span> Surveys Fresh From The Oven
+              </h2>
+              <p className="rb-section-sub">
+                Complete surveys from BitLabs &amp; CPX to earn dough instantly.
+              </p>
 
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10, fontSize: 13 }}>
-              <span className="chip chip-time">
-                {totalSurveys > 0
-                  ? `${totalSurveys} live surveys (${SHOW_BITLABS_SURVEYS ? "BitLabs + " : ""}CPX)`
-                  : "Checking for surveys…"}
-              </span>
-              {bestPayout > 0 && (
-                <span className="chip chip-payout">Top payout ~ ${bestPayout.toFixed(2)}</span>
-              )}
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  marginTop: 10,
+                  fontSize: 13,
+                }}
+              >
+                <span className="chip chip-time">
+                  {totalSurveys > 0
+                    ? `${totalSurveys} live surveys (${SHOW_BITLABS_SURVEYS ? "BitLabs + " : ""}CPX)`
+                    : "Checking for surveys..."}
+                </span>
+                {bestPayout > 0 && (
+                  <span className="chip chip-payout">
+                    Top payout ~ ${bestPayout.toFixed(2)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Sort buttons */}
+            <div className="earn-sort">
+              <span className="earn-sort-label">Sort by:</span>
+              {(["best", "payout", "length", "random"] as SortMode[]).map((m) => (
+                <button
+                  key={m}
+                  className={`sort-btn ${sortMode === m ? "sort-active" : ""}`}
+                  onClick={() => setSortMode(m)}
+                >
+                  {m === "best"
+                    ? "Best match"
+                    : m === "payout"
+                    ? "Highest pay"
+                    : m === "length"
+                    ? "Shortest"
+                    : "Random"}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Sort buttons */}
-          <div className="earn-sort">
-            <span className="earn-sort-label">Sort by:</span>
-            {(["best", "payout", "length", "random"] as SortMode[]).map((m) => (
-              <button
-                key={m}
-                className={`sort-btn ${sortMode === m ? "sort-active" : ""}`}
-                onClick={() => setSortMode(m)}
-              >
-                {m === "best"
-                  ? "Best match"
-                  : m === "payout"
-                  ? "Highest pay"
-                  : m === "length"
-                  ? "Shortest"
-                  : "Random"}
-              </button>
-            ))}
-          </div>
-        </div>
+          {/* Survey grid */}
+          <div id="survey-list" className="survey-list two-column">
+            {surveysLoading ? (
+              <div className="survey-empty">Loading surveys...</div>
+            ) : finalSurveys.length === 0 ? (
+              <div className="survey-empty">No surveys available right now.</div>
+            ) : (
+              finalSurveys.map((s) => {
+                const borderColor = s.source === "cpx" ? "#02c59a" : "#0000D1";
+                const minutes = s.minutes || "?";
+                const payoutFormatted = `$${s.payout.toFixed(2)}`;
 
-        {/* Survey grid */}
-        <div id="survey-list" className="survey-list two-column">
-          {surveysLoading ? (
-            <div className="survey-empty">Loading surveys…</div>
-          ) : finalSurveys.length === 0 ? (
-            <div className="survey-empty">No surveys available right now.</div>
-          ) : (
-            finalSurveys.map((s) => {
-              const borderColor = s.source === "cpx" ? "#02c59a" : "#0000D1";
-              const minutes = s.minutes || "?";
-              const payoutFormatted = `$${s.payout.toFixed(2)}`;
-
-              return (
-                <div
-                  key={`${s.source}-${s.id}`}
-                  className="survey-card rb-card modern-card"
-                  style={{
-                    border: `2px solid ${borderColor}`,
-                    boxShadow: `0 0 8px ${borderColor}55`
-                  }}
-                >
-                  <div className="survey-main">
-                    <h3 className="glow-soft">{s.category}</h3>
-                    <div className="offer-tags" style={{ marginTop: 4 }}>
-                      <span className="chip chip-payout">{payoutFormatted}</span>
-                      <span className="chip chip-time">~{minutes} min</span>
+                return (
+                  <div
+                    key={`${s.source}-${s.id}`}
+                    className="survey-card rb-card modern-card"
+                    style={{
+                      border: `2px solid ${borderColor}`,
+                      boxShadow: `0 0 8px ${borderColor}55`,
+                    }}
+                  >
+                    <div className="survey-main">
+                      <h3 className="glow-soft">{s.category}</h3>
+                      <div className="offer-tags" style={{ marginTop: 4 }}>
+                        <span className="chip chip-payout">{payoutFormatted}</span>
+                        <span className="chip chip-time">~{minutes} min</span>
+                      </div>
+                      <p className="survey-meta" style={{ marginTop: 6, fontSize: 13 }}>
+                        <span>Country: {s.country || "?"}</span>
+                      </p>
                     </div>
-                    <p className="survey-meta" style={{ marginTop: 6, fontSize: 13 }}>
-                      <span>Country: {s.country || "?"}</span>
-                    </p>
+                    <div className="survey-actions">
+                      <button className="survey-start-btn" onClick={() => handleStart(s)}>
+                        Start survey
+                      </button>
+                    </div>
                   </div>
-                  <div className="survey-actions">
-                    <button
-                      className="survey-start-btn"
-                      onClick={() => handleStart(s)}
-                    >
-                      Start survey
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </section>
-    </main>
+                );
+              })
+            )}
+          </div>
+        </section>
+      </main>
+    </AntiFraudGate>
   );
 };
 

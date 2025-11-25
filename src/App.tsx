@@ -17,6 +17,7 @@ import { Login } from "./pages/Login";
 import { Earn } from "./pages/Earn";
 import { Surveys } from "./pages/Surveys";
 import { Games } from "./pages/Games";
+import { OfferWalls } from "./pages/OfferWalls";
 import { Rewards } from "./pages/Rewards";
 import { Receipts } from "./pages/Receipts";
 import { Misc } from "./pages/Misc";
@@ -36,27 +37,30 @@ import BreadGame from "./breadgame/breadGame";
 import { Privacy } from "./pages/privacy";
 import { TOS } from "./pages/TOS";
 import { EarningsDisclaimer } from "./pages/earningdisclaimer";
+import { Proof } from "./pages/Proof";
+import { AntiFraud } from "./pages/AntiFraud";
+import { Advertise } from "./pages/Advertise";
 import { useShortcutBonus } from "./hooks/useShortcutBonus";
 
 // -----------------------------------------------------
-// LANDING GATE — Handles "/" logic
+// LANDING GATE ? Handles "/" logic
 // -----------------------------------------------------
 const LandingGate: React.FC = () => {
-  const { user, loading } = useUser();
+  const { user, authUser, authReady } = useUser();
 
-  // Show loader while Firebase auth state is unknown
-  if (loading) {
+  // Wait until Firebase auth initializes
+  if (!authReady) {
     return (
       <main className="rb-content theme-games">
         <section className="earn-shell">
-          <p className="rb-section-sub">Checking your account…</p>
+          <p className="rb-section-sub">Checking your account...</p>
         </section>
       </main>
     );
   }
 
-  // Logged in → skip landing, go home
-  if (user) {
+  // If any authenticated user exists, go straight to home
+  if (authUser || user) {
     return <Navigate to="/home" replace />;
   }
 
@@ -101,6 +105,7 @@ export const AppInner: React.FC = () => {
         <Route path="/misc" element={<Misc />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/earn" element={<Earn />} />
+        <Route path="/offerwalls" element={<OfferWalls />} />
         <Route path="/affiliate" element={<Affiliate />} />
 
         <Route path="/breadgame" element={<BreadGame user={user} />} />
@@ -109,6 +114,9 @@ export const AppInner: React.FC = () => {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/tos" element={<TOS />} />
         <Route path="/earnings" element={<EarningsDisclaimer />} />
+        <Route path="/proof" element={<Proof />} />
+        <Route path="/anti-fraud" element={<AntiFraud />} />
+        <Route path="/advertise" element={<Advertise />} />
 
         {/* Admin protected route */}
         <Route path="/admin" element={admin ? <Admin /> : <NotFound />} />
@@ -122,16 +130,34 @@ export const AppInner: React.FC = () => {
       </Routes>
 
       {/* Footer */}
-      <footer className="rb-header">
-        <p>
-          ReadyBread by DumbsDev — have an issue or recommendation?
-          Contact: <a href="mailto:contact@readybread.xyz">contact@readybread.xyz</a>
-          <br /><br />
-          <div className="footertos">
-            <a href="/privacy">Privacy Policy</a> •
-            <a href="/tos">Terms of Service</a> •
+      <footer className="rb-footer">
+        <div className="footer-columns">
+          <div className="footer-col">
+            <h4>Trust &amp; Safety</h4>
+            <a href="/#proof">Proof of Payout</a>
+            <a href="/anti-fraud">Anti-Fraud Policy</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/tos">Terms of Service</a>
             <a href="/earnings">Earnings Disclaimer</a>
           </div>
+          <div className="footer-col">
+            <h4>Earning</h4>
+            <a href="/offerwalls">Offer Wall Hub</a>
+            <a href="/surveys">Surveys</a>
+            <a href="/games">Games</a>
+            <a href="/receipts">Magic Receipts</a>
+          </div>
+          <div className="footer-col">
+            <h4>Company</h4>
+            <a href="/advertise">Advertise with us</a>
+            <a href="mailto:contact@readybread.xyz">contact@readybread.xyz</a>
+            <a href="https://x.com/@Ready_Bread" target="_blank" rel="noreferrer">X</a>
+            <a href="https://tiktok.com/@ready_bread" target="_blank" rel="noreferrer">TikTok</a>
+            <a href="https://instagram.com/@ready_bread" target="_blank" rel="noreferrer">Instagram</a>
+          </div>
+        </div>
+        <p className="footer-note">
+          ReadyBread by DumbsDev - Ready to earn some Bread?
         </p>
       </footer>
     </>

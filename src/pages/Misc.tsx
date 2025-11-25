@@ -5,7 +5,6 @@ import { Link } from "react-router-dom";
 export const Misc: React.FC = () => {
   return (
     <main className="rb-content theme-games">
-
       <h2 className="modern-title">
         <span className="emoji">✨</span> More Ways to Earn
       </h2>
@@ -14,28 +13,36 @@ export const Misc: React.FC = () => {
       </p>
 
       <div className="modern-grid">
+        {/* Offer Walls Hub */}
+        <Link to="/offerwalls" className="modern-card surveys-card">
+          <div className="modern-icon">
+            <span className="emoji">🧱</span>
+          </div>
+          <div className="modern-title-sm">Offer Walls Hub</div>
+          <div className="modern-desc">
+            Earn by brand, instead of method.
+          </div>
+        </Link>
 
         {/* Affiliate Program */}
         <Link to="/affiliate" className="modern-card misc-card">
-            <div className="modern-icon">
-                <span className="emoji">🎮</span>
-            </div>
-            <div className="modern-title-sm">Save on gaming, servers, and more.</div>
-            <div className="modern-desc">
-                Get discounts, cashback, and shop credit on games, servers, and subscriptions you love.
-            </div>
-            </Link>
+          <div className="modern-icon">
+            <span className="emoji">🤝</span>
+          </div>
+          <div className="modern-title-sm">Save on gaming, servers, and more.</div>
+          <div className="modern-desc">
+            Get discounts, cashback, and shop credit on games, servers, and subscriptions you love.
+          </div>
+        </Link>
 
-        {/* Affiliate Program 2 */}
+        {/* Security / privacy deals */}
         <Link to="/Security" className="modern-card surveys-card">
-            <div className="modern-icon">
-                <span className="emoji">🛡️</span>
-            </div>
-            <div className="modern-title-sm">Save on security, VPN's, and more.</div>
-            <div className="modern-desc">
-                Get discounts, free trials, and more on your security.
-            </div>
-            </Link>
+          <div className="modern-icon">
+            <span className="emoji">🛡️</span>
+          </div>
+          <div className="modern-title-sm">Save on security, VPNs, and more.</div>
+          <div className="modern-desc">Get discounts, free trials, and more on your security.</div>
+        </Link>
 
         {/* Coming Soon */}
         <div className="modern-card games-card">
@@ -47,7 +54,6 @@ export const Misc: React.FC = () => {
             New earning features are in the oven, stay tuned ;)
           </div>
         </div>
-
       </div>
     </main>
   );

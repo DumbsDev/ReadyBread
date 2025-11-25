@@ -1,5 +1,5 @@
 // src/pages/Rewards.tsx
-// Fully converted to UserContext — no props, auto-redirect, safe balance updates.
+// Fully converted to UserContext - no props, auto-redirect, safe balance updates.
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -20,10 +20,11 @@ import { db } from "../config/firebase";
 import { useUser } from "../contexts/UserContext";
 
 /* ---------------------------------------------------
-   Logos — must exist
+   Logos - must exist
 --------------------------------------------------- */
 import paypalLogo from "../static/images/icons/paypal.png";
 import cashappLogo from "../static/images/icons/Cashapp.webp";
+import bitcoinLogo from "../static/images/icons/bitcoin.svg";
 import dwbLogo from "../static/images/icons/drswithoutborders.png";
 import redcrossLogo from "../static/images/icons/redcross.png";
 import stjudesLogo from "../static/images/icons/stjudes.png";
@@ -32,7 +33,7 @@ import unicefLogo from "../static/images/icons/unicef.png";
 /* ---------------------------------------------------
    Types
 --------------------------------------------------- */
-type PayoutMethodId = "paypal" | "cashapp";
+type PayoutMethodId = "paypal" | "cashapp" | "bitcoin";
 
 interface PayoutMethod {
   id: PayoutMethodId;
@@ -54,7 +55,7 @@ interface Charity {
 /* ---------------------------------------------------
    Config
 --------------------------------------------------- */
-const payoutMethods: PayoutMethod[] = [
+const mobilePayoutMethods: PayoutMethod[] = [
   {
     id: "paypal",
     name: "PayPal",
@@ -69,6 +70,17 @@ const payoutMethods: PayoutMethod[] = [
     blurb: "Send your earnings to your Cash App.",
     logo: cashappLogo,
     brandClass: "rw-pill-cashapp",
+  },
+];
+
+const cryptoPayoutMethods: PayoutMethod[] = [
+  {
+    id: "bitcoin",
+    name: "Bitcoin",
+    headline: "Flat 10% network fee",
+    blurb: "Cash out to a BTC wallet.",
+    logo: bitcoinLogo,
+    brandClass: "rw-pill-bitcoin",
   },
 ];
 
@@ -162,12 +174,27 @@ export const Rewards: React.FC = () => {
   /* ---------------------------------------------------
      Derived
 --------------------------------------------------- */
-  const effectiveMax = Math.min(20, currentBalance);
+  const allPayoutMethods = [
+    ...mobilePayoutMethods,
+    ...cryptoPayoutMethods,
+  ];
 
   const selectedMethod =
     selectedMethodId != null
-      ? payoutMethods.find((m) => m.id === selectedMethodId) || null
+      ? allPayoutMethods.find((m) => m.id === selectedMethodId) || null
       : null;
+
+  const parsedPayoutAmount = parseFloat(payoutAmount) || 0;
+  const parsedCryptoFee =
+    selectedMethod?.id === "bitcoin" ? parsedPayoutAmount * 0.1 : 0;
+  const effectiveMax =
+    selectedMethod?.id === "bitcoin"
+      ? Math.min(20, currentBalance / 1.1)
+      : Math.min(20, currentBalance);
+  const totalRequested =
+    selectedMethod?.id === "bitcoin"
+      ? parsedPayoutAmount + parsedCryptoFee
+      : parsedPayoutAmount;
 
   const selectedCharity =
     selectedCharityId != null
@@ -207,15 +234,25 @@ export const Rewards: React.FC = () => {
     if (!user || !selectedMethod) return;
 
     const amountNum = parseFloat(payoutAmount);
+    const cryptoFeeNum =
+      selectedMethod.id === "bitcoin" ? amountNum * 0.1 : 0;
 
     if (isNaN(amountNum) || amountNum < 3) {
       alert("Minimum cashout is $3.00.");
       return;
     }
 
-    const max = Math.min(20, currentBalance);
+    const max =
+      selectedMethod.id === "bitcoin"
+        ? Math.min(20, currentBalance / 1.1)
+        : Math.min(20, currentBalance);
     if (amountNum > max) {
       alert(`You can cash out at most $${max.toFixed(2)} right now.`);
+      return;
+    }
+
+    if (selectedMethod.id === "bitcoin" && amountNum + cryptoFeeNum > currentBalance) {
+      alert("Your requested amount plus the crypto fee exceeds your balance.");
       return;
     }
 
@@ -224,7 +261,9 @@ export const Rewards: React.FC = () => {
       alert(
         selectedMethod.id === "paypal"
           ? "Enter a PayPal email."
-          : "Enter your Cash App $cashtag."
+          : selectedMethod.id === "cashapp"
+            ? "Enter your Cash App $cashtag."
+            : "Enter your Bitcoin address."
       );
       return;
     }
@@ -236,6 +275,11 @@ export const Rewards: React.FC = () => {
         alert("Enter a valid Cash App tag.");
         return;
       }
+    }
+
+    if (selectedMethod.id === "bitcoin" && normalizedTag.length < 20) {
+      alert("Enter a valid Bitcoin address.");
+      return;
     }
 
     try {
@@ -268,6 +312,8 @@ export const Rewards: React.FC = () => {
         method: selectedMethod.id,
         paypalEmail: selectedMethod.id === "paypal" ? idValue : null,
         cashappTag: selectedMethod.id === "cashapp" ? normalizedTag : null,
+        bitcoinAddress: selectedMethod.id === "bitcoin" ? normalizedTag : null,
+        cryptoFee: selectedMethod.id === "bitcoin" ? cryptoFeeNum : null,
         status: "pending",
         createdAt: serverTimestamp(),
       });
@@ -277,21 +323,28 @@ export const Rewards: React.FC = () => {
       const fresh = await getDoc(uRef);
       const freshBal = (fresh.data()?.balance ?? 0) as number;
 
-      if (freshBal < amountNum) {
-        alert("Balance changed — not enough funds.");
+      const totalDebit = selectedMethod.id === "bitcoin" ? amountNum + cryptoFeeNum : amountNum;
+
+      if (freshBal < totalDebit) {
+        alert("Balance changed - not enough funds.");
         return;
       }
 
-      await updateDoc(uRef, { balance: freshBal - amountNum });
-      setCurrentBalance(freshBal - amountNum);
+      await updateDoc(uRef, { balance: freshBal - totalDebit });
+      setCurrentBalance(freshBal - totalDebit);
 
       await refreshProfile();
 
-      alert(`Cashout request for $${amountNum.toFixed(2)} submitted!`);
+      const confirmation =
+        selectedMethod.id === "bitcoin"
+          ? `Cashout for $${amountNum.toFixed(2)} (+$${cryptoFeeNum.toFixed(2)} crypto fee) submitted!`
+          : `Cashout request for $${amountNum.toFixed(2)} submitted!`;
+
+      alert(confirmation);
       setShowPayoutModal(false);
     } catch (err) {
       console.error(err);
-      alert("Something went wrong — try again.");
+      alert("Something went wrong - try again.");
     }
   };
 
@@ -342,7 +395,7 @@ export const Rewards: React.FC = () => {
       const freshBal = (fresh.data()?.balance ?? 0) as number;
 
       if (freshBal < amountNum) {
-        alert("Balance changed — not enough funds.");
+        alert("Balance changed - not enough funds.");
         return;
       }
 
@@ -374,7 +427,7 @@ export const Rewards: React.FC = () => {
       {/* HERO CARD */}
       <section className="rw-card rw-card-hero">
         <h2 className="rb-section-title">Time to have your cake and eat it too.</h2>
-        <p className="rb-section-sub">Cash out or donate without fees.</p>
+        <p className="rb-section-sub">Cash out or donate; crypto payouts include a flat 10% network fee.</p>
         <div className="rw-balance-line">
           <span>Your current balance:</span>
           <strong>${currentBalance.toFixed(2)}</strong>
@@ -387,7 +440,35 @@ export const Rewards: React.FC = () => {
         <p className="rw-row-sub">Choose your withdrawal method.</p>
 
         <div className="rw-row-strip">
-          {payoutMethods.map((m) => (
+          {mobilePayoutMethods.map((m) => (
+            <button
+              key={m.id}
+              className={`rw-pill-card ${m.brandClass}`}
+              onClick={() => openPayoutModal(m.id)}
+            >
+              <div className="rw-pill-main">
+                <div className="rw-pill-text">
+                  <h4>{m.name}</h4>
+                  <p className="rw-pill-headline">{m.headline}</p>
+                  <p className="rw-pill-blurb">{m.blurb}</p>
+                </div>
+                <div className="rw-pill-logo">
+                  <img src={m.logo} alt={`${m.name} logo`} />
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* CRYPTO */}
+      <section className="rw-card">
+        <h3 className="rw-row-title">Crypto</h3>
+        <p className="rw-row-sub">Bitcoin cashouts through Cash App. Flat 10% network fee. 
+          You must enter the bitcoin address correctly, as we will not refund errors via crypto.</p>
+
+        <div className="rw-row-strip">
+          {cryptoPayoutMethods.map((m) => (
             <button
               key={m.id}
               className={`rw-pill-card ${m.brandClass}`}
@@ -441,7 +522,7 @@ export const Rewards: React.FC = () => {
           <li>Minimum cashout: <b>$3.00</b></li>
           <li>Maximum per request: <b>$20</b></li>
           <li>Limit: <b>1 cashout per 24 hours</b></li>
-          <li>No fees.</li>
+          <li>Only fee: flat 10% on crypto to cover network costs.</li>
           <li>Donations matched by <b>5%</b>.</li>
         </ul>
       </section>
@@ -453,7 +534,7 @@ export const Rewards: React.FC = () => {
           <div className="rb-modal-content">
             <h3 className="accent-toast">Cash out via {selectedMethod.name}</h3>
             <p className="soft-text">
-              Allowed: <b>$3.00</b> → <b>${effectiveMax.toFixed(2)}</b>
+              Allowed: <b>$3.00</b> - <b>${effectiveMax.toFixed(2)}</b> (amount before any crypto fee).
             </p>
 
             <label className="modal-label">Amount (USD)</label>
@@ -469,13 +550,40 @@ export const Rewards: React.FC = () => {
             <label className="modal-label">
               {selectedMethod.id === "paypal"
                 ? "PayPal Email"
-                : "Cash App $cashtag"}
+                : selectedMethod.id === "cashapp"
+                  ? "Cash App $cashtag"
+                  : "Bitcoin address"}
             </label>
             <input
               type={selectedMethod.id === "paypal" ? "email" : "text"}
               value={payoutIdentifier}
               onChange={(e) => setPayoutIdentifier(e.target.value)}
+              placeholder={
+                selectedMethod.id === "paypal"
+                  ? "name@email.com"
+                  : selectedMethod.id === "cashapp"
+                    ? "$cashtag"
+                    : "bc1..."
+              }
             />
+
+            {selectedMethod.id === "bitcoin" && (
+              <div className="crypto-fee-note">
+                <div className="crypto-fee-label">
+                  Crypto fee (10%)
+                  <span
+                    className="crypto-fee-help"
+                    title="Crypto network fees are high, so we pass them through. This is the only fee we charge."
+                  >
+                    ?
+                  </span>
+                </div>
+                <p>
+                  Fee: <b>${parsedCryptoFee.toFixed(2)}</b>
+                  {"  "}Total deducted: <b>${totalRequested.toFixed(2)}</b>
+                </p>
+              </div>
+            )}
 
             <div className="rb-modal-actions">
               <button className="hb-btn" onClick={handleSubmitPayout}>

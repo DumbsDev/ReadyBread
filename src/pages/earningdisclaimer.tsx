@@ -42,7 +42,7 @@ export const EarningsDisclaimer: React.FC = () => {
       <p>Rewards may be denied or reversed due to:</p>
       <ul>
         <li>Multi-accounting</li>
-        <li>VPN or proxy use</li>
+        <li>VPN or proxy use may reduce offer availability</li>
         <li>Low-quality answers</li>
         <li>Automated behavior</li>
         <li>Partner fraud flags</li>
