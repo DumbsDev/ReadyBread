@@ -24,6 +24,9 @@ interface Offer {
   isWall?: boolean; // true for the AdGem wall hub card
 }
 
+// Toggle the AdGem offer wall button on/off for quick testing
+const SHOW_ADGEM_WALL = false;
+
 export const Games: React.FC = () => {
   const navigate = useNavigate();
   const { user, loading } = useUser();
@@ -131,7 +134,9 @@ export const Games: React.FC = () => {
       // -------------------------------------------
       // 3) Combine: BitLabs individual games + AdGem wall hub
       // -------------------------------------------
-      const combined: Offer[] = [...bitlabsOffers, adgemWallOffer];
+      const combined: Offer[] = SHOW_ADGEM_WALL
+        ? [...bitlabsOffers, adgemWallOffer]
+        : [...bitlabsOffers];
 
       setOffers(combined);
     } catch (err) {
@@ -292,7 +297,7 @@ export const Games: React.FC = () => {
             >
               <span className="chip chip-time">
                 {offers.length > 0
-                  ? `${offers.length} live entries (BitLabs + AdGem hub)`
+                  ? `${offers.length} live entries (BitLabs${SHOW_ADGEM_WALL ? " + AdGem hub" : ""})`
                   : loadingOffers
                   ? "Checking offers…"
                   : "No active offers at the moment"}

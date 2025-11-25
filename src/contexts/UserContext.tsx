@@ -20,6 +20,7 @@ export interface UserProfile {
   admin: boolean;
   createdAt: any;
   shortcutBonusClaimed: boolean;
+  shortcutBonusAt?: any;
   dailyStreak?: number;       // number of days
   bonusPercent?: number;      // +0.5% increments
   lastCheckIn?: any;          // Firestore timestamp

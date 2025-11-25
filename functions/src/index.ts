@@ -779,6 +779,85 @@ export const bitlabsReceiptCallback = onRequest(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
+//  SHORTCUT BONUS (PWA install / standalone launch)
+////////////////////////////////////////////////////////////////////////////////
+
+const SHORTCUT_BONUS_AMOUNT = 0.05;
+const SHORTCUT_BONUS_ID = "shortcut_bonus";
+
+export const claimShortcutBonus = functions.https.onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "You must be logged in.");
+  }
+
+  const uid = request.auth.uid;
+  const userRef = db.collection("users").doc(uid);
+
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(userRef);
+    if (!snap.exists) {
+      throw new HttpsError("failed-precondition", "User not found.");
+    }
+
+    const data = snap.data() || {};
+    const alreadyClaimed = data.shortcutBonusClaimed === true;
+
+    if (alreadyClaimed) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Shortcut bonus already claimed."
+      );
+    }
+
+    const now = admin.firestore.Timestamp.now();
+    const serverNow = admin.firestore.FieldValue.serverTimestamp();
+    const startedOfferRef = userRef
+      .collection("startedOffers")
+      .doc(SHORTCUT_BONUS_ID);
+
+    tx.update(userRef, {
+      balance: admin.firestore.FieldValue.increment(SHORTCUT_BONUS_AMOUNT),
+      shortcutBonusClaimed: true,
+      shortcutBonusAt: serverNow,
+      shortcutBonusToken: null,
+      auditLog: admin.firestore.FieldValue.arrayUnion({
+        type: "shortcut_bonus",
+        amount: SHORTCUT_BONUS_AMOUNT,
+        at: now,
+      }),
+    });
+
+    tx.set(
+      startedOfferRef,
+      {
+        status: "completed",
+        completedAt: serverNow,
+        lastUpdatedAt: serverNow,
+        totalPayout: SHORTCUT_BONUS_AMOUNT,
+        title: "Home screen bonus",
+        type: "bonus",
+        source: "pwa_shortcut",
+      },
+      { merge: true }
+    );
+
+    tx.set(
+      userRef.collection("offers").doc(),
+      {
+        offerId: SHORTCUT_BONUS_ID,
+        type: "bonus",
+        amount: SHORTCUT_BONUS_AMOUNT,
+        source: "pwa_shortcut",
+        createdAt: serverNow,
+      },
+      { merge: true }
+    );
+
+    return { ok: true, amount: SHORTCUT_BONUS_AMOUNT };
+  });
+});
+
+////////////////////////////////////////////////////////////////////////////////
 //  DAILY CHECK-IN — callable function (server-only streak update)
 ////////////////////////////////////////////////////////////////////////////////
 

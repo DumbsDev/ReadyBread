@@ -268,7 +268,9 @@ export const Login: React.FC = () => {
         // ignore
       }
 
-      alert("Verification email sent! Please verify before logging in.");
+      alert(
+        "Verification email sent! Please verify before logging in. If you don't see it, check your spam folder."
+      );
 
       // Log them out after signup so they must verify first
       await signOut(auth);

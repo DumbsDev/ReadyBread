@@ -8,6 +8,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   orderBy,
   query,
   setDoc,
@@ -69,6 +70,10 @@ interface OfferHistoryItem {
   createdAt?: any;
   source?: string | null;
 }
+
+const SHORTCUT_BONUS_ID = "shortcut_bonus";
+const SHORTCUT_BONUS_AMOUNT = 0.05;
+const SHORTCUT_BONUS_TITLE = "Home screen bonus";
 
 // -------------------------------
 // Component
@@ -148,7 +153,6 @@ export const Dashboard: React.FC = () => {
         await loadReferralData(uid);
         await loadStartedOffers(uid);
         await loadOfferHistory(uid);
-        await loadPayoutHistory(uid);
       } catch (err) {
         console.error(err);
         setError("Something went wrong loading your dashboard.");
@@ -156,6 +160,15 @@ export const Dashboard: React.FC = () => {
     };
 
     loadEverything();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const unsub = loadPayoutHistory(user.uid);
+    return () => {
+      if (unsub) unsub();
+    };
   }, [user]);
 
   // ----------------------------------------------------
@@ -275,6 +288,57 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const appendShortcutBonusToStartedOffers = (
+    offers: StartedOffer[]
+  ): StartedOffer[] => {
+    if (!profile?.shortcutBonusClaimed) return offers;
+
+    const hasBonus = offers.some((o) => o.id === SHORTCUT_BONUS_ID);
+    if (hasBonus) return offers;
+
+    const completedAt = profile?.shortcutBonusAt ?? null;
+
+    const bonusOffer: StartedOffer = {
+      id: SHORTCUT_BONUS_ID,
+      title: SHORTCUT_BONUS_TITLE,
+      totalPayout: SHORTCUT_BONUS_AMOUNT,
+      type: "bonus",
+      status: "completed",
+      completedAt,
+      lastUpdatedAt: completedAt ?? undefined,
+      source: "pwa_shortcut",
+    };
+
+    return [bonusOffer, ...offers];
+  };
+
+  const appendShortcutBonusHistory = (
+    items: OfferHistoryItem[]
+  ): OfferHistoryItem[] => {
+    if (!profile?.shortcutBonusClaimed) return items;
+
+    const hasBonus = items.some(
+      (i) =>
+        i.offerId === SHORTCUT_BONUS_ID ||
+        i.id === SHORTCUT_BONUS_ID ||
+        i.type === "shortcut_bonus"
+    );
+    if (hasBonus) return items;
+
+    const createdAt = profile?.shortcutBonusAt ?? null;
+
+    const bonusHistory: OfferHistoryItem = {
+      id: `${SHORTCUT_BONUS_ID}-history`,
+      offerId: SHORTCUT_BONUS_ID,
+      type: "bonus",
+      amount: SHORTCUT_BONUS_AMOUNT,
+      source: "pwa_shortcut",
+      createdAt,
+    };
+
+    return [bonusHistory, ...items];
+  };
+
   // ----------------------------------------------------
   // LOAD OFFERS
   // ----------------------------------------------------
@@ -291,11 +355,13 @@ export const Dashboard: React.FC = () => {
         ...(d.data() as any),
       }));
 
-      setAllOffers(items);
-      setActiveOffers(items.filter((o) => o.status !== "completed"));
-      setCompletedOffers(items.filter((o) => o.status === "completed"));
+      const withShortcut = appendShortcutBonusToStartedOffers(items);
+
+      setAllOffers(withShortcut);
+      setActiveOffers(withShortcut.filter((o) => o.status !== "completed"));
+      setCompletedOffers(withShortcut.filter((o) => o.status === "completed"));
       setProgressOffers(
-        items.filter(
+        withShortcut.filter(
           (o) => typeof o.totalObjectives === "number" && o.totalObjectives > 0
         )
       );
@@ -314,12 +380,12 @@ export const Dashboard: React.FC = () => {
       const q = query(colRef, orderBy("createdAt", "desc"));
       const snap = await getDocs(q);
 
-      setOfferHistory(
-        snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as any),
-        }))
-      );
+      const items = snap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as any),
+      }));
+
+      setOfferHistory(appendShortcutBonusHistory(items));
     } catch (err) {
       console.error("Error loading offer history:", err);
     } finally {
@@ -328,32 +394,42 @@ export const Dashboard: React.FC = () => {
   };
 
   // IMPORTANT CHANGE: subcollection name from "cashouts" -> "payouts"
-  const loadPayoutHistory = async (uid: string) => {
+  const loadPayoutHistory = (uid: string) => {
     setPayoutsLoading(true);
 
-    try {
-      const colRef = collection(db, "users", uid, "payouts");
-      const q = query(colRef, orderBy("createdAt", "desc"));
-      const snap = await getDocs(q);
+    const colRef = collection(db, "users", uid, "payouts");
+    const q = query(colRef, orderBy("createdAt", "desc"));
 
-      setPayouts(
-        snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as any),
-        }))
-      );
-    } catch (err) {
-      console.error("Error loading payout history:", err);
-    } finally {
-      setPayoutsLoading(false);
-    }
+    return onSnapshot(
+      q,
+      (snap) => {
+        setPayouts(
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as any),
+          }))
+        );
+        setPayoutsLoading(false);
+      },
+      (err) => {
+        console.error("Error loading payout history:", err);
+        setPayoutsLoading(false);
+      }
+    );
   };
 
   // ----------------------------------------------------
   // MODAL + HELPERS + UI
   // ----------------------------------------------------
-  const formatTimestamp = (ts: any) =>
-    ts?.toDate ? ts.toDate().toLocaleDateString() : "—";
+  const formatTimestamp = (ts: any) => {
+    if (!ts) return "--";
+    if (typeof ts.toDate === "function") {
+      return ts.toDate().toLocaleDateString();
+    }
+    if (ts instanceof Date) return ts.toLocaleDateString();
+    if (typeof ts === "number") return new Date(ts).toLocaleDateString();
+    return "--";
+  };
 
   const openOfferModal = (offer: StartedOffer) => {
     setSelectedOffer(offer);
@@ -609,6 +685,22 @@ export const Dashboard: React.FC = () => {
                 </>
               )}
             </div>
+
+            {/* DANGER ZONE (overview only) */}
+            <section className="dash-card modern-card glass-card danger-zone">
+              <h3 className="dash-card-title" style={{ color: "var(--golden-toast)" }}>
+                Danger Zone
+              </h3>
+              <p className="dash-muted">These actions are permanent or sensitive.</p>
+              <button className="rb-btn rb-btn-danger" onClick={handleLogout}>
+                Log Out
+              </button>
+              <br />
+              <button className="rb-btn rb-btn-danger" onClick={handleDeleteAccount}>
+                Delete Account
+              </button>
+            </section>
+
           </div>
         )}
 
@@ -875,7 +967,7 @@ export const Dashboard: React.FC = () => {
             <div className="dash-card modern-card glass-card">
               <h3 className="dash-card-title">Achievements</h3>
               <p className="dash-muted">
-                Sorry! This tab is currently <i>half-baked</i>. 🍞
+                Sorry! This tab is currently <i>half-baked</i>. dY?z
               </p>
             </div>
           </div>
@@ -1033,21 +1125,6 @@ export const Dashboard: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {/* DANGER ZONE (only on Overview) */}
-            <section className="dash-card modern-card glass-card danger-zone">
-              <h3 className="dash-card-title" style={{ color: "var(--golden-toast)" }}>
-                Danger Zone
-              </h3>
-              <p className="dash-muted">These actions are permanent or sensitive.</p>
-              <button className="rb-btn rb-btn-danger" onClick={handleLogout}>
-                Log Out
-              </button>
-              <br />
-              <button className="rb-btn rb-btn-danger" onClick={handleDeleteAccount}>
-                Delete Account
-              </button>
-            </section>
           </div>
         )}
       </section>

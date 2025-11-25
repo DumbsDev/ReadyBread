@@ -36,6 +36,7 @@ import BreadGame from "./breadgame/breadGame";
 import { Privacy } from "./pages/privacy";
 import { TOS } from "./pages/TOS";
 import { EarningsDisclaimer } from "./pages/earningdisclaimer";
+import { useShortcutBonus } from "./hooks/useShortcutBonus";
 
 // -----------------------------------------------------
 // LANDING GATE — Handles "/" logic
@@ -67,6 +68,7 @@ const LandingGate: React.FC = () => {
 // -----------------------------------------------------
 export const AppInner: React.FC = () => {
   const { user, profile, balance, loading, admin } = useUser();
+  useShortcutBonus();
 
   const showLoader: boolean = loading || (user !== null && profile === null);
 

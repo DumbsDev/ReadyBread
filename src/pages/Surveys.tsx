@@ -26,6 +26,9 @@ type MergedSurvey = {
   country?: string;
 };
 
+// Toggle BitLabs surveys on/off for quick testing.
+const SHOW_BITLABS_SURVEYS = false;
+
 export const Surveys: React.FC = () => {
   const { authUser, loading: userLoading } = useUser();
   const navigate = useNavigate();
@@ -65,7 +68,7 @@ export const Surveys: React.FC = () => {
   const loadAllSurveys = async () => {
     setSurveysLoading(true);
     await Promise.all([
-      loadBitlabsSurveys(),
+      SHOW_BITLABS_SURVEYS ? loadBitlabsSurveys() : Promise.resolve(),
       loadCpxSurveys()
     ]);
     setSurveysLoading(false);
@@ -193,15 +196,17 @@ export const Surveys: React.FC = () => {
      MERGE + SORT SURVEYS
   --------------------------------------------------- */
   const mergedSurveys: MergedSurvey[] = [
-    ...bitlabsSurveys.map((s): MergedSurvey => ({
-      source: "bitlabs",
-      id: s.id,
-      payout: Number(s.cpi || 0),
-      minutes: Number(s.loi || 0),
-      category: s.category?.name || "Survey",
-      click_url: s.click_url,
-      country: s.country || "?"
-    })),
+    ...(SHOW_BITLABS_SURVEYS
+      ? bitlabsSurveys.map((s): MergedSurvey => ({
+          source: "bitlabs",
+          id: s.id,
+          payout: Number(s.cpi || 0),
+          minutes: Number(s.loi || 0),
+          category: s.category?.name || "Survey",
+          click_url: s.click_url,
+          country: s.country || "?"
+        }))
+      : []),
     ...cpxSurveys.map((s): MergedSurvey => ({
       source: "cpx",
       id: s.id,
@@ -258,7 +263,9 @@ export const Surveys: React.FC = () => {
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10, fontSize: 13 }}>
               <span className="chip chip-time">
-                {totalSurveys > 0 ? `${totalSurveys} live surveys` : "Checking for surveys…"}
+                {totalSurveys > 0
+                  ? `${totalSurveys} live surveys (${SHOW_BITLABS_SURVEYS ? "BitLabs + " : ""}CPX)`
+                  : "Checking for surveys…"}
               </span>
               {bestPayout > 0 && (
                 <span className="chip chip-payout">Top payout ~ ${bestPayout.toFixed(2)}</span>

@@ -36,7 +36,7 @@ export const TutorialArticle: React.FC = () => {
 
       <div className="article-content">
         {article.content.map((para, idx) => (
-          <p key={idx}>{para}</p>
+          <p key={idx} dangerouslySetInnerHTML={{ __html: para }} />
         ))}
       </div>
     </div>

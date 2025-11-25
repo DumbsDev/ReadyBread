@@ -37,6 +37,7 @@ export interface RBUser {
 
   // Dashboard + Account features
   shortcutBonusClaimed?: boolean;
+  shortcutBonusAt?: any;
 
   // 🔥 Daily streak bonus (server-managed)
   dailyStreak?: number;   // 1, 2, 3... etc.

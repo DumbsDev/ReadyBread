@@ -3,7 +3,7 @@
 export interface TutorialArticle {
   slug: string;
   title: string;
-  content: string[]; // paragraphs or blocks
+  content: string[]; // paragraphs or blocks (basic HTML like <em>...</em> is allowed)
 }
 
 export interface TutorialCategory {
@@ -23,14 +23,42 @@ export const tutorialCategories: TutorialCategory[] = [
     articles: [
       {
         slug: "how-gaming-offers-work",
-        title: "How Gaming Offers Work",
+        title: "How gaming offers work",
         content: [
           "Gaming offers allow you to earn money by installing and playing mobile or desktop games through partners like BitLabs and AdGem.",
           "Always install from the ReadyBread link—this ensures the offer tracks properly.",
           "Offers usually require you to reach a certain level, unlock features, or complete milestones.",
-          "Progress may update instantly or within 1–24 hours, depending on the partner.",
-          "Never uninstall the game before the reward is credited to your ReadyBread balance."
+          "Progress may take up to 48 hours, depending on the partner.",
+          "Never uninstall the game before the reward is credited to your ReadyBread balance.",
+          "We try to vet what we can, but fake offers might appear. If you are not credited and are sure you did the offer correctly, send us an email at contact@readybread.xyz."
         ]
+      },
+      {
+        slug: "how-to-track-offers",
+        title: "How to properly track offers",
+        content: [
+          "Offers only pay when your phone lets partners see that you played. Turn tracking on so they can verify you.",
+          "<strong>iPhone/iPad</strong>: Settings > Privacy & Security > Tracking > turn on \"Allow Apps to Request to Track.\" When the game asks, tap Allow. Otherwise you will not be credited, and we cannot help you.",
+          "<strong>Android</strong>: Settings > Google > Ads (or Settings > Privacy > Ads). Turn off \"Opt out of Ads Personalization.\" Do not delete your Advertising ID while an offer is running. If this is not done, we cannot help you and you will not be credited.",
+          "Install from the ReadyBread link, open the game right away, and keep it installed until you get paid.",
+          "Use normal Wi-Fi or mobile data. Avoid VPNs, hotel/work Wi-Fi, or weak signal while you play.",
+          "Turn off battery saver or data saver for the game so it can report progress.",
+          "You MUST be a new user for the app.",
+          "If you still do not see credit after 48 hours, take screenshots of your progress and email contact@readybread.xyz so we can check it."
+        ]
+      },
+      {
+      slug: "why-is-my-offer-not-tracking",
+      title: "Why is my offer not tracking?",
+      content: [
+        "Goals in offers can take up to 48 hours to process and track. If 48 hours have passed and it still hasn't tracked, there might be another issue.",
+        "1. For IOS users, you must enable \"App Tracking\" in your settings, if you haven't already. You can do so by following this flow: Settings -> Privacy & Security -> Tracking -> Allow Apps to Request to Track. If this is not enabled, please do so now to use our offerwall.",
+        "2. You may have enabled this, but pressed \"Ask app not to track\" on the popup. This will not allow objectives to track properly. You can toggle tracking for your apps in the app's designated settings.",
+        "3. You may have used a VPN. If you complete a task while using a VPN, or VPN insured wifi, it will not track. It is safest to use regular home wifi, or cellular data.",
+        "4. If your phone is on low-power mode, or at less than 10%, it may not always track properly.",
+        "5. If you have already installed the app before, it will not count and you are inelligible for the offer",
+        "5. If you know for a fact none of these are the issue, please contact us at contact@readybread.xyz and we will do our best to fix the issue, or find a proper cause."
+      ]
       }
     ]
   },
@@ -46,9 +74,9 @@ export const tutorialCategories: TutorialCategory[] = [
         title: "Survey Basics & Best Practices",
         content: [
           "Surveys are quick, consistent ways to earn daily rewards.",
-          "Disqualifications are normal—partners use matching to find the perfect fit.",
-          "Answer consistently across similar questions; contradictions cause disqualifications.",
-          "Check back multiple times per day—surveys refresh constantly."
+          "Disqualifications are normal, partners use matching to find the perfect fit.",
+          "Answer consistently across similar questions; contradictions cause disqualifications and possibly bans.",
+          "Feel free to check back multiple times per day. Surveys refresh constantly, and we run \"Earn Events\" for surveys sometimes."
         ]
       }
     ]

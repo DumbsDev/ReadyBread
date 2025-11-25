@@ -12,6 +12,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { ChangelogCard } from "../components/ChangelogCard";
+import { isIos, isMobileDevice, isStandaloneMode } from "../utils/pwa";
 
 interface FeaturedOffer {
   id: string;
@@ -33,6 +34,11 @@ type MergedSurvey = {
   source: "bitlabs" | "cpx";
 };
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
 export const Home: React.FC = () => {
   const { user, profile } = useUser();
   const navigate = useNavigate();
@@ -49,6 +55,12 @@ export const Home: React.FC = () => {
   const [currentStreak, setCurrentStreak] = useState<number | null>(null);
   const [currentBonus, setCurrentBonus] = useState<number | null>(null);
   const [checkInSaving, setCheckInSaving] = useState(false);
+
+  // ---------- PWA / SHORTCUT BONUS ----------
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installingPwa, setInstallingPwa] = useState(false);
+  const [installError, setInstallError] = useState<string | null>(null);
+  const [hidePwaCard, setHidePwaCard] = useState(false);
 
   // ---------- FEATURED OFFERS ----------
   const [featuredGame, setFeaturedGame] = useState<FeaturedOffer | null>(null);
@@ -133,6 +145,32 @@ export const Home: React.FC = () => {
     loadCheckIn();
   }, [user]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    window.addEventListener(
+      "beforeinstallprompt",
+      handleBeforeInstallPrompt as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt as EventListener
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    setHidePwaCard(false);
+    setInstallError(null);
+  }, [user?.uid]);
+
   const handleConfirmCheckIn = async () => {
     if (!user || pendingStreak == null || pendingBonus == null) {
       setShowCheckInModal(false);
@@ -159,6 +197,50 @@ export const Home: React.FC = () => {
     } finally {
       setCheckInSaving(false);
       setShowCheckInModal(false);
+    }
+  };
+
+  const iosDevice = isIos();
+  const standalone = isStandaloneMode();
+  const mobileDevice = isMobileDevice();
+  const alreadyClaimedShortcutBonus = profile?.shortcutBonusClaimed === true;
+  const shouldShowPwaCard =
+    Boolean(
+      user &&
+      profile &&
+      mobileDevice &&
+      !alreadyClaimedShortcutBonus &&
+      !standalone
+    ) &&
+    !hidePwaCard;
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) {
+      if (!iosDevice) {
+        setInstallError(
+          'Use your browser menu and pick "Add to home screen" to install.'
+        );
+      }
+      return;
+    }
+
+    try {
+      setInstallError(null);
+      setInstallingPwa(true);
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+
+      if (choice?.outcome === "dismissed") {
+        setInstallError("Install dismissed. You can try again anytime.");
+      }
+
+      setInstallPrompt(null);
+    } catch (err: any) {
+      setInstallError(
+        err?.message || "Install prompt was blocked. Try your browser menu."
+      );
+    } finally {
+      setInstallingPwa(false);
     }
   };
 
@@ -437,6 +519,57 @@ export const Home: React.FC = () => {
             </div>
           </div>
         </section>
+
+        {shouldShowPwaCard && (
+          <section className="pwa-install-section">
+            <div className="pwa-card">
+              <div className="pwa-card-copy">
+                <span className="pwa-kicker">New: home-screen bonus</span>
+                <h3>Add ReadyBread to your home screen</h3>
+                <p>
+                  Install the shortcut, open ReadyBread from your home screen,
+                  and we&apos;ll drop{" "}
+                  <span className="bread-word">$0.05</span> into your balance
+                  (once per account).
+                </p>
+
+                <div className="pwa-steps">
+                  <div className="pwa-step-pill">
+                    {iosDevice
+                      ? "Tap Share > Add to Home Screen"
+                      : "Tap Install"}
+                  </div>
+                  <div className="pwa-step-pill">Launch from your home screen</div>
+                  <div className="pwa-step-pill">Bonus auto-claims</div>
+                </div>
+              </div>
+
+              <div className="pwa-actions">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleInstallClick}
+                  disabled={installingPwa}
+                >
+                  {installingPwa ? "Waiting for install..." : "Install & claim $0.05"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setHidePwaCard(true)}
+                >
+                  Maybe later
+                </button>
+                <p className="pwa-note">
+                  {iosDevice
+                    ? 'On iPhone/iPad: tap Share, then "Add to Home Screen."'
+                    : "Already installed? Open ReadyBread from your home screen to trigger the bonus."}
+                </p>
+                {installError && <p className="pwa-error">{installError}</p>}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* FEATURE CARDS (LOGGED-IN SHORTCUTS) */}
         <section className="feature-grid">

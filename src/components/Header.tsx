@@ -38,9 +38,13 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
         <Link to="/dashboard" className={isActive('/dashboard')}>
           Dashboard
         </Link>
-        <Link to="/login" id="loginLink">
-          {/* Show username if logged in, otherwise "Login" */}
-          {user ? user.username : 'Login'}
+        {!user && (
+          <Link to="/login" id="loginLink">
+            Login
+          </Link>
+        )}
+        <Link to="/tutorials" className={isActive('/tutorials')}>
+          Help
         </Link>
       </nav>
     </header>
