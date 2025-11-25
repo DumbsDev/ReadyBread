@@ -877,3 +877,45 @@
   --streak-text: #ffe3d3;
   --streak-bg: rgba(255, 122, 69, 0.08);
 }
+
+/* BreadGame Beta Card */
+
+.breadgame-beta-card h2 {
+  margin-bottom: 6px;
+}
+
+.beta-desc {
+  font-size: 14px;
+  opacity: 0.88;
+  line-height: 1.5;
+}
+
+.beta-warning {
+  margin-top: 10px;
+  padding: 10px;
+  border-left: 3px solid #ffd166;
+  background: rgba(255, 209, 102, 0.08);
+  border-radius: 6px;
+  font-size: 13px;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+.beta-code-snippet {
+  margin: 14px 0;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.05);
+  overflow: auto;
+}
+
+.beta-code-snippet pre {
+  margin: 0;
+  font-family: "JetBrains Mono", "Roboto Mono", monospace;
+  font-size: 12px;
+  color: #ffe9a6;
+  text-shadow: 0 0 4px rgba(255,255,255,0.15);
+  white-space: pre-wrap;
+  line-height: 1.4;
+}

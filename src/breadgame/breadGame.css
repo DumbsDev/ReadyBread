@@ -1,0 +1,389 @@
+/* src/breadgame/breadgame.css */
+
+/* ------------------------------
+   BASE LAYOUT
+------------------------------ */
+
+.breadgame-shell {
+  height: 100vh;
+  width: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: radial-gradient(circle at top, #1b1205 0, #050507 45%, #000 100%);
+  color: #fdfdfd;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter",
+    "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+
+/* ------------------------------
+   TOP AD
+------------------------------ */
+
+.bg-top-ad {
+  padding: 6px 10px;
+  display: flex;
+  justify-content: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ------------------------------
+   MAIN GRID
+------------------------------ */
+
+.bg-main-row {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) 260px;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ------------------------------
+   LEFT AD COLUMN
+------------------------------ */
+
+.bg-left-ad {
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* ------------------------------
+   CENTER: PLAY AREA
+------------------------------ */
+
+.bg-center {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  overflow-y: auto;
+}
+
+/* Progress bar */
+.bg-progress-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bg-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.bg-progress-bar {
+  width: 100%;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.bg-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffd166, #ffe9a6);
+  box-shadow: 0 0 12px rgba(255, 209, 102, 0.7);
+  transition: width 0.25s linear;
+}
+
+.bg-progress-caption {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* Stats + Bread */
+.bg-center-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 20px;
+}
+
+.bg-stats {
+  font-size: 14px;
+  opacity: 0.92;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Bread Button */
+.bg-bread-button {
+  width: 150px;
+  height: 150px;
+  border-radius: 999px;
+  font-size: 64px;
+  border: none;
+  background: radial-gradient(circle at 30% 20%, #ffe9a6, #ffbb55);
+  box-shadow: 0 20px 36px rgba(0, 0, 0, 0.55),
+    0 0 28px rgba(255, 209, 102, 0.6);
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.bg-bread-button:active {
+  transform: scale(0.96) translateY(2px);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.55),
+    0 0 16px rgba(255, 209, 102, 0.5);
+}
+
+/* ------------------------------
+   RIGHT COLUMN (UPGRADES + STORE)
+------------------------------ */
+
+.bg-upgrades {
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(10, 10, 10, 0.82);
+  backdrop-filter: blur(6px);
+  overflow-y: auto;
+}
+
+.bg-upgrades h3 {
+  margin: 0;
+}
+
+.bg-upgrades-note {
+  font-size: 12px;
+  opacity: 0.78;
+  line-height: 1.3;
+}
+
+.bg-upgrade-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Upgrade buttons */
+
+.bg-upgrade-btn {
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(18, 18, 18, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fdfdfd;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+    transform 0.1s ease, background 0.2s ease;
+}
+
+.bg-upgrade-btn:hover:not(:disabled) {
+  border-color: rgba(255, 209, 102, 0.7);
+  box-shadow: 0 0 16px rgba(255, 209, 102, 0.25);
+  transform: translateY(-2px);
+  background: rgba(32, 32, 32, 0.85);
+}
+
+.bg-upgrade-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Titles + descriptions */
+.bg-upgrade-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.bg-upgrade-desc {
+  font-size: 12px;
+  opacity: 0.82;
+}
+
+.bg-upgrade-cost {
+  font-size: 12px;
+  color: #ffd166;
+  opacity: 0.9;
+}
+
+/* ------------------------------
+   AD SLOTS
+------------------------------ */
+
+.ad-slot {
+  border-radius: 10px;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+.ad-slot-top,
+.ad-slot-bottom {
+  height: 90px;
+  max-width: 728px;
+}
+
+.ad-slot-side {
+  width: 100%;
+  height: 600px;
+}
+
+/* ------------------------------
+   BOTTOM AD
+------------------------------ */
+
+.bg-bottom-ad {
+  padding: 6px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  justify-content: center;
+}
+
+/* ------------------------------
+   RESPONSIVE DESIGN
+------------------------------ */
+
+/* TABLET ADJUSTMENTS */
+@media (max-width: 1100px) {
+  .bg-main-row {
+    grid-template-columns: 150px minmax(0, 1fr) 240px;
+  }
+}
+
+/* MOBILE LAYOUT */
+@media (max-width: 850px) {
+  .bg-main-row {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    height: auto;
+  }
+
+  /* Left ad becomes a full-width inline ad */
+  .bg-left-ad {
+    order: 2;
+    width: 100%;
+    height: 140px;
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    padding-top: 12px;
+  }
+
+  .ad-slot-side {
+    height: 140px;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  /* Upgrades move below playfield */
+  .bg-upgrades {
+    order: 3;
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(10, 10, 10, 0.82);
+  }
+
+  /* Center play area first */
+  .bg-center {
+    order: 1;
+  }
+
+  .bg-bread-button {
+    width: 130px;
+    height: 130px;
+    font-size: 56px;
+  }
+
+  .bg-progress-bar {
+    height: 10px;
+  }
+}
+
+/* TINY DEVICES */
+@media (max-width: 520px) {
+  .bg-center {
+    padding: 14px;
+    gap: 16px;
+  }
+  .bg-bread-button {
+    width: 120px;
+    height: 120px;
+  }
+  .bg-upgrades {
+    padding: 12px;
+  }
+  .bg-upgrade-btn {
+    padding: 10px;
+  }
+}
+
+/* Container around bread for orbits + popups */
+.bg-bread-wrap {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Orbiting auto-toaster dots (position is set via inline transform) */
+.bg-orbit-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #ffe9a6, #ffbb55);
+  box-shadow: 0 0 6px rgba(255, 209, 102, 0.8);
+  opacity: 0.9;
+  pointer-events: none;
+  animation: bg-orbit-glow 1.8s ease-in-out infinite alternate;
+}
+
+/* Floating +crumb popups */
+.bg-crumb-popup {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffe9a6;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+  animation: bg-popup-float 0.7s ease-out forwards;
+}
+
+/* Extra layout polish below progress bar */
+.bg-progress-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+/* Animations */
+@keyframes bg-popup-float {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(-28px);
+  }
+}
+
+@keyframes bg-orbit-glow {
+  from {
+    box-shadow: 0 0 4px rgba(255, 209, 102, 0.6);
+  }
+  to {
+    box-shadow: 0 0 14px rgba(255, 209, 102, 0.9);
+  }
+}

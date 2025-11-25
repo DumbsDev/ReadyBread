@@ -25,9 +25,12 @@ import { NotFound } from "./pages/SimplePlaceholders";
 import { Admin } from "./pages/Admin";
 import { Security } from "./pages/Security";
 import { Landing } from "./pages/landing";
+
 import { TutorialsHome } from "./pages/tutorials/TutorialsHome";
 import { TutorialCategory } from "./pages/tutorials/TutorialCategory";
 import { TutorialArticle } from "./pages/tutorials/TutorialArticle";
+
+import BreadGame from "./breadgame/breadGame";
 
 // LEGAL
 import { Privacy } from "./pages/privacy";
@@ -97,6 +100,8 @@ export const AppInner: React.FC = () => {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/earn" element={<Earn />} />
         <Route path="/affiliate" element={<Affiliate />} />
+
+        <Route path="/breadgame" element={<BreadGame user={user} />} />
 
         {/* Legal pages */}
         <Route path="/privacy" element={<Privacy />} />

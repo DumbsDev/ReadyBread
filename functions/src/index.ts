@@ -909,4 +909,201 @@ export const cleanupCompletedOffers = onSchedule("every 24 hours", async () => {
   console.log("cleanupCompletedOffers finished.");
 });
 
+// ============================================================
+// BREADGAME CONSTANTS
+// ============================================================
+const BREADGAME_CRUMBS_PER_PACKAGE = 50_000; // crumbs → 1¢ package
+const BREADGAME_PACKAGE_REWARD_CENTS = 1;    // 1 cent
+const BREADGAME_DAILY_CAP_CENTS = 10;        // 10¢ per day max
+const BREADGAME_MAX_PACKAGES_PER_DAY =
+  BREADGAME_DAILY_CAP_CENTS / BREADGAME_PACKAGE_REWARD_CENTS;
+const BREADGAME_COOLDOWN_SECONDS = 60 * 60;  // 1 hour between packages
+
+////////////////////////////////////////////////////////////////////////////////
+//  BREADGAME — secure 1¢ package purchase
+//  - Enforces crumbs cost
+//  - Enforces 1hr cooldown
+//  - Enforces 10¢ per day max
+//  - Credits user.balance by $0.01
+////////////////////////////////////////////////////////////////////////////////
+
+export const breadgameBuyPackage = functions.https.onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "You must be logged in.");
+  }
+
+  const uid = request.auth.uid;
+
+  return db.runTransaction(async (tx) => {
+    const userRef = db.collection("users").doc(uid);
+    const stateRef = userRef.collection("breadgame").doc("state");
+
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists) {
+      throw new HttpsError(
+        "failed-precondition",
+        "User record not found for breadgame."
+      );
+    }
+
+    const stateSnap = await tx.get(stateRef);
+    const data = stateSnap.exists ? stateSnap.data() || {} : {};
+
+    const crumbs =
+      typeof data.crumbs === "number" && isFinite(data.crumbs)
+        ? data.crumbs
+        : 0;
+    const packagesBoughtToday =
+      typeof data.packagesBoughtToday === "number" &&
+      isFinite(data.packagesBoughtToday)
+        ? data.packagesBoughtToday
+        : 0;
+    const todayCents =
+      typeof data.todayCents === "number" && isFinite(data.todayCents)
+        ? data.todayCents
+        : 0;
+
+    const lastPackageAtTs = data.lastPackageAt as
+      | admin.firestore.Timestamp
+      | undefined;
+
+    // Daily cap enforcement (max 10¢ or 10 packages)
+    if (
+      packagesBoughtToday >= BREADGAME_MAX_PACKAGES_PER_DAY ||
+      todayCents >= BREADGAME_DAILY_CAP_CENTS
+    ) {
+      throw new HttpsError(
+        "resource-exhausted",
+        "Daily breadgame limit reached."
+      );
+    }
+
+    // Must have enough crumbs
+    if (crumbs < BREADGAME_CRUMBS_PER_PACKAGE) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Not enough crumbs for a package."
+      );
+    }
+
+    // Cooldown enforcement: 1 hour between packages
+    const nowMs = Date.now();
+    if (lastPackageAtTs) {
+      const lastMs = lastPackageAtTs.toMillis();
+      const nextAllowed =
+        lastMs + BREADGAME_COOLDOWN_SECONDS * 1000;
+      if (nowMs < nextAllowed) {
+        const remainingMs = nextAllowed - nowMs;
+        throw new HttpsError(
+          "failed-precondition",
+          `Package on cooldown. Try again in ${
+            Math.ceil(remainingMs / 1000)
+          } seconds.`
+        );
+      }
+    }
+
+    const newCrumbs = crumbs - BREADGAME_CRUMBS_PER_PACKAGE;
+    const newPackages = packagesBoughtToday + 1;
+    const newTodayCents = todayCents + BREADGAME_PACKAGE_REWARD_CENTS;
+    const nowTs = admin.firestore.Timestamp.now();
+
+    // Update breadgame state
+    tx.set(
+      stateRef,
+      {
+        crumbs: newCrumbs,
+        packagesBoughtToday: newPackages,
+        todayCents: newTodayCents,
+        lastPackageAt: nowTs,
+      },
+      { merge: true }
+    );
+
+    // Credit main user balance in DOLLARS
+    const rewardDollars = BREADGAME_PACKAGE_REWARD_CENTS / 100;
+
+    tx.update(userRef, {
+      balance: admin.firestore.FieldValue.increment(rewardDollars),
+      auditLog: admin.firestore.FieldValue.arrayUnion({
+        type: "breadgame_package",
+        amount: rewardDollars,
+        crumbsSpent: BREADGAME_CRUMBS_PER_PACKAGE,
+        at: nowTs,
+      }),
+    });
+
+    return {
+      ok: true,
+      crumbs: newCrumbs,
+      packagesBoughtToday: newPackages,
+      todayCents: newTodayCents,
+      lastPackageAt: nowTs.toMillis(),
+    };
+  });
+});
+
+////////////////////////////////////////////////////////////////////////////////
+//  BREADGAME DAILY RESET — 12am EST
+//  - Resets crumbs & upgrades & daily counters
+//  - Keeps cosmetics
+////////////////////////////////////////////////////////////////////////////////
+
+export const resetBreadgameDaily = onSchedule(
+  {
+    schedule: "0 0 * * *",             // every day at 00:00
+    timeZone: "America/New_York",      // 12am EST
+  },
+  async (event) => {
+    console.log("Starting resetBreadgameDaily for breadgame state…");
+
+    const usersSnap = await db.collection("users").get();
+
+    const batchSize = 400;
+    let batch = db.batch();
+    let writeCount = 0;
+    const commits: Promise<FirebaseFirestore.WriteResult[]>[] = [];
+
+    for (const userDoc of usersSnap.docs) {
+      const stateRef = userDoc.ref
+        .collection("breadgame")
+        .doc("state");
+      const stateSnap = await stateRef.get();
+
+      if (!stateSnap.exists) continue;
+
+      const data = stateSnap.data() || {};
+      const cosmetics = data.cosmetics || {};
+
+      batch.set(
+        stateRef,
+        {
+          crumbs: 0,
+          clickPowerLevel: 0,
+          autoClickLevel: 0,
+          packagesBoughtToday: 0,
+          todayCents: 0,
+          lastPackageAt: null,
+          cosmetics,
+          lastResetAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      writeCount++;
+      if (writeCount >= batchSize) {
+        commits.push(batch.commit());
+        batch = db.batch();
+        writeCount = 0;
+      }
+    }
+
+    if (writeCount > 0) commits.push(batch.commit());
+
+    await Promise.all(commits);
+
+    console.log("resetBreadgameDaily finished.");
+  }
+);
+
 export { cpxPostback } from "./cpxPostback";

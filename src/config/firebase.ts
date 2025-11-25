@@ -10,6 +10,7 @@ import {
   type Auth,
 } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFunctions, type Functions } from 'firebase/functions';
 
 // Your Firebase project configuration
 // (Keep these credentials - they're safe for client-side use)
@@ -34,4 +35,5 @@ void setPersistence(authInstance, browserLocalPersistence).catch((err) => {
 
 export const auth: Auth = authInstance;
 export const db: Firestore = getFirestore(app);
+export const functions: Functions = getFunctions(app);
 export { app }

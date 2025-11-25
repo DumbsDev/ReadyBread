@@ -594,6 +594,43 @@ export const Home: React.FC = () => {
           </div>
         </section>
 
+        {/* 🧪 BREADGAME BETA CARD */}
+        <section className="feature-grid">
+          <TiltCard className="rw-card glass-card breadgame-beta-card earn-card">
+            <h2>🥖 BreadGame BETA</h2>
+
+            <p className="beta-desc">
+              Test our brand-new <span className="bread-word">BreadClicker</span>, 
+              a Clicker-style mini-game where you earn crumbs, unlock upgrades, 
+              turn off that brain, start clicking, and collect <b>up to $0.10/day</b> in bonus earnings.
+            </p>
+
+            <p className="beta-warning">
+              ⚠️ This feature is currently <b>in beta</b>.  
+              Bugs, lag, visual glitches, and resets may occur.  
+              Your feedback helps us shape the final release!
+            </p>
+
+            <div className="beta-code-snippet">
+              <pre>
+        {`// ReadyBread: BreadGame Beta
+        clickBread();
+        upgradeToaster();
+        earnCrumbs();
+        profit();`}
+              </pre>
+            </div>
+
+            <button
+              className="btn-primary"
+              type="button"
+              onClick={() => navigate("/breadgame")}
+            >
+              Play BreadGame (Beta)
+            </button>
+          </TiltCard>
+        </section>
+
         {/* STRIP */}
         <section className="landing-strip">
           <h2>
