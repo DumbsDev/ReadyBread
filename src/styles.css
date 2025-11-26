@@ -1369,7 +1369,7 @@ button:hover {
 /* Status colors */
 .dash-status-pending {
     background: rgba(255, 209, 102, 0.15);
-    color: #ffd166;
+    color: #f0f0f0;
 }
 
 .dash-status-approved {
@@ -2465,12 +2465,12 @@ body {
 
 .status-pending {
   background: rgba(255, 200, 0, 0.2);
-  color: #ffd166;
+  color: #f0f0f0;
 }
 
 .status-fulfilled {
-  background: rgba(0, 255, 120, 0.2);
-  color: #00e676;
+  background: linear-gradient(135deg, #022903, #001f07);
+  color: #f0f0f0;
 }
 
 .status-denied {
@@ -2595,12 +2595,12 @@ body {
 
 .status-pending {
   background: linear-gradient(135deg, #ffda7a, #ffb347);
-  color: #261500;
+  color: #f0f0f0;
 }
 
 .status-fulfilled {
-  background: linear-gradient(135deg, #4caf50, #6fda86);
-  color: #071e0b;
+  background: linear-gradient(135deg, #022903, #001f07);
+  color: #f0f0f0;
 }
 
 .status-denied {
@@ -3309,4 +3309,41 @@ body {
   margin-top: 12px;
   font-size: 12px;
   opacity: 0.7;
+}
+
+/* ---------------------------------------------------
+   QUEST LEVEL SUMMARY (Dashboard)
+---------------------------------------------------- */
+.dash-level-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.dash-level-bar.level-progress-bar {
+  margin: 10px 0 8px;
+}
+
+.dash-level-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 10px;
+}
+
+.dash-level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin: 8px 0 6px;
+}
+
+.dash-level-chip {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 13px;
 }

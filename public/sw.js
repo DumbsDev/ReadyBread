@@ -1,10 +1,9 @@
-const CACHE_NAME = "readybread-static-v2";
+const CACHE_NAME = "readybread-static-v4";
 const PRECACHE_URLS = [
-  "/",
+  // Keep only truly static assets; avoid caching index.html to prevent stale bundles.
   "/manifest.webmanifest",
-  "/icons/icon-192.png",
-  "/icons/icon-256.png",
-  "/icons/icon-512.png",
+  "/icons/icon-box.png",
+  "/icons/icon-transparent.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -37,19 +36,15 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   const isStaticAsset = url.pathname.startsWith("/assets/");
+  const isNavigation = request.mode === "navigate";
 
-  // Skip asset requests so they always hit the dev/preview server fresh.
-  if (isStaticAsset) {
+  // Always let asset requests and navigations hit the network first
+  // to avoid serving stale HTML that references outdated bundles.
+  if (isStaticAsset || isNavigation) {
     return;
   }
 
   event.respondWith(
-    caches
-      .match(request)
-      .then((cached) => cached || fetch(request))
-      .catch((err) => {
-        console.error("SW fetch error", err);
-        throw err;
-      })
+    caches.match(request).then((cached) => cached || fetch(request))
   );
 });

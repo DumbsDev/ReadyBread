@@ -26,6 +26,7 @@ import { NotFound } from "./pages/SimplePlaceholders";
 import { Admin } from "./pages/Admin";
 import { Security } from "./pages/Security";
 import { Landing } from "./pages/landing";
+import { Quests } from "./pages/Quests";
 
 import { TutorialsHome } from "./pages/tutorials/TutorialsHome";
 import { TutorialCategory } from "./pages/tutorials/TutorialCategory";
@@ -46,23 +47,10 @@ import { useShortcutBonus } from "./hooks/useShortcutBonus";
 // LANDING GATE ? Handles "/" logic
 // -----------------------------------------------------
 const LandingGate: React.FC = () => {
-  const { user, authUser, authReady } = useUser();
-
-  // Wait until Firebase auth initializes
-  if (!authReady) {
-    return (
-      <main className="rb-content theme-games">
-        <section className="earn-shell">
-          <p className="rb-section-sub">Checking your account...</p>
-        </section>
-      </main>
-    );
-  }
+  const { user, authUser } = useUser();
 
   // If any authenticated user exists, go straight to home
-  if (authUser || user) {
-    return <Navigate to="/home" replace />;
-  }
+  if (authUser || user) return <Navigate to="/home" replace />;
 
   return <Landing />;
 };
@@ -92,6 +80,7 @@ export const AppInner: React.FC = () => {
 
         {/* Authenticated home/dashboard */}
         <Route path="/home" element={<Home />} />
+        <Route path="/pages/home" element={<Home />} />
 
         {/* Auth pages */}
         <Route path="/login" element={<Login />} />
@@ -104,6 +93,7 @@ export const AppInner: React.FC = () => {
         <Route path="/security" element={<Security />} />
         <Route path="/misc" element={<Misc />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/quests" element={<Quests />} />
         <Route path="/earn" element={<Earn />} />
         <Route path="/offerwalls" element={<OfferWalls />} />
         <Route path="/affiliate" element={<Affiliate />} />

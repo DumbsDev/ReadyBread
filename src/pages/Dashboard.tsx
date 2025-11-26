@@ -1,7 +1,7 @@
 // src/pages/Dashboard.tsx
 // Dashboard using global UserContext instead of local Firebase state
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   collection,
@@ -18,6 +18,9 @@ import {
 import { db } from "../config/firebase";
 import { useUser } from "../contexts/UserContext";
 import { getAuth, deleteUser } from "firebase/auth";
+import { computeLevelProgress, estimateBaseXp } from "../utils/level";
+import { computeQuestStats, getQuestWindows } from "../utils/questsMath";
+import type { QuestStats, QuestWindows } from "../utils/questsMath";
 
 // -------------------------------
 // Types
@@ -139,6 +142,7 @@ export const Dashboard: React.FC = () => {
 
   const [selectedOffer, setSelectedOffer] = useState<StartedOffer | null>(null);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [questWindows, setQuestWindows] = useState<QuestWindows>(getQuestWindows());
 
   // ----------------------------------------------------
   // LOAD EVERYTHING (NOW DRIVEN BY user?.uid)
@@ -170,6 +174,13 @@ export const Dashboard: React.FC = () => {
       if (unsub) unsub();
     };
   }, [user]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setQuestWindows(getQuestWindows());
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // ----------------------------------------------------
   // LOAD REFERRALS (with better error handling)
@@ -448,6 +459,60 @@ export const Dashboard: React.FC = () => {
     navigator.clipboard?.writeText(link);
     alert("Copied!");
   };
+
+  const questStats: QuestStats = useMemo(
+    () => computeQuestStats(offerHistory, referrals, questWindows),
+    [offerHistory, referrals, questWindows]
+  );
+
+  const questXp = useMemo(() => {
+    const segments = [
+      { progress: questStats.surveysToday, target: 1, xp: 1 },
+      { progress: questStats.gamesToday, target: 1, xp: 2 },
+      { progress: questStats.surveysWeek, target: 10, xp: 5 },
+      { progress: questStats.gamesWeek, target: 3, xp: 10 },
+      { progress: questStats.referralsThisWeek, target: 1, xp: 5 },
+      { progress: profile?.shortcutBonusClaimed ? 1 : 0, target: 1, xp: 5 },
+      { progress: user?.emailVerified ? 1 : 0, target: 1, xp: 2 },
+      { progress: Math.max(0, profile?.balance ?? 0), target: 5, xp: 8 },
+      { progress: offerHistory.length > 0 ? 1 : 0, target: 1, xp: 4 },
+    ];
+
+    return segments.reduce((sum, seg) => {
+      if (!seg.target) return sum;
+      const completion = Math.min(1, seg.progress / seg.target);
+      return sum + seg.xp * completion;
+    }, 0);
+  }, [
+    offerHistory.length,
+    profile?.balance,
+    profile?.shortcutBonusClaimed,
+    questStats.gamesToday,
+    questStats.gamesWeek,
+    questStats.referralsThisWeek,
+    questStats.surveysToday,
+    questStats.surveysWeek,
+    user?.emailVerified,
+  ]);
+
+  const baseXp = useMemo(
+    () =>
+      estimateBaseXp({
+        balance: profile?.balance,
+        dailyStreak: profile?.dailyStreak,
+        totalReferrals: questStats.totalReferrals,
+        totalOfferEvents: questStats.totalOfferEvents,
+      }),
+    [
+      profile?.balance,
+      profile?.dailyStreak,
+      questStats.totalOfferEvents,
+      questStats.totalReferrals,
+    ]
+  );
+
+  const totalXp = useMemo(() => baseXp + questXp, [baseXp, questXp]);
+  const levelState = useMemo(() => computeLevelProgress(totalXp), [totalXp]);
 
   // ----------------------------------------------------
   // AUTH GUARD USING CONTEXT
@@ -965,10 +1030,44 @@ export const Dashboard: React.FC = () => {
         {activeTab === "achievements" && (
           <div className="dash-panel dash-panel-active">
             <div className="dash-card modern-card glass-card">
-              <h3 className="dash-card-title">Achievements</h3>
-              <p className="dash-muted">
-                Sorry! This tab is currently <i>half-baked</i>. dY?z
-              </p>
+              <div className="dash-level-header">
+                <div>
+                  <h3 className="dash-card-title">Quests &amp; Level</h3>
+                  <p className="dash-muted">
+                    XP scales exponentially. Daily and weekly quests nudge the meter upward.
+                  </p>
+                </div>
+                <span className="level-chip">Lv. {levelState.level}</span>
+              </div>
+
+              <div className="level-progress-bar dash-level-bar">
+                <span style={{ width: `${levelState.progressPct}%` }} />
+              </div>
+              <div className="dash-level-meta">
+                <span>
+                  {levelState.currentXp} / {levelState.nextLevelXp} XP to next
+                </span>
+                <span>{Math.round(totalXp)} XP total</span>
+              </div>
+
+              <div className="dash-level-grid">
+                <div className="dash-level-chip">
+                  Today: {questStats.surveysToday}/1 surveys | {questStats.gamesToday}/1 games
+                </div>
+                <div className="dash-level-chip">
+                  This week: {questStats.surveysWeek}/10 surveys | {questStats.gamesWeek}/3 games
+                </div>
+                <div className="dash-level-chip">
+                  Referrals: {questStats.totalReferrals} total ({questStats.referralsThisWeek} this week)
+                </div>
+                <div className="dash-level-chip">
+                  Shortcut bonus: {profile?.shortcutBonusClaimed ? "Claimed" : "Not yet claimed"}
+                </div>
+              </div>
+
+              <Link className="rb-link" to="/quests">
+                Open the Quests page
+              </Link>
             </div>
           </div>
         )}

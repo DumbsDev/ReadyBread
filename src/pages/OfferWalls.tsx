@@ -25,7 +25,7 @@ const wallConfigs: WallConfig[] = [
   {
     id: "cpx",
     name: "CPX Research",
-    status: "live",
+    status: "ready",
     description: "Daily survey inventory with smart routing. Already wired into our Surveys page, and available here as a dedicated wall.",
     requires: ["OIN98MFDSLNFDS80IJF", "VITE_CPX_HASH"],
     buildUrl: (userId: string) => {
@@ -86,7 +86,7 @@ const wallConfigs: WallConfig[] = [
   {
     id: "magic-receipts",
     name: "BitLabs Magic Receipts",
-    status: "live",
+    status: "ready",
     description: "Receipt uploads via BitLabs. Already embedded in ReadyBread with server-side validation.",
     requires: [],
     buildUrl: () => "/receipts",
@@ -95,7 +95,7 @@ const wallConfigs: WallConfig[] = [
   {
     id: "bitlabs",
     name: "BitLabs Surveys",
-    status: "live",
+    status: "ready",
     description: "Primary survey rail. Auto-routes based on device and GEO. VPN and fraud screening enforced.",
     requires: [],
     buildUrl: () => "/surveys",
@@ -106,6 +106,8 @@ const wallConfigs: WallConfig[] = [
 export const OfferWalls: React.FC = () => {
   const { authUser, loading } = useUser();
   const userId = authUser?.uid || "guest";
+
+  <h1>Please note: This is only for partners to see for now. Once we go public, non-supported/partnered brands will be removed, however their implentation will stay in the code (even if the user doesn't see) in case of future partnership.</h1>
 
   const cards = wallConfigs.map((wall) => {
     const missing = wall.requires.filter((key) => !getEnv(key));

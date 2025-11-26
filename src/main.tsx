@@ -4,6 +4,9 @@ import { App } from "./App";
 import "./styles.css";
 import { UserProvider } from "./contexts/UserContext";
 
+// Clear the CSS bust flag after a successful boot so future deploys can trigger it again if needed.
+sessionStorage.removeItem("rb-css-bust-v1");
+
 // Only register the service worker in production and outside localhost to avoid
 // dev/preview cache issues that can break asset loading.
 if ("serviceWorker" in navigator) {

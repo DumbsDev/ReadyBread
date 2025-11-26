@@ -45,9 +45,9 @@
   text-transform: capitalize;
 }
 
-.status-pending {
-  background: rgba(255, 200, 0, 0.2);
-  color: #ffd166;
+.status-fulfilled {
+  background: linear-gradient(135deg, #045007, #01320d);
+  color: #f0f0f0;
 }
 
 .status-fulfilled {

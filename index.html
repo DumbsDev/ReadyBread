@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google-adsense-account" content="ca-pub-5184243830096525">
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="1080x1080" href="/icons/icon-transparent.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-box.png" />
     <meta name="theme-color" content="#000000" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -13,6 +14,48 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // If a stylesheet fails to load (often cached old index pointing to a stale hash),
+      // clear caches/service workers once and reload with a cache-busting param.
+      (function () {
+        const FLAG = "rb-css-bust-v1";
+        if (sessionStorage.getItem(FLAG)) return;
+
+        const bust = async () => {
+          sessionStorage.setItem(FLAG, "1");
+          try {
+            if ("serviceWorker" in navigator) {
+              const regs = await navigator.serviceWorker.getRegistrations();
+              regs.forEach((reg) => reg.unregister().catch(() => undefined));
+            }
+            if ("caches" in window) {
+              const keys = await caches.keys();
+              await Promise.all(keys.map((k) => caches.delete(k)));
+            }
+          } catch (_) {
+            // ignore cleanup errors
+          }
+          const url = new URL(window.location.href);
+          url.searchParams.set("cb", Date.now().toString());
+          window.location.replace(url.toString());
+        };
+
+        window.addEventListener(
+          "error",
+          (event) => {
+            const target = event?.target;
+            const isStylesheet =
+              target &&
+              target.tagName === "LINK" &&
+              target.rel === "stylesheet" &&
+              typeof target.href === "string" &&
+              target.href.includes("/assets/");
+            if (isStylesheet) bust();
+          },
+          true
+        );
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+﻿import React, { useRef } from "react";
 import { Link, Navigate } from "react-router-dom";
 import "../landing.css";
 import { useUser } from "../contexts/UserContext";
@@ -58,12 +58,10 @@ const payoutProofs = [
 ];
 
 export const Landing: React.FC = () => {
-  const { user, authUser, authReady } = useUser();
+  const { user, authUser } = useUser();
 
-  // If a signed-in user lands here directly, send them home right away.
-  if (authReady && (authUser || user)) {
-    return <Navigate to="/home" replace />;
-  }
+  // Simple redirect: if logged in, go home; otherwise show landing.
+  if (authUser || user) return <Navigate to="/home" replace />;
 
   return (
     <div className="landing-container">
@@ -173,8 +171,8 @@ export const Landing: React.FC = () => {
         <TiltCard className="rw-card glass-card cashouts-card earn-card">
           <h2>💸 Satisfying Cashouts</h2>
           <p>
-            Cash out to PayPal, Cash App, or donate to charities like UNICEF,
-            Red Cross and more. Actual dollars, not mystery tokens.
+            Cash out to PayPal, Cash App, or donate to charities like St. Judes,
+            Red Cross and more. Actual dollars, not "points".
           </p>
           <ul className="feature-list">
             <li>Low minimums</li>
@@ -190,9 +188,9 @@ export const Landing: React.FC = () => {
         <div className="how-grid">
           <TiltCard className="how-card glass-card">
             <span className="step-pill">Step 1</span>
-            <h4>Create your free account</h4>
+            <h4>Become a Breadwinner for free</h4>
             <p>
-              Sign up in just <span className="bread-accent">seconds</span>. Earn for months.
+              Sign up in just <span className="bread-accent">seconds</span>. Earn forever.
             </p>
           </TiltCard>
           <TiltCard className="how-card glass-card">

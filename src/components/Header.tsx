@@ -38,6 +38,9 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
         <Link to="/dashboard" className={isActive('/dashboard')}>
           Dashboard
         </Link>
+        <Link to="/quests" className={isActive('/quests')}>
+          Quests
+        </Link>
         {!user && (
           <Link to="/login" id="loginLink">
             Login
