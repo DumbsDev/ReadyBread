@@ -5,6 +5,7 @@ import { useUser } from "../contexts/UserContext";
 import type { Survey } from "../types";
 import "../surveys.css";
 import { AntiFraudGate } from "../components/AntiFraudGate";
+import { getClientIp } from "../utils/ip";
 
 type SortMode = "best" | "payout" | "length" | "random";
 
@@ -76,33 +77,13 @@ export const Surveys: React.FC = () => {
   };
 
   const resolveUserIP = async (): Promise<string> => {
-    const endpoints = [
-      "https://api.ipify.org?format=json", // prefer IPv4 for CPX
-      "https://api64.ipify.org?format=json", // fallback IPv6
-    ];
-
-    let ipv6Candidate: string | null = null;
-
-    for (const endpoint of endpoints) {
-      try {
-        const res = await fetch(endpoint);
-        if (!res.ok) continue;
-        const json = await res.json();
-        const ip = json?.ip as string | undefined;
-        if (!ip) continue;
-
-        if (ip.includes(":")) {
-          ipv6Candidate = ipv6Candidate || ip;
-          continue;
-        }
-
-        return ip;
-      } catch (err) {
-        console.warn("IP lookup failed:", err);
-      }
+    try {
+      const ip = await getClientIp();
+      return ip || "0.0.0.0";
+    } catch (err) {
+      console.warn("IP lookup failed:", err);
+      return "0.0.0.0";
     }
-
-    return ipv6Candidate || "0.0.0.0";
   };
 
   const loadBitlabsSurveys = async () => {

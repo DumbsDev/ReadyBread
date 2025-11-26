@@ -26,7 +26,7 @@ export const tutorialCategories: TutorialCategory[] = [
         title: "How gaming offers work",
         content: [
           "Gaming offers allow you to earn money by installing and playing mobile or desktop games through partners like BitLabs and AdGem.",
-          "Always install from the ReadyBread link—this ensures the offer tracks properly.",
+          "Always install from the ReadyBread link. This ensures the offer tracks properly.",
           "Offers usually require you to reach a certain level, unlock features, or complete milestones.",
           "Progress may take up to 48 hours, depending on the partner.",
           "Never uninstall the game before the reward is credited to your ReadyBread balance.",
@@ -78,7 +78,32 @@ export const tutorialCategories: TutorialCategory[] = [
           "Answer consistently across similar questions; contradictions cause disqualifications and possibly bans.",
           "Feel free to check back multiple times per day. Surveys refresh constantly, and we run \"Earn Events\" for surveys sometimes."
         ]
+      },
+      {
+        slug: "why-surveys-disqualify",
+        title: "Why Surveys Disqualify You",
+        content: [
+          "Survey disqualifications are completely normal. They do NOT mean anything is wrong with your account.",
+          "Companies conducting surveys need users that fit very specific demographics. If your answers do not match the target group, you may be disqualified instantly.",
+          "Most platforms have internal consistency checks. Answering inconsistently (e.g., different ages, incomes, or household info) can cause automatic removal.",
+          "Speeding through surveys, skipping questions, or giving random answers can cause quality flags on partner platforms.",
+          "To reduce disqualifications, answer honestly, consistently, and in detail when open-text elements appear.",
+          "Checking surveys multiple times per day increases availability, as new opportunities appear frequently."
+        ]
+      },
+      {
+        slug: "survey-tips",
+        title: "Tips to Earn More From Surveys",
+        content: [
+          "Fill out your profile surveys completely. This helps partner routers better match you and reduces disqualification rates.",
+          "Try surveys early morning and late evening. These are peak refresh times for most research companies.",
+          "Avoid using VPNs, hotel Wi-Fi, or work networks. They cause mismatch between your IP location and your demographic answers, and VPN's are directly prohibited.",
+          "Take your time and answer thoughtfully. Long-term quality scores improve greatly with consistent answering.",
+          "If a survey freezes or errors, try refreshing the page once. If still stuck, you can safely close the survey and try another."
+        ]
       }
+
+
     ]
   },
 
@@ -112,9 +137,9 @@ export const tutorialCategories: TutorialCategory[] = [
         title: "How the Referral System Works",
         content: [
           "Invite friends using your unique referral code to earn bonus cash.",
-          "You earn $0.05 per referral, up to a total of $1.00.",
-          "They must verify email and complete a task for the reward to apply.",
-          "Same-device or repeated signups are blocked by security checks."
+          "You earn $0.25 per referral, up to a total of $1.00.",
+          "They must verify email for the reward to apply.",
+          "Same-device or repeated signups are blocked by security checks. If this is attempted too many times, we will restrict your account."
         ]
       }
     ]
@@ -131,10 +156,20 @@ export const tutorialCategories: TutorialCategory[] = [
         title: "ReadyBread Cashout Guide",
         content: [
           "Cash out your earnings through PayPal, Cash App, Bitcoin, or charity donations.",
-          "Minimums are low, and there are zero withdrawal fees.",
-          "Most cashouts are processed same day, depending on volume."
+          "Minimums are low, and there are zero withdrawal fees, except for bitcoin. If you mess up your payout (wrong credentials), contact us immediately wiht your User ID and we will refund your request. Crypto withdrawals are not elligible for this.",
+        ]
+      },
+      {
+        slug: "cashout-times",
+        title: "How Long Do Cashouts Take?",
+        content: [
+          "Most cashouts are reviewed and completed within the day, but during periods of high volume it may take a few days, up to 72 hours.",
+          "PayPal and Cash App payouts are usually the fastest, however speed still depends on when you request, how, and the day of the month.",
+          "Crypto payouts depend on network congestion. Bitcoin and e-transfer payouts may take a bit longer to confirm.",
+          "If 72 hours pass and you still have not received your payout, contact support at contact@readybread.xyz and include your User ID."
         ]
       }
+
     ]
   },
 
@@ -159,7 +194,7 @@ export const tutorialCategories: TutorialCategory[] = [
   {
     id: "offerwalls",
     name: "Offerwalls",
-    icon: "📦",
+    icon: "🧱",
     description: "BitLabs, AdGem, AyeT & how they track.",
     articles: [
       {
@@ -170,7 +205,88 @@ export const tutorialCategories: TutorialCategory[] = [
           "ReadyBread currently supports BitLabs (surveys + games), AdGem (game wall), and AyeT (coming soon).",
           "Your progress is tracked by the partner and reported to ReadyBread upon completion."
         ]
+      },
+      {
+        slug: "offerwall-delays",
+        title: "Why Offerwall Rewards Take Time",
+        content: [
+          "Offerwall tasks are processed by the partner, not by ReadyBread directly.",
+          "Some tasks credit instantly, while others require up to 24–72 hours to confirm depending on the network.",
+          "Partners need to verify your installation, app usage, or completion proof before sending us the reward.",
+          "If a long-running offer does not credit, take screenshots of your progress and email us for help."
+        ]
+      },
+      {
+        slug: "vpn-warning",
+        title: "Offerwalls & VPN's",
+        content: [
+          "Using a VPN, Proxy, or mobile hotspot can cause instant disqualification from our offerwalls",
+          "Offerwalls check your IP, device type, and region. If they do not match, the task will not track.",
+          "If you see a warning from BitLabs, OfferToro, or Lootably, switch to normal Wi-Fi or cellular data.",
+          "Repeated VPN usage can lead to account restrictions or blocked offerwall access.",
+          "Please note that our partners check VPN status, but so do we. Please disable your VPN while using ReadyBread and it's partnered offerwalls and sites."
+        ]
+      }
+    ]
+  },
+
+  {
+    id: "account",
+    name: "Account",
+    icon: "👤",
+    description: "Your ReadyBread profile, login info, and account settings.",
+    articles: [
+      {
+        slug: "account-basics",
+        title: "Account Basics",
+        content: [
+          "You only need an email and password to create a ReadyBread account.",
+          "We recommend verifying your email immediately so you can cash out and keep your account safe.",
+          "You may only have ONE ReadyBread account per person and per device.",
+          "If you lose access to your account, contact support and provide details so we can try to recover it."
+        ]
+      },
+      {
+        slug: "multiple-devices",
+        title: "Using ReadyBread on Multiple Devices",
+        content: [
+          "You may use ReadyBread on different devices as long as they belong to YOU.",
+          "However, multiple accounts from the same device are not allowed and will be automatically flagged.",
+          "Using public Wi-Fi, school Wi-Fi, or work networks may cause issues because many users share the same IP.",
+          "Avoid logging in from VPNs while using ReadyBread as you will be disqualified from surveys, and barred from earning."
+        ]
+      }
+    ]
+  },
+  {
+    id: "support",
+    name: "Support",
+    icon: "🛟",
+    description: "Help, troubleshooting, and contacting ReadyBread support.",
+    articles: [
+      {
+        slug: "when-to-contact-support",
+        title: "When to Contact Support",
+        content: [
+          "You can contact support anytime something feels wrong with tracking, offers, surveys, or payouts.",
+          "Before emailing, double-check that your internet connection is stable and you did not use a VPN.",
+          "We respond fastest to issues involving payments, account access, or missing rewards.",
+          "Our support email is: <strong>contact@readybread.xyz</strong>.",
+          "We will do our best to help. Please note: ReadyBread is operated by only 2 employees. It may take up to 3 business days for us to get back to you, and up to 10 business days to completely solve your issue."
+        ]
+      },
+      {
+        slug: "fix-most-issues",
+        title: "Fix 90% of Issues Yourself",
+        content: [
+          "Try refreshing the page or restarting your device. Stuck offers often track correctly afterward, as the cache needs to be cleared.",
+          "Ensure your device’s time & date are correct; surveys and offers break when clocks are off.",
+          "If a survey freezes, close it and open a new one. Do NOT refresh during an active survey unless it breaks.",
+          "Make sure you have not blocked cookies or turned off tracking in your browser settings."
+        ]
       }
     ]
   }
+
+
 ];

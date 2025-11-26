@@ -3,6 +3,7 @@
 // GetIPIntel if a contact email is set. Defaults to "warn-only" when no
 // provider is configured so the UI can still show an anti-fraud notice.
 import { useCallback, useEffect, useState } from "react";
+import { getClientIp } from "../utils/ip";
 
 type Provider = "ipqualityscore" | "getipintel" | null;
 type Status =
@@ -38,26 +39,6 @@ const GETIPINTEL_CONTACT =
 const IPQS_THRESHOLD = 75; // 0-100 fraud_score
 const GETIPINTEL_THRESHOLD = 0.98; // 0-1 risk score
 
-async function resolveIp(): Promise<string> {
-  const endpoints = [
-    "https://api.ipify.org?format=json",
-    "https://api64.ipify.org?format=json",
-  ];
-
-  for (const endpoint of endpoints) {
-    try {
-      const res = await fetch(endpoint);
-      if (!res.ok) continue;
-      const json = (await res.json()) as { ip?: string };
-      if (json?.ip) return json.ip;
-    } catch (err) {
-      console.warn("IP lookup failed:", err);
-    }
-  }
-
-  return "";
-}
-
 export function useVpnCheck(requireClean: boolean = true) {
   const [state, setState] = useState<VpnCheckState>({
     status: "idle",
@@ -74,7 +55,20 @@ export function useVpnCheck(requireClean: boolean = true) {
   const runCheck = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true, status: "checking" }));
 
-    const ip = await resolveIp();
+    const ip = await getClientIp();
+
+    // If no provider configured, only warn (do not block).
+    if (!IPQS_KEY && !GETIPINTEL_CONTACT) {
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        status: ip ? "warn" : "warn",
+        ip,
+        reason: "VPN checks disabled until an API key/contact is provided.",
+      }));
+      return;
+    }
+
     if (!ip) {
       setState((prev) => ({
         ...prev,
@@ -82,18 +76,6 @@ export function useVpnCheck(requireClean: boolean = true) {
         status: "error",
         ip,
         reason: "Unable to resolve IP",
-      }));
-      return;
-    }
-
-    // If no provider configured, only warn (do not block).
-    if (!IPQS_KEY && !GETIPINTEL_CONTACT) {
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        status: "warn",
-        ip,
-        reason: "VPN checks disabled until an API key/contact is provided.",
       }));
       return;
     }
@@ -207,4 +189,3 @@ export function useVpnCheck(requireClean: boolean = true) {
     refresh: runCheck,
   };
 }
-
