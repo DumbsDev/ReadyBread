@@ -23,6 +23,26 @@ const getEnv = (key: string): string => {
 
 const wallConfigs: WallConfig[] = [
   {
+    id: "kiwiwall",
+    name: "KiwiWall",
+    status: "live",
+    description:
+      "Offerwall with apps, signups, and mobile trials. Embedded and tied to your ReadyBread ID.",
+    requires: [],
+    buildUrl: () => `/kiwiwall`,
+    note: "Live (embedded in-site)",
+  },
+  {
+    id: "revu",
+    name: "RevU",
+    status: "live",
+    description:
+      "Revenue Universe wall with apps, signups, and commerce trials. UID is tied to your ReadyBread account.",
+    requires: [],
+    buildUrl: () => "/revu",
+    note: "Live (embedded in-site)",
+  },
+  {
     id: "cpx",
     name: "CPX Research",
     status: "ready",
@@ -68,20 +88,14 @@ const wallConfigs: WallConfig[] = [
     note: "Ready once app id is added",
   },
   {
-    id: "revenuewall",
-    name: "RevenueWall",
-    status: "ready",
-    description: "Surveys and app offers with strong mobile coverage. Good fallback when other walls are low.",
-    requires: ["VITE_REVENUEWALL_APP_ID", "VITE_REVENUEWALL_API_KEY"],
-    buildUrl: (userId: string) => {
-      const appId = getEnv("VITE_REVENUEWALL_APP_ID");
-      const apiKey = getEnv("VITE_REVENUEWALL_API_KEY");
-      if (!appId || !apiKey) return null;
-      return `https://www.revenuewall.com/wall?apiKey=${encodeURIComponent(
-        apiKey
-      )}&appId=${encodeURIComponent(appId)}&userId=${encodeURIComponent(userId)}`;
-    },
-    note: "Requires app id + api key",
+    id: "revu",
+    name: "RevU",
+    status: "live",
+    description:
+      "Offerwall with apps, signups, and mobile trials. Embedded and tied to your ReadyBread ID.",
+    requires: [],
+    buildUrl: () => `/revu`,
+    note: "Live (embedded in-site)",
   },
   {
     id: "magic-receipts",
@@ -157,7 +171,7 @@ export const OfferWalls: React.FC = () => {
             <div>
               <h2 className="rb-section-title">Offer Wall Hub</h2>
               <p className="rb-section-sub">
-                Central place for Lootably, OfferToro, RevenueWall, CPX, and BitLabs.
+                Central place for Lootably, OfferToro, RevU, CPX, and BitLabs.
                 VPN/proxy users may see fewer offers, but we do not block shared IPs (dorms welcome).
               </p>
               {showLoginNudge && (

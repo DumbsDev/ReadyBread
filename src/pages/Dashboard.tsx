@@ -154,9 +154,16 @@ export const Dashboard: React.FC = () => {
       try {
         const uid = user.uid;
 
-        await loadReferralData(uid);
-        await loadStartedOffers(uid);
-        await loadOfferHistory(uid);
+        const results = await Promise.allSettled([
+          loadReferralData(uid),
+          loadStartedOffers(uid),
+          loadOfferHistory(uid),
+        ]);
+
+        const failed = results.filter((r) => r.status === "rejected");
+        if (failed.length === results.length) {
+          setError("Something went wrong loading your dashboard.");
+        }
       } catch (err) {
         console.error(err);
         setError("Something went wrong loading your dashboard.");

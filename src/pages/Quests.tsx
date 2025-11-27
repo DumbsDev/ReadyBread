@@ -57,6 +57,7 @@ export const Quests: React.FC = () => {
 
   const [offerHistory, setOfferHistory] = useState<QuestHistoryItem[]>([]);
   const [referralDocs, setReferralDocs] = useState<QuestReferralDoc[]>([]);
+  const [startedOffers, setStartedOffers] = useState<QuestHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [questWindows, setQuestWindows] = useState<QuestWindows>(getQuestWindows());
 
@@ -125,6 +126,15 @@ export const Quests: React.FC = () => {
           }))
         );
 
+        const startedRef = collection(db, "users", user.uid, "startedOffers");
+        const startedSnap = await getDocs(query(startedRef, orderBy("startedAt", "desc")));
+        setStartedOffers(
+          startedSnap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as any),
+          }))
+        );
+
         const refSnap = await getDocs(collection(db, "users", user.uid, "referrals"));
         setReferralDocs(refSnap.docs.map((d) => d.data() as QuestReferralDoc));
       } catch (err) {
@@ -144,9 +154,27 @@ export const Quests: React.FC = () => {
     return () => window.clearInterval(timer);
   }, []);
 
+  const completedOfferEvents: QuestHistoryItem[] = useMemo(() => {
+    return startedOffers
+      .filter((o: any) => (o.status || "").toString().toLowerCase() === "completed")
+      .map((o: any) => ({
+        id: o.id,
+        type: (o.type || o.source || "").toString(),
+        source: (o.source || o.type || "").toString(),
+        createdAt: o.completedAt || o.lastUpdatedAt || o.startedAt || o.createdAt || null,
+        amount: typeof o.totalPayout === "number" ? o.totalPayout : null,
+      }));
+  }, [startedOffers]);
+
   const questStats: QuestStats = useMemo(
-    () => computeQuestStats(offerHistory, referralDocs, questWindows),
-    [offerHistory, referralDocs, questWindows]
+    () =>
+      computeQuestStats(
+        offerHistory,
+        referralDocs,
+        questWindows,
+        completedOfferEvents
+      ),
+    [offerHistory, referralDocs, questWindows, completedOfferEvents]
   );
 
   const dailyQuests: QuestDefinition[] = useMemo(
@@ -220,6 +248,7 @@ export const Quests: React.FC = () => {
     const balance = Math.max(0, profile?.balance ?? 0);
     const shortcutClaimed = profile?.shortcutBonusClaimed === true;
     const emailVerified = user?.emailVerified === true;
+    const completedSurveys = questStats.totalSurveys;
 
     return [
       {
@@ -269,8 +298,19 @@ export const Quests: React.FC = () => {
         link: "/earn",
         actionLabel: "Find an offer",
       },
+      {
+        id: "first-survey",
+        title: "Complete a survey",
+        rewardCash: 0.01,
+        rewardXp: 2,
+        target: 1,
+        progress: completedSurveys > 0 ? 1 : 0,
+        description: "First survey completion earns a quick bonus.",
+        link: "/surveys",
+        actionLabel: "Open surveys",
+      },
     ];
-  }, [profile, questStats.totalOfferEvents, user?.emailVerified]);
+  }, [profile, questStats.totalOfferEvents, questStats.totalSurveys, user?.emailVerified]);
 
   const questXp = useMemo(() => {
     const all = [...dailyQuests, ...weeklyQuests, ...generalQuests];
@@ -278,6 +318,15 @@ export const Quests: React.FC = () => {
       if (quest.target <= 0) return sum;
       const completion = Math.min(1, quest.progress / quest.target);
       return sum + quest.rewardXp * completion;
+    }, 0);
+  }, [dailyQuests, weeklyQuests, generalQuests]);
+
+  const questCashEarned = useMemo(() => {
+    const all = [...dailyQuests, ...weeklyQuests, ...generalQuests];
+    return all.reduce((sum, quest) => {
+      if (quest.target <= 0) return sum;
+      const completion = Math.min(1, quest.progress / quest.target);
+      return sum + quest.rewardCash * completion;
     }, 0);
   }, [dailyQuests, weeklyQuests, generalQuests]);
 
@@ -408,13 +457,25 @@ export const Quests: React.FC = () => {
               <small>Surveys, games, referrals</small>
             </div>
           </div>
+          <div className="quests-reset-row" style={{ marginTop: 8 }}>
+            <div className="reset-chip">
+              <span>Quest cash tracked</span>
+              <strong>${questCashEarned.toFixed(2)}</strong>
+              <small>Instant when goals complete</small>
+            </div>
+            <div className="reset-chip">
+              <span>Quest XP awarded</span>
+              <strong>{Math.round(questXp)} xp</strong>
+              <small>Feeds your level</small>
+            </div>
+          </div>
         </div>
 
-        <div className="level-card">
-          <div className="level-card-head">
-            <p className="quests-pill">Level</p>
-            <span className="level-chip">Lv. {levelState.level}</span>
-          </div>
+          <div className="level-card">
+            <div className="level-card-head">
+              <p className="quests-pill">Level</p>
+              <span className="level-chip">Lv. {levelState.level}</span>
+            </div>
           <h3 className="level-number">{levelState.level}</h3>
           <div className="level-progress-bar">
             <span style={{ width: `${levelState.progressPct}%` }} />
@@ -424,6 +485,10 @@ export const Quests: React.FC = () => {
               {levelState.currentXp} / {levelState.nextLevelXp} XP
             </span>
             <span>{levelState.totalXp} XP total</span>
+          </div>
+          <div className="level-meta">
+            <span>Quest XP awarded: {Math.round(questXp)}xp</span>
+            <span>Quest cash tracked: ${questCashEarned.toFixed(2)}</span>
           </div>
           <p className="level-footnote">
             XP grows exponentially each level. Keep stacking daily and weekly goals.

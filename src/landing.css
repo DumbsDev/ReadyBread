@@ -71,37 +71,6 @@
 }
 
 /* ------------------------------ */
-/* SCROLLING EMOJI STRIP */
-/* ------------------------------ */
-
-.emoji-strip {
-  width: 100%;
-  overflow: hidden;
-  margin: 16px 0 26px;
-}
-
-.emoji-track {
-  display: flex;
-  gap: 20px;
-  animation: scrollEmojis 22s linear infinite;
-}
-
-.emoji-icon {
-  width: 62px;
-  height: 62px;
-  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.1));
-}
-
-@keyframes scrollEmojis {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-/* ------------------------------ */
 /* CTA BUTTONS */
 /* ------------------------------ */
 

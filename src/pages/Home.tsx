@@ -21,7 +21,11 @@ interface FeaturedOffer {
   source: string;
 }
 
+import { getClientIp } from "../utils/ip";
+
 const BITLABS_KEY = "250f0833-3a86-4232-ae29-9b30026d1820";
+const CPX_APP_ID = "30102";
+const CPX_HASH = "yvxLR6x1Jc1CptNFfmrhzYlAu1XqVfsj";
 
 type MergedSurvey = {
   id: string;
@@ -112,8 +116,8 @@ export const Home: React.FC = () => {
           }
         }
 
-        // Bonus: +0.5% per day, capped at 10%
-        const calculatedBonus = Math.min(newStreak * 0.5, 10); // percent
+        // Bonus: +0.5% per day after day 1, capped at 10% (reach 10% on day 21)
+        const calculatedBonus = Math.min(Math.max(newStreak - 1, 0) * 0.5, 10); // percent
 
         if (needsCheckIn) {
           setPendingStreak(newStreak);
@@ -257,11 +261,55 @@ export const Home: React.FC = () => {
       }
     };
 
+    const fetchCpxSurveys = async (): Promise<MergedSurvey[]> => {
+      try {
+        const userIP = await getClientIp();
+        const userAgent =
+          typeof navigator !== "undefined" ? navigator.userAgent : "";
+
+        const url =
+          `https://live-api.cpx-research.com/api/get-surveys.php?` +
+          `app_id=${CPX_APP_ID}` +
+          `&ext_user_id=${encodeURIComponent(user?.uid || "")}` +
+          `&output_method=api` +
+          (userIP ? `&ip_user=${encodeURIComponent(userIP)}` : "") +
+          `&user_agent=${encodeURIComponent(userAgent)}` +
+          `&limit=50` +
+          `&secure_hash=${encodeURIComponent(CPX_HASH)}`;
+
+        const res = await fetch(url);
+        const json = await res.json();
+
+        if (!json?.surveys || !Array.isArray(json.surveys)) {
+          return [];
+        }
+
+        return (json.surveys as any[]).map((s) => {
+          const minutesVal = Number(s.loi ?? s.minutes);
+          const payoutVal = Number(s.payout ?? s.reward_usd ?? 0);
+
+          return {
+            source: "cpx" as const,
+            id: String(s.id),
+            title: s.name || "Survey",
+            payout: Number.isFinite(payoutVal) ? payoutVal : 0,
+            minutes: Number.isFinite(minutesVal) ? minutesVal : null,
+          };
+        });
+      } catch (err) {
+        console.error("Error loading CPX surveys for featured:", err);
+        return [];
+      }
+    };
+
     const loadTopSurvey = async () => {
       if (!user) return;
 
-      const bitlabs = await fetchBitlabsSurveys();
-      const merged = [...bitlabs];
+      const [bitlabs, cpx] = await Promise.all([
+        fetchBitlabsSurveys(),
+        fetchCpxSurveys(),
+      ]);
+      const merged = [...bitlabs, ...cpx];
 
       merged.sort((a, b) => b.payout - a.payout);
       const top = merged[0];
@@ -288,7 +336,7 @@ export const Home: React.FC = () => {
       {showCheckInModal && pendingStreak != null && pendingBonus != null && (
         <div className="checkin-overlay">
           <div className="checkin-modal">
-            <h2 className="checkin-title">Welcome back, {username}! 👋</h2>
+            <h2 className="checkin-title">Welcome back, {username}!</h2>
             <p className="checkin-body">
               Thanks for checking in today. Your daily streak has been updated.
               All eligible earnings now get a{" "}
@@ -319,7 +367,7 @@ export const Home: React.FC = () => {
               onClick={handleConfirmCheckIn}
               disabled={checkInSaving}
             >
-              {checkInSaving ? "Saving…" : "OK, let’s earn"}
+              {checkInSaving ? "Saving..." : "OK, let's earn"}
             </button>
           </div>
         </div>

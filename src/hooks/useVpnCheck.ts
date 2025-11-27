@@ -38,6 +38,41 @@ const GETIPINTEL_CONTACT =
 
 const IPQS_THRESHOLD = 75; // 0-100 fraud_score
 const GETIPINTEL_THRESHOLD = 0.98; // 0-1 risk score
+const VPN_CACHE_KEY = "rb-vpn-check-cache-v1";
+const VPN_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+interface CachedVpnResult {
+  ip: string;
+  provider: Provider;
+  score: number | null;
+  isVpn: boolean;
+  isProxy: boolean;
+  isTor: boolean;
+  flagged: boolean;
+  ts: number;
+}
+
+const readVpnCache = (ip: string): CachedVpnResult | null => {
+  if (!ip) return null;
+  try {
+    const raw = sessionStorage.getItem(VPN_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedVpnResult;
+    if (!parsed || parsed.ip !== ip) return null;
+    if (Date.now() - parsed.ts > VPN_CACHE_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const writeVpnCache = (payload: CachedVpnResult) => {
+  try {
+    sessionStorage.setItem(VPN_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore cache write errors
+  }
+};
 
 export function useVpnCheck(requireClean: boolean = true) {
   const [state, setState] = useState<VpnCheckState>({
@@ -56,6 +91,23 @@ export function useVpnCheck(requireClean: boolean = true) {
     setState((prev) => ({ ...prev, loading: true, status: "checking" }));
 
     const ip = await getClientIp();
+
+    const cached = readVpnCache(ip);
+    if (cached) {
+      const status = cached.flagged && requireClean ? "blocked" : "allowed";
+      setState((prev) => ({
+        ...prev,
+        ...cached,
+        loading: false,
+        status,
+        reason: cached.flagged
+          ? cached.provider === "ipqualityscore"
+            ? `Traffic flagged by IPQualityScore (cached).`
+            : `Traffic flagged by GetIPIntel (cached).`
+          : null,
+      }));
+      return;
+    }
 
     // If no provider configured, only warn (do not block).
     if (!IPQS_KEY && !GETIPINTEL_CONTACT) {
@@ -113,6 +165,17 @@ export function useVpnCheck(requireClean: boolean = true) {
           recentAbuse ||
           fraudScore >= IPQS_THRESHOLD;
 
+        writeVpnCache({
+          ip,
+          provider: "ipqualityscore",
+          score: Number.isFinite(fraudScore) ? fraudScore : null,
+          isVpn,
+          isProxy,
+          isTor,
+          flagged,
+          ts: Date.now(),
+        });
+
         setState({
           status: flagged && requireClean ? "blocked" : "allowed",
           loading: false,
@@ -151,6 +214,17 @@ export function useVpnCheck(requireClean: boolean = true) {
 
       const score = Number(data?.result ?? 0);
       const flagged = score >= GETIPINTEL_THRESHOLD;
+
+      writeVpnCache({
+        ip,
+        provider: "getipintel",
+        score: Number.isFinite(score) ? score : null,
+        isVpn: flagged,
+        isProxy: flagged,
+        isTor: false,
+        flagged,
+        ts: Date.now(),
+      });
 
       setState({
         status: flagged && requireClean ? "blocked" : "allowed",

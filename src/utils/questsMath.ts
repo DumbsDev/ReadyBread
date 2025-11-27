@@ -3,6 +3,7 @@ export interface QuestHistoryItem {
   type?: string | null;
   source?: string | null;
   createdAt?: any;
+  amount?: number | null;
 }
 
 export interface QuestReferralDoc {
@@ -89,7 +90,11 @@ export const timestampToMs = (value: any): number | null => {
 
 export const isSurveyEvent = (item: QuestHistoryItem): boolean => {
   const type = `${item.type || item.source || ""}`.toLowerCase();
-  return type.includes("survey");
+  return (
+    type.includes("survey") ||
+    type.includes("bitlabs") ||
+    type.includes("cpx")
+  );
 };
 
 export const isGameEvent = (item: QuestHistoryItem): boolean => {
@@ -100,12 +105,15 @@ export const isGameEvent = (item: QuestHistoryItem): boolean => {
 export const computeQuestStats = (
   offers: QuestHistoryItem[],
   referrals: QuestReferralDoc[],
-  windows: QuestWindows
+  windows: QuestWindows,
+  extraEvents: QuestHistoryItem[] = []
 ): QuestStats => {
   const dailyStart = windows.dailyStart;
   const dailyEnd = windows.nextDailyReset;
   const weeklyStart = windows.weeklyStart;
   const weeklyEnd = windows.nextWeeklyReset;
+
+  const events = [...offers, ...extraEvents];
 
   let surveysToday = 0;
   let surveysWeek = 0;
@@ -114,7 +122,7 @@ export const computeQuestStats = (
   let totalSurveys = 0;
   let totalGames = 0;
 
-  offers.forEach((item) => {
+  events.forEach((item) => {
     const ms = timestampToMs(item.createdAt);
     if (ms == null) return;
 
@@ -144,7 +152,7 @@ export const computeQuestStats = (
     gamesWeek,
     totalSurveys,
     totalGames,
-    totalOfferEvents: offers.length,
+    totalOfferEvents: events.length,
     totalReferrals: referrals.length,
     referralsThisWeek,
   };

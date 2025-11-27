@@ -8,7 +8,9 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "outDir": "lib"
+    "outDir": "lib",
+    "incremental": true,
+    "tsBuildInfoFile": "tsconfig.tsbuildinfo"
   },
   "include": ["src"],
   "exclude": ["node_modules", "lib"] // drop the ../**/* patterns

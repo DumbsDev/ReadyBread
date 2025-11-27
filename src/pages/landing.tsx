@@ -68,24 +68,10 @@ export const Landing: React.FC = () => {
       {/* HERO */}
       <section className="landing-hero">
         <div className="landing-hero-inner">
-          <h1 className="landing-title">ReadyBread</h1>
+          <h1 className="landing-title">🥖ReadyBread🥖</h1>
           <h2 className="landing-slogan">
-            Ready to earn some <span className="bread-word">Bread?</span>
+          Ready to earn some <span className="bread-word">Bread?</span>
           </h2>
-
-          {/* Scrolling emoji strip */}
-          <div className="emoji-strip">
-            <div className="emoji-track">
-              {Array.from({ length: 24 }).map((_, idx) => (
-                <img
-                  key={24 + idx}
-                  src="/assets/emoji/icon.png"
-                  alt="Bread icon"
-                  className="emoji-icon"
-                />
-              ))}
-            </div>
-          </div>
 
           <p className="landing-subtitle">
             Play games, complete surveys, scan receipts, and cash out straight.
@@ -237,7 +223,7 @@ export const Landing: React.FC = () => {
               <a href="https://x.com/@Ready_Bread" target="_blank" rel="noreferrer">
                 X (formerly known as twitter)
               </a>
-              <a href="https://tiktok.com/@ready_bread" target="_blank" rel="noreferrer">
+              <a href="https://tiktok.com/@readybread.xyz" target="_blank" rel="noreferrer">
                 TikTok
               </a>
               <a href="https://instagram.com/@ready_bread" target="_blank" rel="noreferrer">

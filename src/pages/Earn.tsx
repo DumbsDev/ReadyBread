@@ -37,7 +37,7 @@ export const Earn: React.FC = () => {
         {/* Games FIRST (priority) */}
         <Link to="/games" className="modern-card games-card">
           <div className="modern-icon">
-            <span className="emoji">dYZr</span>
+            <span className="emoji">🎮</span>
           </div>
           <div className="modern-title-sm">Game Offers</div>
           <div className="modern-desc">
@@ -48,7 +48,7 @@ export const Earn: React.FC = () => {
         {/* Surveys */}
         <Link to="/surveys" className="modern-card surveys-card">
           <div className="modern-icon">
-            <span className="emoji">dY\"?</span>
+            <span className="emoji">📋</span>
           </div>
           <div className="modern-title-sm">Surveys</div>
           <div className="modern-desc">Share your opinions and earn dough.</div>
@@ -57,7 +57,7 @@ export const Earn: React.FC = () => {
         {/* Magic Receipts */}
         <Link to="/receipts" className="modern-card receipts-card">
           <div className="modern-icon">
-            <span className="emoji">dY_</span>
+            <span className="emoji">🧾</span>
           </div>
           <div className="modern-title-sm">Magic Receipts</div>
           <div className="modern-desc">
@@ -68,7 +68,7 @@ export const Earn: React.FC = () => {
         {/* Misc Offers */}
         <Link to="/misc" className="modern-card misc-card">
           <div className="modern-icon">
-            <span className="emoji">dYOY</span>
+            <span className="emoji">✨</span>
           </div>
           <div className="modern-title-sm">More Ways</div>
           <div className="modern-desc">

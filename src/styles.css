@@ -37,51 +37,44 @@ body {
 }
 
 /* ---------------------------------------------------
-   HEADER: LOGO + CENTERED NAV + BALANCE
+   HEADER: GLASSY BAR WITH GRADIENTS
 ---------------------------------------------------- */
 
 .rb-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
     text-align: center;
     margin-top: 14px;
-    background-color: var(--charred-wheat);
-    padding: 12px;
-    border-radius: 12px;
-    border: 1px solid var(--golden-toast);
-    box-shadow: 0 0 3px var(--golden-toast)
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: linear-gradient(120deg, rgba(255, 209, 102, 0.12), rgba(255, 255, 255, 0.05)),
+                rgba(12, 10, 6, 0.78);
+    border: 1px solid rgba(255, 209, 102, 0.35);
+    box-shadow:
+        0 18px 36px rgba(0, 0, 0, 0.45),
+        0 0 22px rgba(255, 209, 102, 0.25);
+    backdrop-filter: blur(14px);
 }
 
 .rb-logo {
-    font-size: 30px;
-    margin-bottom: 8px;
-    font-weight: 800;
-    color: var(--golden-toast);
-
-    background: linear-gradient(
-        135deg,
-        var(--golden-toast),
-        var(--golden-toast),
-        var(--soft-sugar),
-        var(--soft-sugar)
-    );
+    font-size: 32px;
+    margin: 0 0 6px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    background: linear-gradient(90deg, #ffd166, #fff3c0, #ffd166);
     -webkit-background-clip: text;
+    background-clip: text;
     color: transparent;
-    margin-bottom: 6px;
-
-    /* REAL glow (can't use gradients in text-shadow) */
-    filter:
-        drop-shadow(0 0 6px rgba(255, 191, 90, 0.7))
-        drop-shadow(0 0 12px rgba(255, 163, 40, 0.5));
+    text-shadow: 0 0 18px rgba(255, 209, 102, 0.55);
 }
 
-/* ─── Swipeable Nav Bar ─────────────────────────── */
 .rb-nav {
-    display: flex;
-    overflow-x: auto;
-    white-space: nowrap;
-    gap: 14px;
-    padding: 8px 0;
+    display: inline-flex;
+    flex-wrap: wrap;
     justify-content: center;
-    scrollbar-width: none;
+    gap: 10px;
+    padding: 6px 4px;
 }
 
 .rb-nav::-webkit-scrollbar {
@@ -89,26 +82,43 @@ body {
 }
 
 .rb-nav a {
-    background: var(--charred-wheat);
-    padding: 8px 16px;
-    border-radius: 12px;
-    border: 1px solid var(--golden-toast);
-    font-size: 15px;
-    color: var(--golden-toast);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #ffe9b6;
+    font-size: 14px;
+    font-weight: 700;
     text-decoration: none;
-    transition: 0.15s;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
 .rb-nav a:hover {
-    background: var(--golden-toast);
-    color: var(--charred-wheat);
+    transform: translateY(-1px);
+    border-color: rgba(255, 209, 102, 0.7);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35), 0 0 16px rgba(255, 209, 102, 0.35);
+    background: linear-gradient(135deg, rgba(255, 209, 102, 0.2), rgba(255, 255, 255, 0.08));
 }
 
-/* ─── Balance Box ─────────────────────────────── */
+.rb-nav a.active {
+    border-color: rgba(255, 209, 102, 0.9);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4), 0 0 18px rgba(255, 209, 102, 0.45);
+    color: #0b0805;
+    background: linear-gradient(135deg, #ffd166, #ffb347);
+}
+
+/* Balance Box */
 .rb-balance {
     background: var(--charred-wheat);
     padding: 10px 16px;
     border-radius: 10px;
+    height: var(--balance-pill-height, 48px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     width: fit-content;
     margin: 0;
@@ -2854,6 +2864,16 @@ body {
   pointer-events: none;
 }
 
+.rb-route-fallback {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 26, 26, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999998;
+}
+
 /* Keep your bread animation */
 .loader-bread-img {
   width: 96px;
@@ -3071,6 +3091,8 @@ body {
 }
 
 .rb-balance-wrapper {
+    --balance-pill-height: 48px;
+    --streak-box-width: 120px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3202,6 +3224,37 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* -------- Offerwall embeds (KiwiWall, RevU) -------- */
+.kiwiwall-shell .earn-shell,
+.revu-shell .earn-shell {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.kiwiwall-frame-wrap,
+.revu-frame-wrap {
+  margin-top: 16px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 209, 102, 0.25);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.kiwiwall-frame-wrap iframe,
+.revu-frame-wrap iframe {
+  width: 100%;
+  min-height: 1400px;
+  border: none;
+}
+
+@media (max-width: 900px) {
+  .kiwiwall-frame-wrap iframe,
+  .revu-frame-wrap iframe {
+    min-height: 1200px;
+  }
 }
 
 /* -------- Proof of payout -------- */

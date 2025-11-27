@@ -1,4 +1,8 @@
 {
+  "engines":
+  {
+    "node":20
+  },
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -24,9 +28,6 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         "*.local"
-      ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
     }
   ]

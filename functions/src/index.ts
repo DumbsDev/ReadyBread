@@ -3,12 +3,17 @@ import * as functions from "firebase-functions";
 import { onRequest, onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import * as crypto from "crypto";
 
 admin.initializeApp();
 const db = admin.firestore();
 
 /* ============================================================
-   STREAK BONUS HELPERS
+   STREAK BONUS + REVENUE SHARE HELPERS
+   - bonusPercent is the user's DAILY STREAK bonus (0–10%)
+   - basePayout is the FULL partner payout (100%)
+   - user gets (50% + bonusPercent)% of basePayout
+   - owner gets (50% - bonusPercent)% of basePayout
 ============================================================ */
 
 function clampBonusPercent(raw: any): number {
@@ -18,18 +23,38 @@ function clampBonusPercent(raw: any): number {
   return raw;
 }
 
-// basePayout (from partner) * (1 + bonusPercent/100)
-function applyStreakBonus(basePayout: number, bonusPercentRaw: any) {
-  const bonusPercent = clampBonusPercent(bonusPercentRaw);
-  const multiplier = 1 + bonusPercent / 100;
+/**
+ * Unified revenue sharing:
+ * - partner sends basePayout (100% of revenue)
+ * - userPercent = 50% + bonusPercent
+ * - ownerPercent = 50% - bonusPercent
+ *
+ * Returns:
+ * - base: full partner payout (100%)
+ * - baseUserAmount: user's baseline 50% share of partner payout
+ * - final: user's actual credited amount (50%–60%)
+ * - bonusAmount: extra above the baseline 50% share
+ * - bonusPercent: streak bonus %
+ * - userPercent: actual user % of partner payout (50–60)
+ */
+function applyRevenueShare(basePayout: number, bonusPercentRaw: any) {
+  const bonusPercent = clampBonusPercent(bonusPercentRaw); // 0–10
+  const userPercentFraction = (50 + bonusPercent) / 100; // 0.5–0.6
 
-  const finalRaw = basePayout * multiplier;
+  const finalRaw = basePayout * userPercentFraction;
   const final = Math.round(finalRaw * 100) / 100; // round to cents
-  const bonusAmount = Math.max(0, final - basePayout);
+
+  const baseUserRaw = basePayout * 0.5; // baseline 50% share
+  const baseUserAmount = Math.round(baseUserRaw * 100) / 100;
+
+  const bonusAmountRaw = final - baseUserAmount; // always >= 0
+  const bonusAmount = Math.round(bonusAmountRaw * 100) / 100;
 
   return {
-    base: basePayout,
+    base: basePayout, // full partner payout (100%)
+    baseUserAmount,
     bonusPercent,
+    userPercent: userPercentFraction * 100, // 50–60 as %
     final,
     bonusAmount,
   };
@@ -39,9 +64,13 @@ function applyStreakBonus(basePayout: number, bonusPercentRaw: any) {
    SECRETS
 ============================================================ */
 const OFFERS_SECRET = defineSecret("OFFERS_SECRET");
+const REVU_SECRET = defineSecret("REVU_SECRET");
+// KiwiWall secret key (used for MD5 verification). Can be overridden with env KIWI_SECRET.
+const KIWI_SECRET_VALUE =
+  process.env.KIWI_SECRET || "26b6e44ad5b4e320f03ed0b71b1c398c";
 
 ////////////////////////////////////////////////////////////////////////////////
-//  ADGEM WEBHOOK — with streak bonus
+//  ADGEM WEBHOOK — revenue share with streak bonus
 ////////////////////////////////////////////////////////////////////////////////
 
 export const adgemWebhook = onRequest(
@@ -54,8 +83,7 @@ export const adgemWebhook = onRequest(
       }
 
       const secretFromRequest =
-        (req.query.secret as string) ??
-        (req.body && req.body.secret);
+        (req.query.secret as string) ?? (req.body && req.body.secret);
       const expectedSecret = OFFERS_SECRET.value();
 
       if (!secretFromRequest || secretFromRequest !== expectedSecret) {
@@ -71,19 +99,19 @@ export const adgemWebhook = onRequest(
         (req.body && (req.body.uid || req.body.sub_id || req.body.user_id));
 
       const offerId =
-        (req.query.offer_id as string) ??
-        (req.body && req.body.offer_id);
+        (req.query.offer_id as string) ?? (req.body && req.body.offer_id);
 
       const amountRaw =
-        (req.query.amount as string) ??
-        (req.body && req.body.amount);
+        (req.query.amount as string) ?? (req.body && req.body.amount);
 
       const txId =
         (req.query.transaction_id as string) ??
         (req.body && req.body.transaction_id);
 
       if (!uid || !offerId || !amountRaw || !txId) {
-        res.status(400).send("Missing uid / offerId / amount / transaction_id");
+        res
+          .status(400)
+          .send("Missing uid / offerId / amount / transaction_id");
         return;
       }
 
@@ -110,9 +138,18 @@ export const adgemWebhook = onRequest(
         const now = admin.firestore.Timestamp.now();
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
-        const bonusPercentRaw = userSnap.exists ? userSnap.data()?.bonusPercent : 0;
-        const { final, base, bonusAmount, bonusPercent } =
-          applyStreakBonus(basePayout, bonusPercentRaw);
+        const bonusPercentRaw = userSnap.exists
+          ? userSnap.data()?.bonusPercent
+          : 0;
+
+        const {
+          base,
+          baseUserAmount,
+          final,
+          bonusAmount,
+          bonusPercent,
+          userPercent,
+        } = applyRevenueShare(basePayout, bonusPercentRaw);
 
         const balanceUpdate = {
           balance: admin.firestore.FieldValue.increment(final),
@@ -121,8 +158,10 @@ export const adgemWebhook = onRequest(
             offerId,
             amount: final,
             baseAmount: base,
+            userBaseAmount: baseUserAmount,
             bonusAmount,
             bonusPercent,
+            userPercent,
             txId,
             at: now,
           }),
@@ -145,8 +184,10 @@ export const adgemWebhook = onRequest(
             type: "adgem",
             amount: final,
             baseAmount: base,
+            userBaseAmount: baseUserAmount,
             bonusAmount,
             bonusPercent,
+            userPercent,
             txId,
             createdAt: serverNow,
           },
@@ -158,8 +199,10 @@ export const adgemWebhook = onRequest(
           offerId,
           payout: final,
           baseAmount: base,
+          userBaseAmount: baseUserAmount,
           bonusAmount,
           bonusPercent,
+          userPercent,
           source: "AdGem",
           txId,
           creditedAt: serverNow,
@@ -175,7 +218,438 @@ export const adgemWebhook = onRequest(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
-//  REFERRALS — unchanged
+//  KIWIWALL POSTBACK (Offerwall) with signature check + revenue share
+////////////////////////////////////////////////////////////////////////////////
+
+function getKiwiwallParam(raw: any): string {
+  if (raw === undefined || raw === null) return "";
+  if (Array.isArray(raw)) {
+    const last = raw[raw.length - 1];
+    return last === undefined || last === null ? "" : String(last);
+  }
+  return String(raw);
+}
+
+function getKiwiwallSignatures(raw: any): string[] {
+  if (raw === undefined || raw === null) return [];
+
+  const values = Array.isArray(raw) ? raw : [raw];
+  return values
+    .flatMap((entry) => String(entry).split(","))
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function verifyKiwiwallSignature(params: any, secret: string) {
+  const providedSignatures = getKiwiwallSignatures(params.signature);
+
+  const subId =
+    getKiwiwallParam(params.sub_id) ||
+    getKiwiwallParam(params.uid) ||
+    getKiwiwallParam(params.subid) ||
+    getKiwiwallParam(params.user_id);
+
+  const amount = getKiwiwallParam(params.amount);
+
+  if (!subId || !amount || providedSignatures.length === 0) {
+    return false;
+  }
+
+  const expectedSignature = crypto
+    .createHash("md5")
+    .update(`${subId}:${amount}:${secret}`)
+    .digest("hex")
+    .toLowerCase();
+
+  const normalizedProvided = providedSignatures.map((sig) =>
+    sig.toLowerCase()
+  );
+
+  return (
+    normalizedProvided.includes(expectedSignature) ||
+    normalizedProvided.includes(secret.toLowerCase())
+  );
+}
+
+export const kiwiwallPostback = onRequest(
+  { region: "us-central1" },
+  async (req, res) => {
+    try {
+      if (req.method !== "GET" && req.method !== "POST") {
+        res.status(405).send("Method not allowed");
+        return;
+      }
+
+      const kiwiParams =
+        req.method === "POST"
+          ? { ...req.query, ...req.body }
+          : { ...req.query };
+
+      const uid =
+        getKiwiwallParam(kiwiParams.uid) ||
+        getKiwiwallParam(kiwiParams.sub_id) ||
+        getKiwiwallParam(kiwiParams.subid) ||
+        getKiwiwallParam(kiwiParams.user_id) ||
+        "";
+
+      const txId =
+        getKiwiwallParam(kiwiParams.tx) ||
+        getKiwiwallParam(kiwiParams.trans_id) ||
+        "";
+
+      const offerId = getKiwiwallParam(kiwiParams.offer_id) || "";
+      const status = getKiwiwallParam(kiwiParams.status) || "";
+      const amountRaw = getKiwiwallParam(kiwiParams.amount) || "";
+
+      if (!uid || !txId || !offerId || !amountRaw) {
+        res.status(400).send("Missing parameters");
+        return;
+      }
+
+      const sigOk = verifyKiwiwallSignature(kiwiParams, KIWI_SECRET_VALUE);
+
+      if (!sigOk) {
+        console.warn("KiwiWall invalid signature", {
+          params: kiwiParams,
+          providedSignature: kiwiParams.signature,
+        });
+        res.status(403).send("Invalid signature");
+
+        return;
+      }
+
+      // Only process completed conversions
+      if (status !== "1") {
+        console.log("Kiwiwall reversal or invalid status:", status);
+        res.status(200).send("1"); // acknowledge non-paid to prevent retries
+        return;
+      }
+
+      const basePayout = Number(amountRaw);
+      if (!isFinite(basePayout) || basePayout <= 0) {
+        res.status(400).send("Invalid payout");
+        return;
+      }
+
+      // Prevent duplicate transactions
+      const txRef = db.collection("completedOffers").doc(String(txId));
+      const existingTx = await txRef.get();
+      if (existingTx.exists) {
+        res.status(200).send("1");
+        return;
+      }
+
+      await db.runTransaction(async (t) => {
+        const userRef = db.collection("users").doc(uid);
+        const userSnap = await t.get(userRef);
+
+        const now = admin.firestore.Timestamp.now();
+        const serverNow = admin.firestore.FieldValue.serverTimestamp();
+
+        const bonusPercentRaw = userSnap.exists
+          ? userSnap.data()?.bonusPercent
+          : 0;
+
+        const {
+          base,
+          baseUserAmount,
+          final,
+          bonusAmount,
+          bonusPercent,
+          userPercent,
+        } = applyRevenueShare(basePayout, bonusPercentRaw);
+
+        // Update user balance
+        if (userSnap.exists) {
+          t.update(userRef, {
+            balance: admin.firestore.FieldValue.increment(final),
+            auditLog: admin.firestore.FieldValue.arrayUnion({
+              type: "kiwiwall",
+              offerId,
+              amount: final,
+              baseAmount: base,
+              userBaseAmount: baseUserAmount,
+              bonusAmount,
+              bonusPercent,
+              userPercent,
+              txId,
+              at: now,
+            }),
+          });
+        } else {
+          t.set(
+            userRef,
+            {
+              balance: final,
+              createdAt: serverNow,
+              auditLog: [
+                {
+                  type: "kiwiwall",
+                  offerId,
+                  amount: final,
+                  baseAmount: base,
+                  userBaseAmount: baseUserAmount,
+                  bonusAmount,
+                  bonusPercent,
+                  userPercent,
+                  txId,
+                  at: now,
+                },
+              ],
+            },
+            { merge: true }
+          );
+        }
+
+        // Log offer
+        t.set(
+          userRef.collection("offers").doc(),
+          {
+            offerId,
+            type: "kiwiwall",
+            amount: final,
+            baseAmount: base,
+            userBaseAmount: baseUserAmount,
+            bonusAmount,
+            bonusPercent,
+            userPercent,
+            txId,
+            createdAt: serverNow,
+          },
+          { merge: true }
+        );
+
+        // Global offer log
+        t.set(
+          txRef,
+          {
+            uid,
+            offerId,
+            payout: final,
+            baseAmount: base,
+            userBaseAmount: baseUserAmount,
+            bonusAmount,
+            bonusPercent,
+            userPercent,
+            source: "KiwiWall",
+            txId,
+            creditedAt: serverNow,
+          },
+          { merge: true }
+        );
+      });
+
+      res.status(200).send("1");
+    } catch (err) {
+      console.error("KiwiWall callback error:", err);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
+////////////////////////////////////////////////////////////////////////////////
+//  REVU OFFERWALL POSTBACK — cents → dollars + revenue share (50%+streak)
+////////////////////////////////////////////////////////////////////////////////
+
+const pickFirstParam = (
+  params: Record<string, any>,
+  keys: string[]
+): string => {
+  for (const key of keys) {
+    const raw = params?.[key];
+    if (raw === undefined || raw === null) continue;
+
+    if (Array.isArray(raw)) {
+      const last = raw[raw.length - 1];
+      if (last === undefined || last === null) continue;
+      return String(last);
+    }
+
+    return String(raw);
+  }
+
+  return "";
+};
+
+export const revuPostback = onRequest(
+  { secrets: [REVU_SECRET], region: "us-central1" },
+  async (req, res) => {
+    try {
+      if (req.method !== "GET" && req.method !== "POST") {
+        res.status(405).send("Method not allowed");
+        return;
+      }
+
+      const params =
+        req.method === "POST"
+          ? { ...req.query, ...req.body }
+          : { ...req.query };
+
+      const providedSecret = pickFirstParam(params, ["secret", "token", "key"]);
+      const expectedSecret = REVU_SECRET.value();
+
+      if (!providedSecret || providedSecret !== expectedSecret) {
+        console.warn("Invalid secret on RevU postback:", providedSecret);
+        res.status(403).send("Forbidden");
+        return;
+      }
+
+      const uid = pickFirstParam(params, ["uid", "sid2", "sid", "user_id"]);
+      const sid3 = pickFirstParam(params, ["sid3", "sub3", "sid_3"]);
+
+      // Base transaction ID
+      let txId = pickFirstParam(params, [
+        "transaction_id",
+        "trans_id",
+        "tx",
+        "click_id",
+        "oid",
+        "id",
+      ]);
+
+      // Goal-specific ID
+      const goalId = pickFirstParam(params, [
+        "goal_id",
+        "goal",
+        "goalName",
+        "goal_number",
+      ]);
+
+      // UNIQUE ID PER GOAL
+      if (goalId) {
+        txId = `${txId}_goal_${goalId}`;
+      }
+
+      const offerId = pickFirstParam(params, ["offer_id", "campaign"]);
+
+      const amountRaw = pickFirstParam(params, [
+        "currency",
+        "amount",
+        "payout",
+        "reward",
+        "value",
+      ]);
+
+      if (!uid || !txId || !amountRaw) {
+        res.status(400).send("Missing uid / tx / amount");
+        return;
+      }
+
+      // RevU sends cents → convert to USD
+      const centsValue = Number(amountRaw);
+      if (!isFinite(centsValue) || centsValue <= 0) {
+        res.status(400).send("Invalid payout");
+        return;
+      }
+
+      const basePayout = Math.round((centsValue / 100) * 100) / 100; // dollars
+
+      // Prevent duplicates
+      const txRef = db.collection("completedOffers").doc(String(txId));
+      const existingTx = await txRef.get();
+      if (existingTx.exists) {
+        res.status(200).send("OK");
+        return;
+      }
+
+      await db.runTransaction(async (t) => {
+        const userRef = db.collection("users").doc(uid);
+        const userSnap = await t.get(userRef);
+
+        const now = admin.firestore.Timestamp.now();
+        const serverNow = admin.firestore.FieldValue.serverTimestamp();
+
+        const bonusPercentRaw = userSnap.exists
+          ? userSnap.data()?.bonusPercent
+          : 0;
+
+        const {
+          base,
+          baseUserAmount,
+          final,
+          bonusAmount,
+          bonusPercent,
+          userPercent,
+        } = applyRevenueShare(basePayout, bonusPercentRaw);
+
+        const balanceUpdate = {
+          balance: admin.firestore.FieldValue.increment(final),
+          auditLog: admin.firestore.FieldValue.arrayUnion({
+            type: "revu",
+            offerId,
+            goalId: goalId || null,
+            amount: final,
+            baseAmount: base,
+            userBaseAmount: baseUserAmount,
+            bonusAmount,
+            streakBonusPercent: bonusPercent,
+            userPercent,
+            sid3: sid3 || null,
+            txId,
+            at: now,
+          }),
+        };
+
+        if (!userSnap.exists) {
+          t.set(
+            userRef,
+            { createdAt: serverNow, ...balanceUpdate },
+            { merge: true }
+          );
+        } else {
+          t.update(userRef, balanceUpdate);
+        }
+
+        t.set(
+          userRef.collection("offers").doc(),
+          {
+            offerId,
+            goalId: goalId || null,
+            type: "revu",
+            amount: final,
+            baseAmount: base,
+            userBaseAmount: baseUserAmount,
+            bonusAmount,
+            streakBonusPercent: bonusPercent,
+            userPercent,
+            sid3: sid3 || null,
+            txId,
+            createdAt: serverNow,
+          },
+          { merge: true }
+        );
+
+        t.set(
+          txRef,
+          {
+            uid,
+            offerId,
+            goalId: goalId || null,
+            payout: final,
+            baseAmount: base,
+            userBaseAmount: baseUserAmount,
+            bonusAmount,
+            streakBonusPercent: bonusPercent,
+            userPercent,
+            source: "RevU",
+            sid3: sid3 || null,
+            txId,
+            creditedAt: serverNow,
+          },
+          { merge: true }
+        );
+      });
+
+      res.status(200).send("OK");
+    } catch (err) {
+      console.error("RevU postback error:", err);
+      res.status(500).send("Internal error");
+    }
+  }
+);
+
+////////////////////////////////////////////////////////////////////////////////
+//  REFERRALS - unchanged
 ////////////////////////////////////////////////////////////////////////////////
 
 const REFERRAL_REWARD = 0.25;
@@ -236,7 +710,8 @@ const processReferralCore = async (uid: string): Promise<string> => {
   const referrerDoc = refQ.docs[0];
   const referrerId = referrerDoc.id;
   const referrer = referrerDoc.data()!;
-  const isAdminReferrer = (referrer as any)?.referralCode === ADMIN_REFERRAL_CODE;
+  const isAdminReferrer =
+    (referrer as any)?.referralCode === ADMIN_REFERRAL_CODE;
 
   if (referrerId === uid) {
     await userRef.update({ referralPending: false });
@@ -278,12 +753,15 @@ const processReferralCore = async (uid: string): Promise<string> => {
     return "Referrer at cap";
   }
 
-  await db.collection("users").doc(referrerId).update({
-    balance: admin.firestore.FieldValue.increment(REFERRAL_REWARD),
-    totalReferralEarnings: admin.firestore.FieldValue.increment(
-      REFERRAL_REWARD
-    ),
-  });
+  await db
+    .collection("users")
+    .doc(referrerId)
+    .update({
+      balance: admin.firestore.FieldValue.increment(REFERRAL_REWARD),
+      totalReferralEarnings: admin.firestore.FieldValue.increment(
+        REFERRAL_REWARD
+      ),
+    });
 
   await db
     .collection("users")
@@ -332,7 +810,7 @@ export const processReferralsCallable = onCall(async (request) => {
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-//  GAME OFFER WEBHOOK (BitLabs Games) — with streak bonus
+//  GAME OFFER WEBHOOK (BitLabs Games) — revenue share with streak bonus
 ////////////////////////////////////////////////////////////////////////////////
 
 export const gameOfferWebhook = onRequest(
@@ -345,8 +823,7 @@ export const gameOfferWebhook = onRequest(
       }
 
       const secretFromRequest =
-        (req.query.secret as string) ??
-        (req.body && req.body.secret);
+        (req.query.secret as string) ?? (req.body && req.body.secret);
       const expectedSecret = OFFERS_SECRET.value();
 
       if (!secretFromRequest || secretFromRequest !== expectedSecret) {
@@ -361,8 +838,7 @@ export const gameOfferWebhook = onRequest(
         (req.body && req.body.uid);
 
       const offerId =
-        (req.query.offer_id as string) ??
-        (req.body && req.body.offer_id);
+        (req.query.offer_id as string) ?? (req.body && req.body.offer_id);
 
       const payoutRaw =
         (req.query.payout as string) ??
@@ -387,9 +863,18 @@ export const gameOfferWebhook = onRequest(
         const now = admin.firestore.Timestamp.now();
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
-        const bonusPercentRaw = userSnap.exists ? userSnap.data()?.bonusPercent : 0;
-        const { final, base, bonusAmount, bonusPercent } =
-          applyStreakBonus(basePayout, bonusPercentRaw);
+        const bonusPercentRaw = userSnap.exists
+          ? userSnap.data()?.bonusPercent
+          : 0;
+
+        const {
+          base,
+          baseUserAmount,
+          final,
+          bonusAmount,
+          bonusPercent,
+          userPercent,
+        } = applyRevenueShare(basePayout, bonusPercentRaw);
 
         const balanceUpdate = {
           balance: admin.firestore.FieldValue.increment(final),
@@ -398,8 +883,10 @@ export const gameOfferWebhook = onRequest(
             offerId,
             amount: final,
             baseAmount: base,
+            userBaseAmount: baseUserAmount,
             bonusAmount,
             bonusPercent,
+            userPercent,
             at: now,
           }),
         };
@@ -444,10 +931,13 @@ export const gameOfferWebhook = onRequest(
             type: "game",
             amount: final,
             baseAmount: base,
+            userBaseAmount: baseUserAmount,
             bonusAmount,
             bonusPercent,
+            userPercent,
             createdAt: serverNow,
-          }
+          },
+          { merge: true }
         );
       });
 
@@ -460,11 +950,11 @@ export const gameOfferWebhook = onRequest(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
-//  BITLABS SURVEY CALLBACK — with streak bonus
+//  BITLABS SURVEY CALLBACK — revenue share with streak bonus
 ////////////////////////////////////////////////////////////////////////////////
 
 export const bitlabsSurveyCallback = onRequest(
-  { secrets: [OFFERS_SECRET], region: "us-central1" },
+  { secrets: [OFFERS_SECRET], region: "us-central1", maxInstances: 1 },
   async (req, res) => {
     try {
       if (req.method !== "GET" && req.method !== "POST") {
@@ -477,7 +967,10 @@ export const bitlabsSurveyCallback = onRequest(
       const expectedSecret = OFFERS_SECRET.value();
 
       if (!secretFromRequest || secretFromRequest !== expectedSecret) {
-        console.warn("Invalid secret on survey callback:", secretFromRequest);
+        console.warn(
+          "Invalid secret on survey callback:",
+          secretFromRequest
+        );
         res.status(403).send("Forbidden");
         return;
       }
@@ -512,9 +1005,18 @@ export const bitlabsSurveyCallback = onRequest(
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
         const now = admin.firestore.Timestamp.now();
 
-        const bonusPercentRaw = userSnap.exists ? userSnap.data()?.bonusPercent : 0;
-        const { final, base, bonusAmount, bonusPercent } =
-          applyStreakBonus(basePayout, bonusPercentRaw);
+        const bonusPercentRaw = userSnap.exists
+          ? userSnap.data()?.bonusPercent
+          : 0;
+
+        const {
+          base,
+          baseUserAmount,
+          final,
+          bonusAmount,
+          bonusPercent,
+          userPercent,
+        } = applyRevenueShare(basePayout, bonusPercentRaw);
 
         const balanceUpdate = {
           balance: admin.firestore.FieldValue.increment(final),
@@ -523,8 +1025,10 @@ export const bitlabsSurveyCallback = onRequest(
             offerId,
             amount: final,
             baseAmount: base,
+            userBaseAmount: baseUserAmount,
             bonusAmount,
             bonusPercent,
+            userPercent,
             at: now,
           }),
         };
@@ -546,8 +1050,10 @@ export const bitlabsSurveyCallback = onRequest(
             type: "survey",
             amount: final,
             baseAmount: base,
+            userBaseAmount: baseUserAmount,
             bonusAmount,
             bonusPercent,
+            userPercent,
             createdAt: serverNow,
           },
           { merge: true }
@@ -563,11 +1069,11 @@ export const bitlabsSurveyCallback = onRequest(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
-//  MAGIC RECEIPTS CALLBACK — with streak bonus
+//  MAGIC RECEIPTS CALLBACK — revenue share with streak bonus
 ////////////////////////////////////////////////////////////////////////////////
 
 export const magicReceiptsCallback = onRequest(
-  { secrets: [OFFERS_SECRET], region: "us-central1" },
+  { secrets: [OFFERS_SECRET], region: "us-central1", maxInstances: 1 },
   async (req, res) => {
     try {
       if (req.method !== "GET" && req.method !== "POST") {
@@ -580,7 +1086,10 @@ export const magicReceiptsCallback = onRequest(
       const expectedSecret = OFFERS_SECRET.value();
 
       if (!secretFromRequest || secretFromRequest !== expectedSecret) {
-        console.warn("Invalid secret on magic receipts callback:", secretFromRequest);
+        console.warn(
+          "Invalid secret on magic receipts callback:",
+          secretFromRequest
+        );
         res.status(403).send("Forbidden");
         return;
       }
@@ -600,8 +1109,7 @@ export const magicReceiptsCallback = onRequest(
         (req.body && req.body.payout);
 
       const txId =
-        (req.query.tx as string) ??
-        (req.body && req.body.tx);
+        (req.query.tx as string) ?? (req.body && req.body.tx);
 
       if (!uid || !receiptId || !payoutRaw || !txId) {
         res.status(400).send("Missing uid / receiptId / payout / tx");
@@ -621,9 +1129,18 @@ export const magicReceiptsCallback = onRequest(
         const now = admin.firestore.Timestamp.now();
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
-        const bonusPercentRaw = userSnap.exists ? userSnap.data()?.bonusPercent : 0;
-        const { final, base, bonusAmount, bonusPercent } =
-          applyStreakBonus(basePayout, bonusPercentRaw);
+        const bonusPercentRaw = userSnap.exists
+          ? userSnap.data()?.bonusPercent
+          : 0;
+
+        const {
+          base,
+          baseUserAmount,
+          final,
+          bonusAmount,
+          bonusPercent,
+          userPercent,
+        } = applyRevenueShare(basePayout, bonusPercentRaw);
 
         const balanceUpdate = {
           balance: admin.firestore.FieldValue.increment(final),
@@ -632,8 +1149,10 @@ export const magicReceiptsCallback = onRequest(
             receiptId,
             amount: final,
             baseAmount: base,
+            userBaseAmount: baseUserAmount,
             bonusAmount,
             bonusPercent,
+            userPercent,
             txId,
             at: now,
           }),
@@ -656,8 +1175,10 @@ export const magicReceiptsCallback = onRequest(
             type: "magic_receipt",
             amount: final,
             baseAmount: base,
+            userBaseAmount: baseUserAmount,
             bonusAmount,
             bonusPercent,
+            userPercent,
             txId,
             createdAt: serverNow,
           },
@@ -674,11 +1195,11 @@ export const magicReceiptsCallback = onRequest(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
-//  BITLABS RECEIPT CALLBACK — with streak bonus
+//  BITLABS RECEIPT CALLBACK — revenue share with streak bonus
 ////////////////////////////////////////////////////////////////////////////////
 
 export const bitlabsReceiptCallback = onRequest(
-  { secrets: [OFFERS_SECRET], region: "us-central1" },
+  { secrets: [OFFERS_SECRET], region: "us-central1", maxInstances: 1 },
   async (req, res) => {
     try {
       if (req.method !== "GET" && req.method !== "POST") {
@@ -691,7 +1212,10 @@ export const bitlabsReceiptCallback = onRequest(
       const expectedSecret = OFFERS_SECRET.value();
 
       if (!secretFromRequest || secretFromRequest !== expectedSecret) {
-        console.warn("Invalid secret on receipt callback:", secretFromRequest);
+        console.warn(
+          "Invalid secret on receipt callback:",
+          secretFromRequest
+        );
         res.status(403).send("Forbidden");
         return;
       }
@@ -728,9 +1252,18 @@ export const bitlabsReceiptCallback = onRequest(
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
         const now = admin.firestore.Timestamp.now();
 
-        const bonusPercentRaw = userSnap.exists ? userSnap.data()?.bonusPercent : 0;
-        const { final, base, bonusAmount, bonusPercent } =
-          applyStreakBonus(basePayout, bonusPercentRaw);
+        const bonusPercentRaw = userSnap.exists
+          ? userSnap.data()?.bonusPercent
+          : 0;
+
+        const {
+          base,
+          baseUserAmount,
+          final,
+          bonusAmount,
+          bonusPercent,
+          userPercent,
+        } = applyRevenueShare(basePayout, bonusPercentRaw);
 
         const balanceUpdate = {
           balance: admin.firestore.FieldValue.increment(final),
@@ -739,8 +1272,10 @@ export const bitlabsReceiptCallback = onRequest(
             offerId,
             amount: final,
             baseAmount: base,
+            userBaseAmount: baseUserAmount,
             bonusAmount,
             bonusPercent,
+            userPercent,
             at: now,
           }),
         };
@@ -762,8 +1297,10 @@ export const bitlabsReceiptCallback = onRequest(
             type: "magic_receipt",
             amount: final,
             baseAmount: base,
+            userBaseAmount: baseUserAmount,
             bonusAmount,
             bonusPercent,
+            userPercent,
             createdAt: serverNow,
           },
           { merge: true }
@@ -883,7 +1420,8 @@ export const dailyCheckIn = functions.https.onCall(async (request) => {
   if (snap.exists) {
     const data = snap.data() || {};
     dailyStreak = typeof data.dailyStreak === "number" ? data.dailyStreak : 0;
-    bonusPercent = typeof data.bonusPercent === "number" ? data.bonusPercent : 0;
+    bonusPercent =
+      typeof data.bonusPercent === "number" ? data.bonusPercent : 0;
     lastCheckIn = data.lastCheckIn || null;
   }
 
@@ -992,11 +1530,11 @@ export const cleanupCompletedOffers = onSchedule("every 24 hours", async () => {
 // BREADGAME CONSTANTS
 // ============================================================
 const BREADGAME_CRUMBS_PER_PACKAGE = 50_000; // crumbs → 1¢ package
-const BREADGAME_PACKAGE_REWARD_CENTS = 1;    // 1 cent
-const BREADGAME_DAILY_CAP_CENTS = 10;        // 10¢ per day max
+const BREADGAME_PACKAGE_REWARD_CENTS = 1; // 1 cent
+const BREADGAME_DAILY_CAP_CENTS = 10; // 10¢ per day max
 const BREADGAME_MAX_PACKAGES_PER_DAY =
   BREADGAME_DAILY_CAP_CENTS / BREADGAME_PACKAGE_REWARD_CENTS;
-const BREADGAME_COOLDOWN_SECONDS = 60 * 60;  // 1 hour between packages
+const BREADGAME_COOLDOWN_SECONDS = 60 * 60; // 1 hour between packages
 
 ////////////////////////////////////////////////////////////////////////////////
 //  BREADGAME — secure 1¢ package purchase
@@ -1069,15 +1607,14 @@ export const breadgameBuyPackage = functions.https.onCall(async (request) => {
     const nowMs = Date.now();
     if (lastPackageAtTs) {
       const lastMs = lastPackageAtTs.toMillis();
-      const nextAllowed =
-        lastMs + BREADGAME_COOLDOWN_SECONDS * 1000;
+      const nextAllowed = lastMs + BREADGAME_COOLDOWN_SECONDS * 1000;
       if (nowMs < nextAllowed) {
         const remainingMs = nextAllowed - nowMs;
         throw new HttpsError(
           "failed-precondition",
-          `Package on cooldown. Try again in ${
-            Math.ceil(remainingMs / 1000)
-          } seconds.`
+          `Package on cooldown. Try again in ${Math.ceil(
+            remainingMs / 1000
+          )} seconds.`
         );
       }
     }
@@ -1130,8 +1667,8 @@ export const breadgameBuyPackage = functions.https.onCall(async (request) => {
 
 export const resetBreadgameDaily = onSchedule(
   {
-    schedule: "0 0 * * *",             // every day at 00:00
-    timeZone: "America/New_York",      // 12am EST
+    schedule: "0 0 * * *", // every day at 00:00
+    timeZone: "America/New_York", // 12am EST
   },
   async (event) => {
     console.log("Starting resetBreadgameDaily for breadgame state…");
@@ -1144,9 +1681,7 @@ export const resetBreadgameDaily = onSchedule(
     const commits: Promise<FirebaseFirestore.WriteResult[]>[] = [];
 
     for (const userDoc of usersSnap.docs) {
-      const stateRef = userDoc.ref
-        .collection("breadgame")
-        .doc("state");
+      const stateRef = userDoc.ref.collection("breadgame").doc("state");
       const stateSnap = await stateRef.get();
 
       if (!stateSnap.exists) continue;

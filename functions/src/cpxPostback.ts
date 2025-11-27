@@ -16,6 +16,10 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
       status,
       offer_id,
       hash,
+      goal_id,
+      g,               // some CPX setups use "g" for goal
+      et,              // event type / progression event
+      event_id,        // some networks send event progress
     } = req.query;
 
     // -------------------------------
@@ -40,7 +44,19 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
       return;
     }
 
+    // -------------------------------
+    // USER + UNIQUE TX ID
+    // -------------------------------
     const uid = String(user_id);
+
+    // HANDLE GOALS SAFELY
+    let txId = String(trans_id);
+
+    const goalValue = goal_id || g || et || event_id || null;
+    if (goalValue) {
+      txId = `${txId}_goal_${goalValue}`;
+    }
+
     const userRef = admin.firestore().collection("users").doc(uid);
     const userSnap = await userRef.get();
 
@@ -52,35 +68,40 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
     // -------------------------------
     // DUPLICATE PREVENTION
     // -------------------------------
-    const txRef = admin.firestore().collection("completedOffers").doc(String(trans_id));
-    const txSnap = await txRef.get();
+    const txRef = admin.firestore()
+      .collection("completedOffers")
+      .doc(String(txId));
 
+    const txSnap = await txRef.get();
     if (txSnap.exists) {
       res.status(200).send("OK (duplicate ignored)");
       return;
     }
 
     // -------------------------------
-    // 50% SPLIT
-    // -------------------------------
-    const platformCut = rawAmount * 0.5;
-    const userEarn = rawAmount * 0.5;
-
-    // -------------------------------
-    // FRAUD / REVERSAL CASE
-    // status 2 = reversal
+    // REVERSAL CASE
+    // status 2 = reversed / fraud
     // -------------------------------
     if (String(status) === "2") {
+      const reversalAmount = rawAmount * 0.5; // reverse only user share
+
       await userRef.update({
-        balance: admin.firestore.FieldValue.increment(-userEarn), // reverse ONLY user payout
+        balance: admin.firestore.FieldValue.increment(-reversalAmount),
+        auditLog: admin.firestore.FieldValue.arrayUnion({
+          type: "cpx_reversal",
+          offerId: offer_id || null,
+          transactionId: trans_id,
+          reversedAmount: reversalAmount,
+          originalGross: rawAmount,
+          at: admin.firestore.Timestamp.now(),
+        }),
       });
 
       await txRef.set({
         uid,
-        type: "cpx",
         offerId: offer_id || null,
         reversed: true,
-        reversalAmount: userEarn,
+        reversalAmount,
         originalGross: rawAmount,
         at: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -90,50 +111,58 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
     }
 
     // -------------------------------
-    // NORMAL CREDIT (with streak bonus)
+    // NORMAL CREDIT — new universal system:
+    // userPercent = 50% + streakBonus%
     // -------------------------------
     await admin.firestore().runTransaction(async (tx) => {
       const userDoc = await tx.get(userRef);
       const data = userDoc.data() || {};
 
-      const bonusPercent = typeof data.bonusPercent === "number" ? data.bonusPercent : 0;
-      const streakMultiplier = 1 + bonusPercent / 100;
+      const bonusPercentRaw = typeof data.bonusPercent === "number"
+        ? data.bonusPercent
+        : 0;
 
-      const finalPayout = userEarn * streakMultiplier;
-      const bonusAmount = finalPayout - userEarn;
+      // userPercent = (50 + bonus)%
+      const userPercent = (50 + bonusPercentRaw) / 100;
+
+      const finalPayout = Math.round(rawAmount * userPercent * 100) / 100;
+      const platformCut = rawAmount - finalPayout;
+      const bonusAmount = finalPayout - (rawAmount * 0.5);
 
       tx.update(userRef, {
         balance: admin.firestore.FieldValue.increment(finalPayout),
         auditLog: admin.firestore.FieldValue.arrayUnion({
           type: "cpx",
           offerId: offer_id || null,
-          transactionId: trans_id,
+          transactionId: txId,
           gross: rawAmount,
-          userEarn,
+          userPercent: userPercent * 100,
           platformCut,
-          bonusPercent,
+          bonusPercent: bonusPercentRaw,
           bonusAmount,
           creditedFinal: finalPayout,
+          goal: goalValue || null,
           at: admin.firestore.Timestamp.now(),
         }),
       });
 
-      // store completed offer globally
+      // Global log
       tx.set(txRef, {
         uid,
         offerId: offer_id || null,
         source: "cpx",
         gross: rawAmount,
-        userEarn,
+        userPercent: userPercent * 100,
         platformCut,
-        bonusPercent,
+        bonusPercent: bonusPercentRaw,
         bonusAmount,
         creditedFinal: finalPayout,
-        trans_id,
+        goal: goalValue || null,
+        trans_id: txId,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Optional: store inside /users/{uid}/offers
+      // Per-user log
       tx.set(
         userRef.collection("offers").doc(),
         {
@@ -141,10 +170,11 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
           type: "cpx",
           amount: finalPayout,
           gross: rawAmount,
-          userEarn,
+          userPercent: userPercent * 100,
           platformCut,
           bonusAmount,
-          bonusPercent,
+          bonusPercent: bonusPercentRaw,
+          goal: goalValue || null,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         }
       );

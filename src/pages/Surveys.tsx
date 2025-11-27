@@ -239,7 +239,7 @@ export const Surveys: React.FC = () => {
           <div className="earn-header">
             <div>
               <h2 className="rb-section-title">
-                <span className="emoji">dY'-</span> Surveys Fresh From The Oven
+                <span className="emoji">🧾</span> Surveys Fresh From The Oven
               </h2>
               <p className="rb-section-sub">
                 Complete surveys from BitLabs &amp; CPX to earn dough instantly.
