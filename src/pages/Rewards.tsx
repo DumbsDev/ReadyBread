@@ -1,6 +1,6 @@
 // src/pages/Rewards.tsx
-// Full version with PayPal, CashApp, Venmo, Bitcoin, Donations,
-// AND Gift Cards: Amazon, DoorDash, Steam, Spotify Premium (fixed $10)
+// ReadyBread — Dark glass, category-based rewards UI
+// Cashouts still go through Firestore for manual processing
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -19,6 +19,9 @@ import {
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { useUser } from "../contexts/UserContext";
+
+// Page-specific styles
+import "./styles/rewards.css";
 
 /* ---------------------------------------------------
    Logos
@@ -41,12 +44,8 @@ import unicefLogo from "../static/images/icons/unicef.png";
 /* ---------------------------------------------------
    Types
 --------------------------------------------------- */
-type PayoutMethodId =
-  | "paypal"
-  | "cashapp"
-  | "venmo"
-  | "bitcoin"
-  | "giftcard";
+
+type PayoutMethodId = "paypal" | "cashapp" | "venmo" | "bitcoin" | "giftcard";
 
 interface PayoutMethod {
   id: PayoutMethodId;
@@ -65,16 +64,68 @@ interface Charity {
   brandClass: string;
 }
 
-/* ---------------------------------------------------
-   Gift Card Config
---------------------------------------------------- */
-
 interface GiftCardOption {
   id: string;
   name: string;
   logo: string;
   amounts: number[]; // spotify = [10]
 }
+
+/* ---------------------------------------------------
+   Config — Payout Methods
+--------------------------------------------------- */
+
+const mobilePayoutMethods: PayoutMethod[] = [
+  {
+    id: "paypal",
+    name: "PayPal",
+    blurb: "Fast withdrawal straight to your PayPal email.",
+    logo: paypalLogo,
+    brandClass: "rw-pill-paypal",
+  },
+  {
+    id: "cashapp",
+    name: "Cash App",
+    headline: "U.S. only",
+    blurb: "Send your earnings to your $cashtag.",
+    logo: cashappLogo,
+    brandClass: "rw-pill-cashapp",
+  },
+  {
+    id: "venmo",
+    name: "Venmo",
+    headline: "U.S. only",
+    blurb: "Instant payouts to your @venmo username.",
+    logo: venmoLogo,
+    brandClass: "rw-pill-venmo",
+  },
+];
+
+const cryptoPayoutMethods: PayoutMethod[] = [
+  {
+    id: "bitcoin",
+    name: "Bitcoin",
+    headline: "10% network fee",
+    blurb: "Withdraw to a BTC address you control.",
+    logo: bitcoinLogo,
+    brandClass: "rw-pill-bitcoin",
+  },
+];
+
+const giftCardPayoutMethods: PayoutMethod[] = [
+  {
+    id: "giftcard",
+    name: "Gift cards",
+    headline: "Pick your favs!",
+    blurb: "Digital codes delivered to your email.",
+    logo: doordashLogo,
+    brandClass: "rw-pill-giftcard",
+  },
+];
+
+/* ---------------------------------------------------
+   Gift Card Options
+--------------------------------------------------- */
 
 const giftCardOptions: GiftCardOption[] = [
   {
@@ -104,78 +155,28 @@ const giftCardOptions: GiftCardOption[] = [
 ];
 
 /* ---------------------------------------------------
-   Payout Method Config
---------------------------------------------------- */
-const mobilePayoutMethods: PayoutMethod[] = [
-  {
-    id: "paypal",
-    name: "PayPal",
-    blurb: "Fast withdrawal straight to PayPal.",
-    logo: paypalLogo,
-    brandClass: "rw-pill-paypal",
-  },
-  {
-    id: "cashapp",
-    name: "Cash App",
-    headline: "U.S. Exclusive",
-    blurb: "Send your earnings to your Cash App.",
-    logo: cashappLogo,
-    brandClass: "rw-pill-cashapp",
-  },
-  {
-    id: "venmo",
-    name: "Venmo",
-    headline: "U.S. Exclusive",
-    blurb: "Fast payouts to your Venmo account.",
-    logo: venmoLogo,
-    brandClass: "rw-pill-venmo",
-  },
-];
-
-const cryptoPayoutMethods: PayoutMethod[] = [
-  {
-    id: "bitcoin",
-    name: "Bitcoin",
-    headline: "10% Network Fee",
-    blurb: "Withdraw to a BTC wallet.",
-    logo: bitcoinLogo,
-    brandClass: "rw-pill-bitcoin",
-  },
-];
-
-const giftCardPayoutMethods: PayoutMethod[] = [
-  {
-    id: "giftcard",
-    name: "Gift Cards",
-    headline: "Amazon, DoorDash, Steam & More",
-    blurb: "Redeem digital gift cards delivered by email.",
-    logo: amazonLogo,
-    brandClass: "rw-pill-giftcard",
-  },
-];
-
-/* ---------------------------------------------------
    Charities
 --------------------------------------------------- */
+
 const charities: Charity[] = [
   {
     id: "doctors_without_borders",
     name: "Doctors Without Borders",
-    blurb: "Emergency medical care worldwide.",
+    blurb: "Emergency medical care around the world.",
     logo: dwbLogo,
     brandClass: "rw-pill-dwb",
   },
   {
     id: "st_jude",
     name: "St. Jude Children’s Research Hospital",
-    blurb: "Supporting kids fighting cancer.",
+    blurb: "Supporting kids and families fighting cancer.",
     logo: stjudesLogo,
     brandClass: "rw-pill-stjude",
   },
   {
     id: "red_cross",
     name: "Red Cross",
-    blurb: "Disaster relief and global aid.",
+    blurb: "Disaster relief and humanitarian aid.",
     logo: redcrossLogo,
     brandClass: "rw-pill-redcross",
   },
@@ -191,29 +192,28 @@ const charities: Charity[] = [
 /* ---------------------------------------------------
    Component
 --------------------------------------------------- */
+
 export const Rewards: React.FC = () => {
   const navigate = useNavigate();
   const { user, loading, refreshProfile } = useUser();
 
-  /* UI state */
   const [currentBalance, setCurrentBalance] = useState(0);
 
+  // CASHOUT MODAL
   const [showPayoutModal, setShowPayoutModal] = useState(false);
-  const [selectedMethodId, setSelectedMethodId] = useState<PayoutMethodId | null>(
-    null
-  );
+  const [selectedMethodId, setSelectedMethodId] =
+    useState<PayoutMethodId | null>(null);
   const [payoutAmount, setPayoutAmount] = useState("3.00");
   const [payoutIdentifier, setPayoutIdentifier] = useState("");
 
-  /* GIFT CARD modal */
+  // GIFT CARD MODAL
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [selectedGift, setSelectedGift] = useState<GiftCardOption | null>(null);
-  const [selectedGiftAmount, setSelectedGiftAmount] = useState<number | null>(
-    null
-  );
+  const [selectedGiftAmount, setSelectedGiftAmount] =
+    useState<number | null>(null);
   const [giftcardEmail, setGiftcardEmail] = useState("");
 
-  /* DONATIONS */
+  // DONATION MODAL
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [selectedCharityId, setSelectedCharityId] = useState<string | null>(
     null
@@ -223,7 +223,7 @@ export const Rewards: React.FC = () => {
 
   /* ---------------------------------------------------
      LOGIN GATING
---------------------------------------------------- */
+  --------------------------------------------------- */
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -252,42 +252,78 @@ export const Rewards: React.FC = () => {
   if (!user) return null;
 
   /* ---------------------------------------------------
-     PAYOUT OPEN
---------------------------------------------------- */
+     HELPERS
+  --------------------------------------------------- */
+
+  const minCashout = 3;
+  const maxPerRequest = 20;
+
+  const computeMaxCashout = () => {
+    const allowed = Math.min(currentBalance, maxPerRequest);
+    return allowed < minCashout ? minCashout : allowed;
+  };
+
+  /* ---------------------------------------------------
+     OPEN MODALS
+  --------------------------------------------------- */
+
   const openPayoutModal = (methodId: PayoutMethodId) => {
-    if (currentBalance < 3) {
+    if (currentBalance < minCashout && methodId !== "giftcard") {
       alert("You need at least $3.00 to cash out.");
       return;
     }
 
     if (methodId === "giftcard") {
+      // gift cards use a dedicated modal
+      setSelectedGift(null);
+      setSelectedGiftAmount(null);
+      setGiftcardEmail(user.email || "");
       setShowGiftModal(true);
       return;
     }
 
     setSelectedMethodId(methodId);
-    setPayoutAmount("3.00");
+    setPayoutAmount(minCashout.toFixed(2));
 
-    if (methodId === "paypal") setPayoutIdentifier(user.email || "");
-    else setPayoutIdentifier("");
+    if (methodId === "paypal") {
+      setPayoutIdentifier(user.email || "");
+    } else {
+      setPayoutIdentifier("");
+    }
 
     setShowPayoutModal(true);
   };
 
+  const openDonationModal = (charityId: string) => {
+    setSelectedCharityId(charityId);
+    setDonationAmount("");
+    setDonationEmail(user.email || "");
+    setShowDonationModal(true);
+  };
+
   /* ---------------------------------------------------
-     PAYOUT SUBMIT
-     (PayPal / CashApp / Venmo / Bitcoin)
---------------------------------------------------- */
+     CASHOUT SUBMIT (PayPal / CashApp / Venmo / Bitcoin)
+  --------------------------------------------------- */
+
   const handleSubmitPayout = async () => {
     if (!user || !selectedMethodId) return;
 
     const amountNum = parseFloat(payoutAmount);
-    if (isNaN(amountNum) || amountNum < 3) {
-      alert("Minimum is $3.00.");
+    
+    // Apply crypto fee: user receives 90% but pays full amount
+    let payoutFinal = amountNum;
+    if (selectedMethodId === "bitcoin") {
+      payoutFinal = parseFloat((amountNum * 0.90).toFixed(2)); // 10% network fee
+    }
+
+    if (isNaN(amountNum) || amountNum < minCashout) {
+      alert(`Minimum cashout is $${minCashout.toFixed(2)}.`);
       return;
     }
-    if (amountNum > Math.min(20, currentBalance)) {
-      alert("Max cashout is $20.00.");
+
+    const maxAllowed = computeMaxCashout();
+    if (amountNum > maxAllowed) {
+      alert(`Max cashout is $${maxAllowed.toFixed(2)} for now.`);
       return;
     }
 
@@ -297,7 +333,7 @@ export const Rewards: React.FC = () => {
       return;
     }
 
-    /* VALIDATION */
+    // Method-specific validation
     if (selectedMethodId === "cashapp") {
       if (!idValue.startsWith("$")) {
         alert("Cash App tags must start with $");
@@ -313,7 +349,7 @@ export const Rewards: React.FC = () => {
     }
 
     if (selectedMethodId === "paypal") {
-      if (!idValue.includes("@")) {
+      if (!idValue.includes("@") || !idValue.includes(".")) {
         alert("Enter a valid PayPal email.");
         return;
       }
@@ -321,12 +357,11 @@ export const Rewards: React.FC = () => {
 
     if (selectedMethodId === "bitcoin") {
       if (idValue.length < 20) {
-        alert("Invalid BTC address.");
+        alert("That BTC address looks too short.");
         return;
       }
     }
 
-    /* SUBMIT */
     try {
       // Enforce 24h rule
       const cashRef = collection(db, "cashout_requests");
@@ -340,10 +375,10 @@ export const Rewards: React.FC = () => {
       if (!snap.empty) {
         const last = snap.docs[0].data();
         if (last.createdAt?.toMillis) {
-          const delta =
+          const deltaHours =
             (Date.now() - last.createdAt.toMillis()) / (1000 * 60 * 60);
-          if (delta < 24) {
-            alert("Only 1 cashout per 24 hours.");
+          if (deltaHours < 24) {
+            alert("Only one cashout every 24 hours.");
             return;
           }
         }
@@ -352,7 +387,8 @@ export const Rewards: React.FC = () => {
       await addDoc(cashRef, {
         userId: user.uid,
         method: selectedMethodId,
-        amount: amountNum,
+        amount: payoutFinal,
+        originalAmount: amountNum,
         paypalEmail: selectedMethodId === "paypal" ? idValue : null,
         cashappTag: selectedMethodId === "cashapp" ? idValue : null,
         venmoUsername: selectedMethodId === "venmo" ? idValue : null,
@@ -361,12 +397,13 @@ export const Rewards: React.FC = () => {
         createdAt: serverTimestamp(),
       });
 
-      // Deduct balance
+      // Deduct balance with fresh read
       const uRef = doc(db, "users", user.uid);
       const fresh = await getDoc(uRef);
       const bal = fresh.data()?.balance ?? 0;
+
       if (bal < amountNum) {
-        alert("Balance changed - insufficient funds.");
+        alert("Balance changed — insufficient funds.");
         return;
       }
 
@@ -374,7 +411,7 @@ export const Rewards: React.FC = () => {
       setCurrentBalance(bal - amountNum);
       await refreshProfile();
 
-      alert("Cashout submitted!");
+      alert("Cashout request submitted! We process requests within 72 hours.");
       setShowPayoutModal(false);
     } catch (err) {
       console.error(err);
@@ -384,14 +421,17 @@ export const Rewards: React.FC = () => {
 
   /* ---------------------------------------------------
      GIFT CARD SUBMIT
---------------------------------------------------- */
+  --------------------------------------------------- */
+
   const handleGiftCardSubmit = async () => {
+    if (!user) return;
+
     if (!selectedGift || !selectedGiftAmount) {
       alert("Choose a gift card and amount.");
       return;
     }
 
-    if (!giftcardEmail.includes("@")) {
+    if (!giftcardEmail.includes("@") || !giftcardEmail.includes(".")) {
       alert("Enter a valid email to receive your gift card.");
       return;
     }
@@ -399,7 +439,7 @@ export const Rewards: React.FC = () => {
     const amountNum = selectedGiftAmount;
 
     if (amountNum < 5 && selectedGift.id !== "spotify") {
-      alert("Gift card minimum is $5.");
+      alert("Gift card minimum is $5 (Spotify fixed at $10).");
       return;
     }
 
@@ -414,7 +454,7 @@ export const Rewards: React.FC = () => {
         method: "giftcard",
         giftcardType: selectedGift.id,
         giftcardName: selectedGift.name,
-        giftcardEmail: giftcardEmail,
+        giftcardEmail,
         amount: amountNum,
         status: "pending",
         createdAt: serverTimestamp(),
@@ -426,16 +466,15 @@ export const Rewards: React.FC = () => {
       const bal = fresh.data()?.balance ?? 0;
 
       if (bal < amountNum) {
-        alert("Balance changed - insufficient funds.");
+        alert("Balance changed — insufficient funds.");
         return;
       }
 
       await updateDoc(uRef, { balance: bal - amountNum });
-
       setCurrentBalance(bal - amountNum);
       await refreshProfile();
 
-      alert("Gift card request submitted!");
+      alert("Gift card request submitted! We’ll email your code within 72 hours.");
       setShowGiftModal(false);
     } catch (err) {
       console.error(err);
@@ -444,28 +483,23 @@ export const Rewards: React.FC = () => {
   };
 
   /* ---------------------------------------------------
-     DONATIONS (unchanged)
---------------------------------------------------- */
+     DONATIONS SUBMIT
+  --------------------------------------------------- */
+
   const selectedCharity =
     selectedCharityId != null
       ? charities.find((c) => c.id === selectedCharityId) || null
       : null;
 
-  const openDonationModal = (charityId: string) => {
-    setSelectedCharityId(charityId);
-    setDonationAmount("");
-    setDonationEmail(user.email || "");
-    setShowDonationModal(true);
-  };
-
   const handleSubmitDonation = async () => {
-    if (!selectedCharity) return;
+    if (!user || !selectedCharity) return;
 
     const amountNum = parseFloat(donationAmount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      alert("Enter a valid amount.");
+      alert("Enter a valid donation amount.");
       return;
     }
+
     if (amountNum > currentBalance) {
       alert("Insufficient balance.");
       return;
@@ -491,7 +525,7 @@ export const Rewards: React.FC = () => {
       const bal = fresh.data()?.balance ?? 0;
 
       if (bal < amountNum) {
-        alert("Balance changed - insufficient funds.");
+        alert("Balance changed — insufficient funds.");
         return;
       }
 
@@ -499,7 +533,7 @@ export const Rewards: React.FC = () => {
       setCurrentBalance(bal - amountNum);
       await refreshProfile();
 
-      alert("Donation submitted!");
+      alert("Donation submitted — thank you ❤️");
       setShowDonationModal(false);
     } catch (err) {
       console.error(err);
@@ -509,28 +543,52 @@ export const Rewards: React.FC = () => {
 
   const donationNum = parseFloat(donationAmount) || 0;
   const matchAmount = donationNum * 0.05;
-
+  
   /* ---------------------------------------------------
      RENDER
---------------------------------------------------- */
+  --------------------------------------------------- */
+  // BTC network fee preview
+  const btcReceiveAmount =
+    selectedMethodId === "bitcoin"
+      ? (parseFloat(payoutAmount || "0") * 0.9).toFixed(2)
+      : null;
+
   return (
     <main className="rb-content rewards-shell">
       {/* HERO */}
       <section className="rw-card rw-card-hero">
-        <h2 className="rb-section-title">Cash Out Your Earnings 💰</h2>
-        <p className="rb-section-sub">
-          Choose a payout method, gift card, or donate with a 5% ReadyBread match.
-        </p>
-        <div className="rw-balance-line">
-          <span>Your balance:</span>
-          <strong>${currentBalance.toFixed(2)}</strong>
+        <div className="rw-hero-top">
+          <div>
+            <h2 className="rb-section-title">Cash out your earnings 💰</h2>
+            <p className="rb-section-sub">
+              Mobile banking, gift cards, crypto, or donations are processed
+              manually within <strong>72 hours</strong>.
+            </p>
+          </div>
+          <div className="rw-balance-chip">
+            <span>Current balance</span>
+            <strong>${currentBalance.toFixed(2)}</strong>
+          </div>
+        </div>
+
+        <div className="rw-hero-footnote">
+          <span>• Minimum cashout: $3</span>
+          <span>• Max per request: $20</span>
+          <span>• 1 request every 24 hours</span>
         </div>
       </section>
 
-      {/* MOBILE PAYOUTS */}
+      {/* MOBILE BANKING */}
       <section className="rw-card">
-        <h3>Mobile Banking 🏦</h3>
-        <div className="rw-row-strip">
+        <div className="rw-category-header">
+          <div className="rw-category-text">
+            <h3 className="rw-category-title">Mobile banking</h3>
+            <p className="rw-category-sub">
+              Cash out to apps you already use every day.
+            </p>
+          </div>
+        </div>
+        <div className="rw-scroll-row">
           {mobilePayoutMethods.map((m) => (
             <button
               key={m.id}
@@ -540,9 +598,16 @@ export const Rewards: React.FC = () => {
               <div className="rw-pill-main">
                 <div className="rw-pill-text">
                   <h4>{m.name}</h4>
+                  {m.headline && (
+                    <span className="rw-pill-tag">{m.headline}</span>
+                  )}
                   <p>{m.blurb}</p>
                 </div>
-                <img src={m.logo} className="rw-pill-logo" />
+                <img
+                  src={m.logo}
+                  className="rw-pill-logo"
+                  alt={`${m.name} logo`}
+                />
               </div>
             </button>
           ))}
@@ -551,8 +616,15 @@ export const Rewards: React.FC = () => {
 
       {/* GIFT CARDS */}
       <section className="rw-card">
-        <h3>Gift Cards 🎁</h3>
-        <div className="rw-row-strip">
+        <div className="rw-category-header">
+          <div className="rw-category-text">
+            <h3 className="rw-category-title">Gift cards</h3>
+            <p className="rw-category-sub">
+              Turn your balance into digital codes delivered by email.
+            </p>
+          </div>
+        </div>
+        <div className="rw-scroll-row">
           {giftCardPayoutMethods.map((m) => (
             <button
               key={m.id}
@@ -562,10 +634,16 @@ export const Rewards: React.FC = () => {
               <div className="rw-pill-main">
                 <div className="rw-pill-text">
                   <h4>{m.name}</h4>
-                  <p>{m.headline}</p>
+                  {m.headline && (
+                    <span className="rw-pill-tag">{m.headline}</span>
+                  )}
                   <p>{m.blurb}</p>
                 </div>
-                <img src={m.logo} className="rw-pill-logo" />
+                <img
+                  src={m.logo}
+                  className="rw-pill-logo"
+                  alt={`${m.name} logo`}
+                />
               </div>
             </button>
           ))}
@@ -574,8 +652,15 @@ export const Rewards: React.FC = () => {
 
       {/* CRYPTO */}
       <section className="rw-card">
-        <h3>Crypto</h3>
-        <div className="rw-row-strip">
+        <div className="rw-category-header">
+          <div className="rw-category-text">
+            <h3 className="rw-category-title">Crypto</h3>
+            <p className="rw-category-sub">
+              Cash out in Bitcoin to a wallet you control.
+            </p>
+          </div>
+        </div>
+        <div className="rw-scroll-row">
           {cryptoPayoutMethods.map((m) => (
             <button
               key={m.id}
@@ -585,10 +670,16 @@ export const Rewards: React.FC = () => {
               <div className="rw-pill-main">
                 <div className="rw-pill-text">
                   <h4>{m.name}</h4>
-                  <p>{m.headline}</p>
+                  {m.headline && (
+                    <span className="rw-pill-tag">{m.headline}</span>
+                  )}
                   <p>{m.blurb}</p>
                 </div>
-                <img src={m.logo} className="rw-pill-logo" />
+                <img
+                  src={m.logo}
+                  className="rw-pill-logo"
+                  alt={`${m.name} logo`}
+                />
               </div>
             </button>
           ))}
@@ -597,8 +688,16 @@ export const Rewards: React.FC = () => {
 
       {/* DONATIONS */}
       <section className="rw-card">
-        <h3>Donations (We match 5%) 🤝</h3>
-        <div className="rw-row-strip">
+        <div className="rw-category-header">
+          <div className="rw-category-text">
+            <h3 className="rw-category-title">Donations</h3>
+            <p className="rw-category-sub">
+              Send your balance to charity, ReadyBread matches{" "}
+              <strong>5%</strong>.
+            </p>
+          </div>
+        </div>
+        <div className="rw-scroll-row">
           {charities.map((c) => (
             <button
               key={c.id}
@@ -610,7 +709,11 @@ export const Rewards: React.FC = () => {
                   <h4>{c.name}</h4>
                   <p>{c.blurb}</p>
                 </div>
-                <img src={c.logo} className="rw-pill-logo" />
+                <img
+                  src={c.logo}
+                  className="rw-pill-logo"
+                  alt={`${c.name} logo`}
+                />
               </div>
             </button>
           ))}
@@ -618,71 +721,118 @@ export const Rewards: React.FC = () => {
       </section>
 
       {/* RULES */}
-      <section className="rw-card">
-        <h3 className="accent-toast">Cashout Rules</h3>
+      <section className="rw-card rw-card-rules">
+        <h3 className="accent-toast">Cashout rules</h3>
         <ul className="rw-rules">
           <li>Minimum cashout: $3</li>
           <li>Gift cards: minimum $5 (Spotify fixed at $10)</li>
           <li>Maximum per request: $20</li>
-          <li>1 cashout per 24 hours</li>
-          <li>Crypto: 10% network fee</li>
+          <li>One cashout request every 24 hours</li>
+          <li>Crypto payouts include a 10% network / processing fee</li>
+          <li>All payouts are reviewed and processed manually within 72 hours</li>
         </ul>
       </section>
 
-      {/* PAYOUT MODAL */}
-      {showPayoutModal && selectedMethodId && selectedMethodId !== "giftcard" && (
-        <div className="rb-modal">
-          <div
-            className="rb-modal-backdrop"
-            onClick={() => setShowPayoutModal(false)}
-          />
-          <div className="rb-modal-content">
-            <h3>Cash Out via {selectedMethodId.toUpperCase()}</h3>
-
-            <label>Amount ($3 - $20)</label>
-            <input
-              type="number"
-              value={payoutAmount}
-              min={3}
-              max={Math.min(20, currentBalance)}
-              onChange={(e) => setPayoutAmount(e.target.value)}
+      {/* CASHOUT MODAL (MOBILE / CRYPTO) */}
+      {showPayoutModal &&
+        selectedMethodId &&
+        selectedMethodId !== "giftcard" && (
+          <div className="rb-modal rw-modal-root">
+            <div
+              className="rb-modal-backdrop rw-modal-backdrop"
+              onClick={() => setShowPayoutModal(false)}
             />
+            <div className="rb-modal-content rw-modal-content">
+              <h3 className="rw-modal-title">
+                Cash out via{" "}
+                {selectedMethodId === "paypal"
+                  ? "PayPal"
+                  : selectedMethodId === "cashapp"
+                  ? "Cash App"
+                  : selectedMethodId === "venmo"
+                  ? "Venmo"
+                  : "Bitcoin"}
+              </h3>
 
-            <label>
-              {selectedMethodId === "paypal"
-                ? "PayPal Email"
-                : selectedMethodId === "cashapp"
+              <p className="rw-modal-caption">
+                Requests are reviewed and paid out within 72 hours.
+              </p>
+
+              <label className="rw-field-label">Amount</label>
+              <div className="rw-amount-row">
+                <input
+                  type="number"
+                  min={minCashout}
+                  max={computeMaxCashout()}
+                  step="0.01"
+                  value={payoutAmount}
+                  onChange={(e) => setPayoutAmount(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="rw-max-btn"
+                  onClick={() =>
+                    setPayoutAmount(computeMaxCashout().toFixed(2))
+                  }
+                >
+                  Max
+                </button>
+              </div>
+              {selectedMethodId === "bitcoin" && (
+                <p className="rw-fee-note">
+                <br></br>You will receive <strong>${btcReceiveAmount}</strong> after the 10% network fee.
+                </p>
+              )}
+              <p className="rw-helper-text">
+                Min ${minCashout.toFixed(2)} • Max $
+                {computeMaxCashout().toFixed(2)}
+              </p>
+
+              <label className="rw-field-label">
+                {selectedMethodId === "paypal"
+                  ? "PayPal email"
+                  : selectedMethodId === "cashapp"
                   ? "Cash App $cashtag"
                   : selectedMethodId === "venmo"
-                    ? "Venmo Username"
-                    : "Bitcoin Address"}
-            </label>
+                  ? "Venmo username"
+                  : "Bitcoin address"}
+              </label>
+              <input
+                type="text"
+                value={payoutIdentifier}
+                onChange={(e) => setPayoutIdentifier(e.target.value)}
+              />
 
-            <input
-              type="text"
-              value={payoutIdentifier}
-              onChange={(e) => setPayoutIdentifier(e.target.value)}
-            />
-
-            <div className="rb-modal-actions">
-              <button className="hb-btn" onClick={handleSubmitPayout}>
-                Submit Request
-              </button>
-              <button className="secondary-btn" onClick={() => setShowPayoutModal(false)}>
-                Cancel
-              </button>
+              <div className="rw-modal-actions">
+                <button className="hb-btn" onClick={handleSubmitPayout}>
+                  Submit request
+                </button>
+                <button
+                  className="secondary-btn"
+                  onClick={() => setShowPayoutModal(false)}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* GIFT CARD MODAL */}
       {showGiftModal && (
-        <div className="rb-modal">
-          <div className="rb-modal-backdrop" onClick={() => setShowGiftModal(false)} />
-          <div className="rb-modal-content">
-            <h3>Choose a Gift Card</h3>
+        <div className="rb-modal rw-modal-root">
+          <div
+            className="rb-modal-backdrop rw-modal-backdrop"
+            onClick={() => setShowGiftModal(false)}
+          />
+          <div className="rb-modal-content rw-modal-content">
+            <h3 className="rw-modal-title">Redeem a gift card</h3>
+            <p className="rw-modal-caption">
+              Choose a brand and amount. We’ll email the digital code within 72
+              hours.
+            </p>
 
+            <h4 className="rw-subheading">1. Choose a brand</h4>
             <div className="giftcard-grid">
               {giftCardOptions.map((g) => (
                 <button
@@ -703,7 +853,7 @@ export const Rewards: React.FC = () => {
 
             {selectedGift && (
               <>
-                <h4>Select Amount</h4>
+                <h4 className="rw-subheading">2. Select amount</h4>
                 <div className="giftcard-amounts">
                   {selectedGift.amounts.map((amt) => (
                     <button
@@ -718,7 +868,7 @@ export const Rewards: React.FC = () => {
                   ))}
                 </div>
 
-                <label>Gift Card Delivery Email</label>
+                <h4 className="rw-subheading">3. Delivery email</h4>
                 <input
                   type="email"
                   value={giftcardEmail}
@@ -728,11 +878,14 @@ export const Rewards: React.FC = () => {
               </>
             )}
 
-            <div className="rb-modal-actions">
+            <div className="rw-modal-actions">
               <button className="hb-btn" onClick={handleGiftCardSubmit}>
-                Submit Request
+                Submit request
               </button>
-              <button className="secondary-btn" onClick={() => setShowGiftModal(false)}>
+              <button
+                className="secondary-btn"
+                onClick={() => setShowGiftModal(false)}
+              >
                 Cancel
               </button>
             </div>
@@ -742,15 +895,21 @@ export const Rewards: React.FC = () => {
 
       {/* DONATION MODAL */}
       {showDonationModal && selectedCharity && (
-        <div className="rb-modal">
+        <div className="rb-modal rw-modal-root">
           <div
-            className="rb-modal-backdrop"
+            className="rb-modal-backdrop rw-modal-backdrop"
             onClick={() => setShowDonationModal(false)}
           />
-          <div className="rb-modal-content">
-            <h3>Donate to {selectedCharity.name}</h3>
+          <div className="rb-modal-content rw-modal-content">
+            <h3 className="rw-modal-title">
+              Donate to {selectedCharity.name}
+            </h3>
+            <p className="rw-modal-caption">
+              ReadyBread adds a <strong>5% match</strong> on top of your
+              donation.
+            </p>
 
-            <label>Amount</label>
+            <label className="rw-field-label">Donation amount</label>
             <input
               type="number"
               min={0.5}
@@ -759,22 +918,28 @@ export const Rewards: React.FC = () => {
               onChange={(e) => setDonationAmount(e.target.value)}
             />
 
-            <p>
-              ReadyBread match: <b>${matchAmount.toFixed(2)}</b>
+            <p className="rw-helper-text">
+              ReadyBread match: <strong>${matchAmount.toFixed(2)}</strong>
             </p>
 
-            <label>Receipt Email (optional)</label>
+            <label className="rw-field-label">
+              Receipt email <span className="rw-field-optional">(optional)</span>
+            </label>
             <input
               type="email"
               value={donationEmail}
               onChange={(e) => setDonationEmail(e.target.value)}
+              placeholder={user.email || "your@email.com"}
             />
 
-            <div className="rb-modal-actions">
+            <div className="rw-modal-actions">
               <button className="hb-btn" onClick={handleSubmitDonation}>
-                Submit Donation
+                Submit donation
               </button>
-              <button className="secondary-btn" onClick={() => setShowDonationModal(false)}>
+              <button
+                className="secondary-btn"
+                onClick={() => setShowDonationModal(false)}
+              >
                 Cancel
               </button>
             </div>

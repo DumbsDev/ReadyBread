@@ -448,38 +448,7 @@ export const kiwiwallPostback = onRequest(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
-//  REVU OFFERWALL POSTBACK — cents → dollars + revenue share (50%+streak)
-////////////////////////////////////////////////////////////////////////////////
-
-// ------------------------------------------------------------
-// Utility: pick the first valid param
-// ------------------------------------------------------------
-const pickFirstParam = (
-  params: Record<string, any>,
-  keys: string[]
-): string => {
-  for (const key of keys) {
-    const raw = params?.[key];
-    if (raw === undefined || raw === null) continue;
-
-    if (Array.isArray(raw)) {
-      const last = raw[raw.length - 1];
-      if (last === undefined || last === null) continue;
-      return String(last);
-    }
-
-    return String(raw);
-  }
-  return "";
-};
-
-////////////////////////////////////////////////////////////////////////////////
-//  REVU OFFERWALL POSTBACK — hybrid payout detection (recommended)
-//  Priority:
-//    1) $rate$   → real advertiser payout (dollars)
-//    2) reward/payout/amount/value/goal_reward → offerwall payout (dollars)
-//  User receives: 50% + streak bonus
-//  Owner keeps:   50% - streak bonus
+//  REVU OFFERWALL POSTBACK — supports real + TEST FORM
 ////////////////////////////////////////////////////////////////////////////////
 
 export const revuPostback = onRequest(
@@ -508,48 +477,79 @@ export const revuPostback = onRequest(
         return;
       }
 
-      // --- Required Params ---
-      const uid =
-        params.uid || params.sid || params.sid2 || params.user_id || "";
-      const rewardRaw =
+      // ==========================================================
+      // 1. UID EXTRACTION (special fallback for RevU TEST TOOL)
+      // ==========================================================
+      let uid =
+        params.uid || params.sid || params.user_id || params.sub_id || "";
+
+      // RevU Test Form uses SID2 as UID
+      if (!uid && params.sid2) {
+        uid = String(params.sid2);
+      }
+
+      // ==========================================================
+      // 2. PAYOUT EXTRACTION — supports test form (currency)
+      // ==========================================================
+      let rewardRaw =
+        params.rate ||
         params.reward ||
         params.payout ||
         params.amount ||
         params.value ||
+        params.goal_reward ||
         "";
 
-      let txId =
-        params.actionid ||
-        params.transaction_id ||
-        params.tx ||
-        params.trans_id ||
-        "tx_missing";
-
-      const offerId = params.offer_id || params.campaign || "unknown";
-      const sid3 = params.sid3 || params.sub3 || null;
+      // Test postback uses "currency"
+      if (!rewardRaw && params.currency) {
+        rewardRaw = params.currency;
+      }
 
       if (!uid || !rewardRaw) {
+        console.warn("Missing uid / reward", { uid, rewardRaw, params });
         res.status(400).send("Missing uid / reward");
         return;
       }
 
-      // --- Convert cents -> dollars ---
+      // Convert cents → dollars
       const cents = Number(rewardRaw);
       if (!isFinite(cents) || cents <= 0) {
         res.status(400).send("Invalid reward");
         return;
       }
+      const basePayout = Math.round((cents / 100) * 100) / 100;
 
-      const basePayout = Math.round((cents / 100) * 100) / 100; // USD
+      // ==========================================================
+      // 3. TX ID — test form sends none → generate one
+      // ==========================================================
+      let txId =
+        params.actionid ||
+        params.transaction_id ||
+        params.tx ||
+        params.trans_id ||
+        params.oid ||
+        null;
 
-      // --- Prevent Double Credit ---
+      if (!txId) {
+        txId = "revu_test_" + Date.now();
+      }
+
+      const offerId = params.offer_id || params.campaign || "unknown";
+      const sid3 = params.sid3 || params.sub3 || null;
+
+      // ==========================================================
+      // 4. Prevent double credit
+      // ==========================================================
       const txRef = db.collection("completedOffers").doc(String(txId));
-      if ((await txRef.get()).exists) {
-        res.status(200).send("OK (duplicate)");
+      const existing = await txRef.get();
+      if (existing.exists) {
+        res.status(200).send("OK (duplicate ignored)");
         return;
       }
 
-      // --- Apply Revenue Share: 50% + streak bonus ---
+      // ==========================================================
+      // 5. Revenue Share + Credit User
+      // ==========================================================
       await db.runTransaction(async (t) => {
         const userRef = db.collection("users").doc(uid);
         const snap = await t.get(userRef);
@@ -560,13 +560,12 @@ export const revuPostback = onRequest(
         const bonusPercentRaw = snap.exists ? snap.data()?.bonusPercent : 0;
         const bonusPercent = clampBonusPercent(bonusPercentRaw);
 
-        const userPercent = (50 + bonusPercent) / 100; // 0.50–0.60
+        const userPercent = (50 + bonusPercent) / 100;
         const final = Math.round(basePayout * userPercent * 100) / 100;
 
         const baseUserAmount = Math.round(basePayout * 0.5 * 100) / 100;
         const bonusAmount = Math.round((final - baseUserAmount) * 100) / 100;
 
-        // --- Update user balance ---
         const update = {
           balance: admin.firestore.FieldValue.increment(final),
           auditLog: admin.firestore.FieldValue.arrayUnion({
@@ -635,7 +634,6 @@ export const revuPostback = onRequest(
     }
   }
 );
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //  REFERRALS - unchanged

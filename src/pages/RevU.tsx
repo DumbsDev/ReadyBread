@@ -33,8 +33,7 @@ export const RevUWall: React.FC = () => {
               <h2 className="rb-section-title">RevU Offerwall</h2>
               <p className="rb-section-sub">
                 Revenue Universe wall with apps, signups, and commerce trials.
-                We pass your ReadyBread ID as uid and your referral code in sid3
-                for postbacks.
+                We pass your ReadyBread ID and referral code to them.
               </p>
               <h3>You are currently earning 50% + daily bonus of what's shown.</h3>
             </div>

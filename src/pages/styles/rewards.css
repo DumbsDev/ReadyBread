@@ -1,0 +1,505 @@
+/* ================================================
+   REWARDS PAGE — Dark glass, app-like UI
+================================================ */
+
+.rewards-shell {
+  padding: 96px 16px 32px;
+  max-width: 960px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Basic card shell */
+.rw-card {
+  border-radius: 20px;
+  padding: 18px 18px 16px;
+  margin-bottom: 18px;
+  background: radial-gradient(circle at top left, #262626 0, #111 45%, #050505 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(26px) saturate(160%);
+}
+
+/* Hero card */
+.rw-card-hero {
+  padding: 22px 20px 18px;
+  background: linear-gradient(
+      135deg,
+      rgba(255, 209, 102, 0.12),
+      rgba(0, 0, 0, 0.9)
+    ),
+    radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.05), transparent 60%);
+  border: 1px solid rgba(255, 209, 102, 0.38);
+}
+
+.rw-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.rw-balance-chip {
+  min-width: 160px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: radial-gradient(circle at top, rgba(0, 0, 0, 0.9), #161616);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  text-align: right;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rw-balance-chip span {
+  opacity: 0.8;
+}
+
+.rw-balance-chip strong {
+  font-size: 20px;
+  letter-spacing: 0.01em;
+}
+
+.rw-hero-footnote {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+/* ================================================
+   CATEGORY HEADER + HORIZONTAL ROWS
+================================================ */
+
+.rw-category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+
+.rw-category-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rw-category-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.rw-category-sub {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* Horizontal scroll row */
+.rw-scroll-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  padding-top: 4px;
+  scroll-snap-type: x mandatory;
+}
+
+.rw-scroll-row::-webkit-scrollbar {
+  height: 4px;
+}
+
+.rw-scroll-row::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+/* ================================================
+   PILL CARDS (methods & charities)
+================================================ */
+
+.rw-pill-card {
+  scroll-snap-align: start;
+  min-width: 230px;
+  max-width: 260px;
+  border-radius: 18px;
+  padding: 12px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: radial-gradient(circle at top left, #252525, #101010);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(0, 0, 0, 0.4);
+  color: #fdfdfd;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    border-color 0.15s ease-out,
+    background 0.15s ease-out;
+  text-align: left;
+}
+
+.rw-pill-card:hover {
+  transform: translateY(-2px) translateZ(0);
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.rw-pill-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rw-pill-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rw-pill-text h4 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rw-pill-text p {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.rw-pill-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: rgba(0, 0, 0, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  margin-bottom: 2px;
+}
+
+.rw-pill-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Brand accents */
+.rw-pill-paypal {
+  background: linear-gradient(135deg, #142640, #05070b);
+}
+
+.rw-pill-cashapp {
+  background: linear-gradient(135deg, #0f3b1e, #040806);
+}
+
+.rw-pill-venmo {
+  background: linear-gradient(135deg, #123555, #04080f);
+}
+
+.rw-pill-bitcoin {
+  background: linear-gradient(135deg, #5a3500, #050200);
+}
+
+.rw-pill-giftcard {
+  background: linear-gradient(135deg, #42240c, #070402);
+}
+
+.rw-pill-dwb {
+  background: linear-gradient(135deg, #143046, #04070a);
+}
+
+.rw-pill-stjude {
+  background: linear-gradient(135deg, #4a1324, #080208);
+}
+
+.rw-pill-redcross {
+  background: linear-gradient(135deg, #3d1216, #070102);
+}
+
+.rw-pill-unicef {
+  background: linear-gradient(135deg, #0e3c55, #020509);
+}
+
+/* ================================================
+   RULES CARD
+================================================ */
+
+.rw-card-rules {
+  font-size: 13px;
+}
+
+.rw-rules {
+  list-style: disc;
+  padding-left: 18px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ================================================
+   MODALS — center, blurred dark glass
+================================================ */
+
+.rw-modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.rw-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top, rgba(0, 0, 0, 0.8), #000);
+  backdrop-filter: blur(18px);
+}
+
+.rw-modal-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  max-width: 420px;
+  transform: translate(-50%, -50%);
+  padding: 20px 18px 16px;
+  border-radius: 22px;
+  background: radial-gradient(circle at top left, #262626, #050505);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(30px) saturate(180%);
+  animation: rw-modal-pop 0.16s ease-out forwards;
+}
+
+@keyframes rw-modal-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.rw-modal-title {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.rw-modal-caption {
+  font-size: 12px;
+  opacity: 0.85;
+  margin-bottom: 12px;
+}
+
+/* Fields inside modals */
+.rw-field-label {
+  font-size: 12px;
+  margin-top: 10px;
+  margin-bottom: 4px;
+  opacity: 0.9;
+}
+
+.rw-field-optional {
+  opacity: 0.6;
+  font-size: 11px;
+}
+
+.rw-amount-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.rw-amount-row input[type="number"],
+.rw-modal-content input[type="text"],
+.rw-modal-content input[type="email"],
+.rw-modal-content input[type="number"] {
+  flex: 1;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 9px 10px;
+  font-size: 13px;
+  color: #fdfdfd;
+  outline: none;
+}
+
+.rw-amount-row input[type="number"]:focus,
+.rw-modal-content input:focus {
+  border-color: rgba(255, 209, 102, 0.7);
+  box-shadow: 0 0 0 1px rgba(255, 209, 102, 0.4);
+}
+
+.rw-max-btn {
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  border: 1px solid rgba(255, 209, 102, 0.7);
+  background: radial-gradient(circle at top, #ffd166, #8a5f1d);
+  cursor: pointer;
+  font-weight: 600;
+  color: #1a1305;
+  white-space: nowrap;
+}
+
+.rw-helper-text {
+  font-size: 11px;
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
+.rw-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Make hb-btn / secondary-btn feel at home here if they exist globally */
+.rw-modal-actions .hb-btn {
+  padding-inline: 14px;
+  padding-block: 8px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.rw-modal-actions .secondary-btn {
+  padding-inline: 12px;
+  padding-block: 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.74);
+}
+
+/* ================================================
+   GIFT CARD MODAL — internal layout
+================================================ */
+
+.rw-subheading {
+  font-size: 13px;
+  margin-top: 10px;
+  margin-bottom: 6px;
+  opacity: 0.9;
+}
+
+.giftcard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.giftcard-option {
+  border-radius: 14px;
+  padding: 7px 8px;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(253, 253, 253, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #FDFDFD;
+  cursor: pointer;
+  font-size: 12px;
+  transition:
+    border-color 0.12s ease-out,
+    background 0.12s ease-out,
+    transform 0.12s ease-out;
+}
+
+.giftcard-option img {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: white;
+}
+
+.giftcard-option span {
+  flex: 1;
+  line-height: 1.2;
+}
+
+.giftcard-option.active {
+  border-color: rgba(255, 209, 102, 0.9);
+  background: radial-gradient(circle at top, #3a2a10, #060301);
+  transform: translateY(-1px);
+}
+
+.giftcard-amounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.giftamt {
+  border-radius: 999px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.7);
+  color: #fdfdfd;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease-out,
+    background 0.12s ease-out,
+    transform 0.12s ease-out;
+}
+
+.giftamt.active {
+  border-color: rgba(255, 209, 102, 0.9);
+  background: radial-gradient(circle at top, #3a2a10, #060301);
+  transform: translateY(-1px);
+}
+
+/* ================================================
+   RESPONSIVE
+================================================ */
+
+@media (max-width: 640px) {
+  .rewards-shell {
+    padding-top: 88px;
+  }
+
+  .rw-hero-top {
+    flex-direction: column;
+  }
+
+  .rw-balance-chip {
+    flex: 1;
+    align-self: center;
+    text-align: left;
+  }
+
+  .rw-modal-content {
+    max-width: 92%;
+  }
+
+  .rw-card {
+    padding: 16px 14px 14px;
+  }
+
+  .rw-pill-card {
+    min-width: 210px;
+  }
+}
