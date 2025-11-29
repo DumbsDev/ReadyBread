@@ -11,5 +11,10 @@ export default defineConfig({
     sourcemap: false,
     target: 'es2020',
     reportCompressedSize: false
-  }
+  },
+  optimizeDeps: {
+  extensions: ["md"]
+  },
+  assetsInclude: ["**/*.md"],
+
 })

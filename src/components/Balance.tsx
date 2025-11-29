@@ -1,5 +1,5 @@
 // src/components/Balance.tsx
-// Animated balance display + left-side streak chip (Freecash style)
+// Animated balance display + optional streak chip
 
 import React, { useEffect, useRef, useState } from "react";
 import "../home.css";
@@ -8,6 +8,7 @@ import "../styles.css";
 interface BalanceProps {
   balance: number;
   user?: any;
+  showStreak?: boolean; // NEW FLAG
 }
 
 const DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
@@ -44,10 +45,15 @@ const RollingDigit: React.FC<{ value: number }> = ({ value }) => {
   );
 };
 
-export const Balance: React.FC<BalanceProps> = ({ balance, user }) => {
+export const Balance: React.FC<BalanceProps> = ({
+  balance,
+  user,
+  showStreak = true, // default ON for headers
+}) => {
   const [isPulsing, setIsPulsing] = useState(false);
   const previous = useRef<number | null>(null);
 
+  // ---------- STREAK ----------
   const streakFromUser =
     typeof user?.dailyStreak === "number"
       ? user.dailyStreak
@@ -87,14 +93,16 @@ export const Balance: React.FC<BalanceProps> = ({ balance, user }) => {
 
   return (
     <div className="rb-balance-wrapper fc-layout">
-      {/* LEFT-SIDE STREAK BOX */}
-      <div
-        className={`fc-streak-box fc-streak--${streakVariant}`}
-        aria-label={`Current streak ${streak} day${streak === 1 ? "" : "s"}`}
-      >
-        <span className="fc-streak-emoji">{streakIcon}</span>
-        <span className="fc-streak-days">{streak}</span>
-      </div>
+      {/* LEFT-SIDE STREAK BOX — only if showStreak===true */}
+      {showStreak && (
+        <div
+          className={`fc-streak-box fc-streak--${streakVariant}`}
+          aria-label={`Current streak ${streak} day${streak === 1 ? "" : "s"}`}
+        >
+          <span className="fc-streak-emoji">{streakIcon}</span>
+          <span className="fc-streak-days">{streak}</span>
+        </div>
+      )}
 
       {/* BALANCE */}
       <div

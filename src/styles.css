@@ -2590,6 +2590,14 @@ body {
   margin-bottom: 14px;
 }
 
+#contact {
+  color:#FDFDFD;
+  background:#0b0b0b;
+  border-radius: 16px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
 .status-tag {
   display: inline-flex;
   align-items: center;

@@ -1,88 +1,209 @@
 // src/pages/tos.tsx
 import React from "react";
+import "./styles/legal.css";
 
 export const TOS: React.FC = () => {
   return (
-    <main className="rb-content rb-legal-page">
-      <h1>ReadyBread Terms of Service</h1>
-      <p>
-        <b>Effective Date:</b> November 2025<br />
-        <b>Last Updated:</b> November 2025
-      </p>
+    <main className="legal-wrapper">
+      <div className="legal-card">
+        <h1 className="legal-title">Terms of Service</h1>
 
-      <p>
-        Welcome to ReadyBread. By creating an account or using this website,
-        you agree to these Terms. If you do not agree, do not use ReadyBread.
-      </p>
+        <p className="legal-intro">
+          <b>Effective Date:</b> November 2025<br />
+          <b>Last Updated:</b> November 2025
+        </p>
 
-      <h2>1. Eligibility</h2>
-      <ul>
-        <li>You must be at least 13 years old. Users under 18 must have parental consent.</li>
-        <li>Provide accurate information and maintain a verified email.</li>
-        <li>Multiple users can access ReadyBread from the same network (e.g., dorms).</li>
-      </ul>
+        <p className="legal-intro">
+          Welcome to ReadyBread. By creating an account or using this website,
+          you agree to these Terms. If you do not agree, please stop using the
+          platform.
+        </p>
 
-      <h2>2. Accounts</h2>
-      <ul>
-        <li>You are responsible for your login security and device safety.</li>
-        <li>You are responsible for all actions under your account.</li>
-        <li>We may suspend or terminate accounts that violate these Terms.</li>
-      </ul>
+        {/* ─────────────────────────────── */}
+        {/* 1. Eligibility */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>1. Eligibility</h2>
+          <ul>
+            <li>You must be at least 16 years old to use ReadyBread.</li>
+            <li>Users under 18 must have parental permission.</li>
+            <li>
+              You must provide accurate information and maintain a verified
+              email.
+            </li>
+            <li>
+              Shared networks like dorms and households are allowed. Multiple
+              accounts per person are not.
+            </li>
+          </ul>
+        </section>
 
-      <h2>3. Earnings, Rewards, and Balance</h2>
-      <ul>
-        <li>Rewards come from surveys, games, receipts, and referrals provided by third parties.</li>
-        <li>Rewards are credited only after partner verification and may be reversed.</li>
-        <li>Your ReadyBread balance is not cash until manually approved for payout.</li>
-        <li>Payout requests may be denied if fraud or quality issues are suspected.</li>
-      </ul>
+        {/* ─────────────────────────────── */}
+        {/* 2. Accounts */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>2. Accounts</h2>
+          <ul>
+            <li>You are responsible for your password and device security.</li>
+            <li>
+              You are responsible for all activity performed under your
+              account.
+            </li>
+            <li>
+              We may limit, suspend, or terminate accounts that violate these
+              Terms or raise fraud concerns.
+            </li>
+          </ul>
+        </section>
 
-      <h2>4. Fraud Prevention</h2>
-      <ul>
-        <li>We monitor for automation and fraud but do not block shared IPs (dorms/households are fine).</li>
-        <li>VPNs/proxies may reduce offer availability; you can still proceed, but quality checks may occur.</li>
-        <li>We use device fingerprints, IP reputation checks, and server-side validations to flag abusive patterns.</li>
-        <li>Severe or repeated fraud/automation can still lead to bans or forfeiture.</li>
-      </ul>
+        {/* ─────────────────────────────── */}
+        {/* 3. Earnings & Rewards */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>3. Earnings and Rewards</h2>
+          <ul>
+            <li>
+              Earnings come from third party partners including surveys, apps,
+              games, offers, and receipts.
+            </li>
+            <li>
+              All rewards require partner approval and may be reversed if
+              partners revoke or adjust credit.
+            </li>
+            <li>
+              Your ReadyBread balance is virtual until manually approved for
+              payout.
+            </li>
+            <li>
+              We may delay, deny, or reverse payouts if fraud, abuse, or low
+              quality activity is detected.
+            </li>
+          </ul>
+        </section>
 
-      <h2>5. Referral Program</h2>
-      <p>Referral rewards apply only when a new user signs up and participates legitimately. Duplicate, fake, or self-referrals are prohibited.</p>
+        {/* ─────────────────────────────── */}
+        {/* 4. Fraud Prevention */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>4. Fraud Prevention</h2>
+          <ul>
+            <li>
+              We use IP reputation services, device fingerprinting, and
+              server-side validation to monitor activity.
+            </li>
+            <li>
+              VPNs, proxies, Tor, and anti-detect browsers are prohibited.
+            </li>
+            <li>
+              Shared networks are allowed as long as each person has a genuine
+              individual account.
+            </li>
+            <li>
+              Partners may reverse rewards for low quality answers, duplicate
+              accounts, or suspicious behavior.
+            </li>
+            <li>
+              Serious or repeated violations can lead to permanent bans and
+              forfeited balances.
+            </li>
+          </ul>
+        </section>
 
-      <h2>6. Prohibited Activities</h2>
-      <ul>
-        <li>Using bots, scripts, automation, or emulators.</li>
-        <li>Using VPNs/proxies to manipulate geo or payout.</li>
-        <li>Multi-accounting or self-referring.</li>
-        <li>Submitting low-quality or dishonest survey answers.</li>
-        <li>Attempting to alter balances, receipts, or backend behavior.</li>
-        <li>Interfering with ReadyBread operations or partners.</li>
-      </ul>
+        {/* ─────────────────────────────── */}
+        {/* 5. Referral Program */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>5. Referral Program</h2>
+          <p>
+            Referral rewards apply only when a new user signs up using your
+            referral code and engages legitimately. Fake referrals,
+            self-referrals, duplicate accounts, or incentivized signups are not
+            allowed and may result in removal of referral earnings or account
+            suspension.
+          </p>
+        </section>
 
-      <h2>7. Suspension or Termination</h2>
-      <p>We may suspend or terminate access for violations, suspected fraud, or abuse. Bans may result in forfeiture of balances.</p>
+        {/* ─────────────────────────────── */}
+        {/* 6. Prohibited Activities */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>6. Prohibited Activities</h2>
+          <ul>
+            <li>Using bots, scripts, emulators, or automation of any kind.</li>
+            <li>Using VPNs, proxies, or IP masking tools.</li>
+            <li>Multi-accounting, self-referring, or identity manipulation.</li>
+            <li>Submitting dishonest or low quality survey answers.</li>
+            <li>
+              Attempting to modify the platform, rewards, receipts, or backend.
+            </li>
+            <li>
+              Interfering with ReadyBread operations, partners, or other users.
+            </li>
+          </ul>
+        </section>
 
-      <h2>8. Warranty Disclaimer</h2>
-      <p>ReadyBread is provided "as is." We do not guarantee earnings, uptime, accuracy, or partner availability.</p>
+        {/* ─────────────────────────────── */}
+        {/* 7. Suspension or Termination */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>7. Suspension or Termination</h2>
+          <p>
+            We may suspend, limit, or terminate your account if there is a
+            violation of these Terms, evidence of abuse, or partner feedback
+            indicating fraud. Suspended or banned accounts may forfeit pending
+            balances.
+          </p>
+        </section>
 
-      <h2>9. Limitation of Liability</h2>
-      <p>
-        ReadyBread is not liable for reversed offers, lost rewards, partner issues, data loss, or damages arising from use of the site.
-        Payouts are at our discretion and depend on partner confirmation.
-      </p>
+        {/* ─────────────────────────────── */}
+        {/* 8. Warranty Disclaimer */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>8. Warranty Disclaimer</h2>
+          <p>
+            ReadyBread is provided on an "as is" basis. We do not guarantee
+            earnings, uptime, offer availability, or accuracy of partner
+            information.
+          </p>
+        </section>
 
-      <h2>10. Changes to Terms</h2>
-      <p>We may modify these Terms at any time. Continued use indicates acceptance of updates.</p>
+        {/* ─────────────────────────────── */}
+        {/* 9. Limitation of Liability */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>9. Limitation of Liability</h2>
+          <p>
+            ReadyBread is not responsible for reversed offers, partner
+            decisions, data loss, lost earnings, or damages resulting from use
+            of the platform. All payouts depend on partner confirmation and our
+            review.
+          </p>
+        </section>
 
-      <h2>11. Contact</h2>
-      <p>Email: contact@readybread.xyz</p>
+        {/* ─────────────────────────────── */}
+        {/* 10. Changes to Terms */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>10. Changes to Terms</h2>
+          <p>
+            We may update these Terms at any time. Continued use of
+            ReadyBread means you accept the most recent version.
+          </p>
+        </section>
 
-      <h2>TL;DR Summary</h2>
-      <ul>
-        <li>Do not cheat, multi-account, or use VPNs/proxies.</li>
-        <li>Offer approvals come from partners, not us.</li>
-        <li>We may ban or forfeit balances when fraud is suspected.</li>
-        <li>Your balance is not cash until manually paid out.</li>
-      </ul>
+        {/* ─────────────────────────────── */}
+        {/* 11. Contact */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>11. Contact</h2>
+          <p>
+            Email us at{" "}
+            <a href="mailto:contact@readybread.xyz">contact@readybread.xyz</a>
+          </p>
+        </section>
+      </div>
     </main>
   );
 };
+
+export default TOS;

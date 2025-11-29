@@ -1,0 +1,73 @@
+/* legal.css — ReadyBread Legal Page Styling */
+
+.legal-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 40px 16px;
+  box-sizing: border-box;
+}
+
+.legal-card {
+  width: 100%;
+  max-width: 780px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(14px) saturate(180%);
+  border-radius: 22px;
+  padding: 32px 28px;
+  color: #fdfdfd;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.legal-title {
+  font-size: 1.9rem;
+  margin-bottom: 16px;
+  font-weight: 700;
+  color: #ffd166;
+  text-align: center;
+}
+
+.legal-intro {
+  font-size: 1.05rem;
+  color: #e8e8e8;
+  line-height: 1.6;
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.legal-section {
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.legal-section h2 {
+  font-size: 1.35rem;
+  margin-bottom: 14px;
+  color: #ffe8b3;
+}
+
+.legal-section ul {
+  padding-left: 20px;
+}
+
+.legal-section ul li {
+  margin-bottom: 8px;
+  color: #dddddd;
+  line-height: 1.55;
+}
+
+.legal-section p {
+  color: #dddddd;
+  line-height: 1.55;
+}
+
+a {
+  color: #ffd166;
+  text-decoration: underline;
+}
+
+a:hover {
+  opacity: 0.85;
+}

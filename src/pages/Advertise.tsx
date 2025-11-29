@@ -19,7 +19,7 @@ export const Advertise: React.FC = () => {
           <div className="rb-card modern-card">
             <h3>Why partner with us</h3>
             <ul className="proof-list">
-              <li>Real users with daily activity, not bot traffic.</li>
+              <li>Real users with daily activity.</li>
               <li>US/CA-heavy audience with low bounce rate.</li>
               <li>Server-side validation to keep fraud low.</li>
               <li>Mobile-first UX and PWA for repeat engagement.</li>
@@ -29,10 +29,10 @@ export const Advertise: React.FC = () => {
           <div className="rb-card modern-card">
             <h3>What we offer</h3>
             <ul className="proof-list">
-              <li>Offerwall placement (games, surveys, commerce).</li>
+              <li>Offerwall placement on our custom offerwall.</li>
               <li>Sponsored cards on dashboard and earn pages.</li>
-              <li>In-app announcements, streak bonuses, and quests.</li>
-              <li>Discord announcements and social proof posts.</li>
+              <li>In-app announcements, and quests.</li>
+              <li>Social media announcements and social proof posts.</li>
             </ul>
           </div>
 
@@ -53,7 +53,7 @@ export const Advertise: React.FC = () => {
             Tell us about your goals, budget, and preferred pricing model (CPA, CPL, rev-share, or fixed).
           </p>
           <p>
-            Email <a href="mailto:contact@readybread.xyz">contact@readybread.xyz</a> with:
+            Email <a href="mailto:contact@readybread.xyz" id="contact">contact@readybread.xyz</a> with:
           </p>
           <ul className="proof-list">
             <li>Your company/offer name and landing URL.</li>

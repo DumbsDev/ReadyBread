@@ -1,41 +1,92 @@
 // src/pages/AntiFraud.tsx
 import React from "react";
+import "./styles/legal.css";
 
-export const AntiFraud: React.FC = () => {
+const AntiFraudComponent: React.FC = () => {
   return (
-    <main className="rb-content rb-legal-page">
-      <h1>Anti-Fraud &amp; VPN Policy</h1>
-      <p>
-        ReadyBread is built for real people earning real rewards. We focus on education and light-touch checks
-        so roommates or dorms can play together without IP blocks.
-      </p>
+    <main className="legal-wrapper">
+      <div className="legal-card">
+        <h1 className="legal-title">Anti-Fraud & VPN Policy</h1>
 
-      <h2>What is not allowed</h2>
-      <ul>
-        <li>Automated scripts, bots, or survey-farming tools.</li>
-        <li>Emulators, rooted device exploits, or spoofed device IDs.</li>
-        <li>Fake data, low-quality survey answers, or fabricated receipts.</li>
-      </ul>
+        <p className="legal-intro">
+          ReadyBread is built for real people earning real rewards. We use
+          multiple layers of protection to keep earnings fair, while allowing
+          shared networks such as dorms, families, and campus Wi-Fi.
+        </p>
 
-      <h2>How we enforce</h2>
-      <ul>
-        <li>IP reputation checks via IPQualityScore/GetIPIntel with warnings (no IP blocking for dorms/roommates).</li>
-        <li>Device fingerprints and server-side validation; balances cannot be edited client-side.</li>
-        <li>Manual review of payout requests and referral activity.</li>
-        <li>Serious automation/fraud can still be banned, but shared networks are allowed.</li>
-      </ul>
+        {/* ─────────────────────────────── */}
+        {/* WHAT IS NOT ALLOWED */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>What is not allowed</h2>
+          <ul>
+            <li>Automated tools, bots, scripts, or survey-farming software.</li>
+            <li>Emulators, rooted/jailbroken devices, or spoofed device IDs.</li>
+            <li>Multiple accounts per user, household, or device.</li>
+            <li>
+              VPNs, proxies, Tor, anti-detect browsers, or any IP masking
+              service.
+            </li>
+            <li>Fake data, low-quality survey answers, or fabricated receipts.</li>
+            <li>
+              Completing offers for others or incentivizing others to complete
+              your offers.
+            </li>
+          </ul>
+        </section>
 
-      <h2>Age & eligibility</h2>
-      <p>Users must be 13+ (with parental consent under 18). Shared Wi-Fi/dorm usage is allowed.</p>
+        {/* ─────────────────────────────── */}
+        {/* HOW WE ENFORCE */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>How we enforce</h2>
+          <ul>
+            <li>
+              Logged IPs analyzed using IPQualityScore and GetIPIntel for
+              fraud patterns.
+            </li>
+            <li>
+              Device fingerprints, hardware checks, and server-side validation.
+            </li>
+            <li>
+              No client-side balance editing; all earnings are securely managed
+              on the server.
+            </li>
+            <li>Manual review of payouts, referrals, and earning activity.</li>
+            <li>
+              Suspicious patterns may result in reversals or permanent bans.
+            </li>
+            <li>Dorms, campuses, and shared home networks are allowed.</li>
+          </ul>
+        </section>
 
-      <h2>Appeals</h2>
-      <p>
-        If you believe you were flagged in error, email{" "}
-        <a href="mailto:contact@readybread.xyz">contact@readybread.xyz</a> with your UID, device,
-        and ISP. We will review logs and partner feedback.
-      </p>
+        {/* ─────────────────────────────── */}
+        {/* AGE REQUIREMENT */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>Age & eligibility</h2>
+          <p>Users must be 16+ (parental consent required under 18).</p>
+        </section>
+
+        {/* ─────────────────────────────── */}
+        {/* APPEALS */}
+        {/* ─────────────────────────────── */}
+        <section className="legal-section">
+          <h2>Appeals</h2>
+          <p>
+            If you believe you were flagged incorrectly, email{" "}
+            <a href="mailto:contact@readybread.xyz">
+              contact@readybread.xyz
+            </a>{" "}
+            with your UID, device information, and ISP. We will review your case
+            using platform logs and partner feedback.
+          </p>
+        </section>
+      </div>
     </main>
   );
 };
 
-export default AntiFraud;
+// Match expected routing exports
+export const AntiFraud = AntiFraudComponent;
+export default AntiFraudComponent;

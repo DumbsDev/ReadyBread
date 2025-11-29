@@ -26,7 +26,7 @@ interface Offer {
 }
 
 // Toggle the AdGem offer wall button on/off for quick testing
-const SHOW_ADGEM_WALL = false;
+const SHOW_ADGEM_WALL = true;
 
 export const Games: React.FC = () => {
   const navigate = useNavigate();
@@ -43,7 +43,7 @@ export const Games: React.FC = () => {
   const BITLABS_KEY = "250f0833-3a86-4232-ae29-9b30026d1820";
 
   // AdGem wall (HTML wall, not JSON API yet)
-  const ADGEM_APP_ID = "31517";
+  const ADGEM_APP_ID = "31547";
   const ADGEM_WALL_BASE = "https://api.adgem.com/v1/wall";
 
   // Gate page behind auth

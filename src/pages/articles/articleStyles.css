@@ -1,0 +1,155 @@
+/* Overall Layout */
+.article-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  color: white;
+  font-family: "Inter", sans-serif;
+}
+
+/* Header */
+.article-header {
+  margin-bottom: 2.5rem;
+  text-align: center;
+}
+
+.article-header h1 {
+  font-size: 2.8rem;
+  font-weight: 700;
+  background: linear-gradient(90deg, #ffd166, #fffcdb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+}
+
+.article-header p {
+  font-size: 1.1rem;
+  color: #bbb;
+}
+
+/* Content Body */
+.article-content {
+  font-size: 1.1rem;
+  line-height: 1.8;
+}
+
+/* Links */
+.article-content a {
+  color: #ffd166;
+  text-decoration: underline;
+}
+.article-content a:hover {
+  opacity: 0.8;
+}
+
+/* Headings */
+.article-content h2,
+.article-content h3,
+.article-content h4 {
+  margin-top: 2.3rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.article-content h2 {
+  font-size: 1.9rem;
+  border-left: 4px solid #ffd166;
+  padding-left: 10px;
+}
+
+.article-content h3 {
+  font-size: 1.5rem;
+  opacity: 0.95;
+}
+
+.article-content h4 {
+  font-size: 1.25rem;
+  opacity: 0.85;
+}
+
+/* Paragraph spacing */
+.article-content p {
+  margin: 1rem 0;
+}
+
+/* Blockquotes */
+.article-content blockquote {
+  border-left: 4px solid #ffd166;
+  padding-left: 1rem;
+  margin: 1.2rem 0;
+  font-style: italic;
+  opacity: 0.9;
+}
+
+/* Code Blocks */
+.article-content pre {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-radius: 10px;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 209, 102, 0.3);
+}
+
+.article-content code {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+/* Lists */
+.article-content ul,
+.article-content ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.article-content li {
+  margin: 0.4rem 0;
+}
+
+/* Images */
+.article-content img {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 16px;
+  margin: 1.5rem 0;
+  border: 1px solid rgba(255, 209, 102, 0.2);
+  box-shadow: 0 0 20px rgba(255, 209, 102, 0.1);
+}
+
+/* Table styling */
+.article-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+}
+
+.article-content th,
+.article-content td {
+  border: 1px solid rgba(255, 209, 102, 0.3);
+  padding: 0.6rem;
+}
+
+.article-content th {
+  background: rgba(255, 209, 102, 0.15);
+  font-weight: 600;
+}
+
+/* HR */
+.article-content hr {
+  border: 0;
+  height: 1px;
+  background: rgba(255, 209, 102, 0.3);
+  margin: 2rem 0;
+}
+
+/* Smooth fade-in */
+.article-wrapper {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}

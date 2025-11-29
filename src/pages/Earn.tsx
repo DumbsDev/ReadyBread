@@ -54,7 +54,7 @@ export const Earn: React.FC = () => {
           <div className="modern-desc">Share your opinions and earn dough.</div>
         </Link>
 
-        {/* Magic Receipts */}
+        {/* Magic Receipts
         <Link to="/receipts" className="modern-card receipts-card">
           <div className="modern-icon">
             <span className="emoji">🧾</span>
@@ -63,7 +63,7 @@ export const Earn: React.FC = () => {
           <div className="modern-desc">
             Turn shopping receipts into bonus earnings.
           </div>
-        </Link>
+        </Link> */}
 
         {/* Misc Offers */}
         <Link to="/misc" className="modern-card misc-card">

@@ -7,8 +7,12 @@ import { useUser } from "./contexts/UserContext";
 
 // COMPONENTS
 import { Header } from "./components/Header";
-import { Balance } from "./components/Balance";
+// import { Balance } from "./components/Balance";
 import { Loader } from "./components/Loader";
+
+// Articles
+import ArticlePage from "./pages/articles/ArticlePage";
+import ArticlesHome from "./pages/articles/articlesHome";
 
 import { useShortcutBonus } from "./hooks/useShortcutBonus";
 
@@ -103,7 +107,7 @@ const LandingGate: React.FC = () => {
 // MAIN APP INNER
 // -----------------------------------------------------
 export const AppInner: React.FC = () => {
-  const { user, profile, balance, loading, admin } = useUser();
+  const { user, profile, /*balance,*/ loading, admin } = useUser();
   useShortcutBonus();
 
   const showLoader: boolean = loading || (user !== null && profile === null);
@@ -116,8 +120,6 @@ export const AppInner: React.FC = () => {
       <Header user={user} />
 
       {/* Balance shows only when logged in + profile loaded */}
-      {user && profile && <Balance balance={balance} user={user} />}
-
       <Suspense fallback={<RouteLoader />}>
         <Routes>
           {/* Public landing page */}
@@ -165,6 +167,10 @@ export const AppInner: React.FC = () => {
             path="/tutorials/:category/:slug"
             element={<TutorialArticle />}
           />
+          {/* Articles */}
+          <Route path="/articles" element={<ArticlesHome />} />
+          <Route path="/articles/:slug" element={<ArticlePage />} />
+
 
           {/* 404 */}
           <Route path="*" element={<NotFound />} />

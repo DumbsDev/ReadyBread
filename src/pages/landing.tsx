@@ -3,6 +3,8 @@ import { Link, Navigate } from "react-router-dom";
 import "../landing.css";
 import { useUser } from "../contexts/UserContext";
 
+
+
 interface TiltCardProps {
   className?: string;
   children: React.ReactNode;
@@ -59,6 +61,24 @@ const payoutProofs = [
 
 export const Landing: React.FC = () => {
   const { user, authUser } = useUser();
+  React.useEffect(() => {
+    const elements = document.querySelectorAll(".reveal-on-scroll");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+
+    elements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
+
 
   // Simple redirect: if logged in, go home; otherwise show landing.
   if (authUser || user) return <Navigate to="/home" replace />;
@@ -68,13 +88,14 @@ export const Landing: React.FC = () => {
       {/* HERO */}
       <section className="landing-hero">
         <div className="landing-hero-inner">
-          <h1 className="landing-title">🥖ReadyBread🥖</h1>
+          <h1 className="landing-title">Welcome to ReadyBread</h1>
           <h2 className="landing-slogan">
           Ready to earn some <span className="bread-word">Bread?</span>
           </h2>
+          <h3>Currently in <span className="bread-word">closed beta</span>.</h3>
 
           <p className="landing-subtitle">
-            Play games, complete surveys, scan receipts, and cash out straight.
+            Play games, complete surveys, scan receipts, and cash out.
             No points, no fees, no nonsense.
           </p>
 
@@ -89,12 +110,12 @@ export const Landing: React.FC = () => {
 
           <div className="landing-stats-row">
             <div className="stat-chip">
-              <span className="stat-label">Payouts from</span>
-              <span className="stat-value">$3 - $50.00+</span>
+              <span className="stat-label">Payouts from little as</span>
+              <span className="stat-value">$3</span>
             </div>
             <div className="stat-chip">
               <span className="stat-label">Supported</span>
-              <span className="stat-value">Games • Surveys • Receipts • More</span>
+              <span className="stat-value">Games • Surveys • More</span>
             </div>
             <div className="stat-chip">
               <span className="stat-label">Designed to be</span>
@@ -105,15 +126,15 @@ export const Landing: React.FC = () => {
       </section>
 
       {/* FEATURE CARDS */}
-      <section className="feature-grid">
+      <section className="feature-grid reveal-on-scroll">
         <TiltCard className="rw-card glass-card games-card earn-card">
           <h2>🎮 Game &amp; App Offers</h2>
           <p>
-            Install and play games from our trust partners. Hit
+            Install and play games from our trusted partners. Hit
             in-game goals and get <span className="bread-word">paid</span>.
           </p>
           <ul className="feature-list">
-            <li>Earn <span className="bread-word">hundreds</span> per game.</li>
+            <li>Earn <span className="bread-word">your next coffee</span> playing games.</li>
             <li>Mobile &amp; desktop friendly.</li>
             <li>Tracked in your dashboard.</li>
           </ul>
@@ -138,7 +159,7 @@ export const Landing: React.FC = () => {
           </Link>
         </TiltCard>
 
-        <TiltCard className="rw-card glass-card receipts-card earn-card">
+        {/* <TiltCard className="rw-card glass-card receipts-card earn-card">
           <h2>🧾 Magic Receipts</h2>
           <p>
             Snap your grocery receipts and earn when items match live offers.
@@ -152,7 +173,7 @@ export const Landing: React.FC = () => {
           <Link to="/receipts" className="earn-cta">
             Scan a receipt
           </Link>
-        </TiltCard>
+        </TiltCard> */}
 
         <TiltCard className="rw-card glass-card cashouts-card earn-card">
           <h2>💸 Satisfying Cashouts</h2>
@@ -169,7 +190,7 @@ export const Landing: React.FC = () => {
       </section>
 
       {/* HOW IT WORKS */}
-      <section className="how-it-works">
+      <section className="how-it-works reveal-on-scroll">
         <h3 className="section-heading">How ReadyBread Works</h3>
         <div className="how-grid">
           <TiltCard className="how-card glass-card">
@@ -183,7 +204,7 @@ export const Landing: React.FC = () => {
             <span className="step-pill">Step 2</span>
             <h4>Choose how you earn</h4>
             <p>
-              Play <span className="bread-word">games</span>, fill <span className="bread-word">surveys</span>, scan <span className="bread-word">receipts</span>, or explore 
+              Play <span className="bread-word">games</span>, fill <span className="bread-word">surveys</span>, or explore 
               <span className="bread-word"> partnered offers</span>. Every completed task adds real money to your balance.
             </p>
           </TiltCard>
@@ -199,8 +220,8 @@ export const Landing: React.FC = () => {
       </section>
 
       {/* TRUST & SOCIAL PROOF */}
-      <section className="trust-section">
-        <h3 className="section-heading">Built for partners and real players</h3>
+      <section className="trust-section reveal-on-scroll">
+        <h3 className="section-heading">Built for real people.</h3>
         <div className="trust-grid">
           <TiltCard className="trust-card glass-card">
             <h4>Proof of payout</h4>
@@ -226,8 +247,11 @@ export const Landing: React.FC = () => {
               <a href="https://tiktok.com/@readybread.xyz" target="_blank" rel="noreferrer">
                 TikTok
               </a>
-              <a href="https://instagram.com/@ready_bread" target="_blank" rel="noreferrer">
+              <a href="https://instagram.com/@readybread.xyz" target="_blank" rel="noreferrer">
                 Instagram
+              </a>
+              <a href="https://discord.gg/kXgAg6E7EK" target="_blank" rel="noreferrer">
+                Discord
               </a>
               <a href="#proof">Recent payouts</a>
             </div>
@@ -236,7 +260,7 @@ export const Landing: React.FC = () => {
       </section>
 
       {/* PROOF EMBED */}
-      <section className="partners-strip" id="proof">
+      <section className="partners-strip reveal-on-scroll" id="proof">
         <div className="partners-inner glass-card">
           <h3>Proof of payout (live snaps)</h3>
           <p className="partner-note">We pay out daily. Usernames are blurred; full logs available to partners on request.</p>
@@ -260,12 +284,13 @@ export const Landing: React.FC = () => {
       </section>
 
       {/* PARTNER LINEUP */}
-      <section className="partners-strip">
+      <section className="partners-strip reveal-on-scroll">
         <div className="partners-inner glass-card">
           <h3>Offerwall lineup ready for approval</h3>
           <div className="partner-badges">
             <span>Major offerwalls are either already implemented, or ready to be at any moment.</span>
           </div>
+          <h3>Representative of Adgem, Bitlabs, CPX, AdGate, Lootably, or OfferToro? All the code is there, and we are ready to implement your offers <span className="bread-word">Immediately</span>.</h3>
           <p className="partner-note">
             Shared Wi-Fi and dorm networks are allowed. VPN/proxy use may reduce offer availability. We share fraud logs with partners on request.
           </p>
@@ -273,7 +298,7 @@ export const Landing: React.FC = () => {
       </section>
 
       {/* REFERRAL & EXTENSION STRIP */}
-      <section className="referral-section">
+      <section className="referral-section reveal-on-scroll">
         <h3 className="section-heading">Earn & Save Even More</h3>
         <div className="referral-inner glass-card">
           <div className="referral-left">
@@ -287,27 +312,35 @@ export const Landing: React.FC = () => {
           <div className="referral-right">
             <h4>🌎 Browser Extension</h4>
             <p>
-              Turn every new tab into a ReadyBread hub. Quick access to offers,
-              your balance, and a one-time install bonus when you link it to
-              your account (In-progress).
+              Earn from browsing, and save on all your favorite shopping sites with BreadBase, our
+              custom browser extension. Currently in Beta.
             </p>
           </div>
         </div>
       </section>
 
+      {/* DATA PROMISE SECTION */}
+      <section className="data-promise reveal-on-scroll">
+        <div className="data-inner glass-card">
+          <h3 className="section-heading">Your Data Stays Yours</h3>
+          <p className="data-note">
+            ReadyBread never sells your data. We only use lightweight device and IP checks to keep
+            partners safe and make sure real users earn real rewards.
+          </p>
+          <p className="data-note">
+            Shared Wi-Fi is allowed. Device fingerprints are used only to prevent fraud, not for tracking.
+          </p>
+        </div>
+      </section>
+
       {/* STRIP */}
-      <section className="landing-strip">
+      <section className="landing-strip reveal-on-scroll">
         <h2>Trusted. Fast. Modern. <span className="bread-accent">Beautiful</span>.</h2>
         <p>
           It's important to be functional, but its also important to look good.
           <br></br>Just another reason ReadyBread.xyz is <i>better</i>.
         </p>
       </section>
-
-      {/* FOOTER */}
-      <footer className="landing-footer">
-        © {new Date().getFullYear()} ReadyBread - Ready to earn some Bread?
-      </footer>
     </div>
   );
 };

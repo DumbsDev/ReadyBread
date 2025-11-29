@@ -88,16 +88,6 @@ const wallConfigs: WallConfig[] = [
     note: "Ready once app id is added",
   },
   {
-    id: "revu",
-    name: "RevU",
-    status: "live",
-    description:
-      "Offerwall with apps, signups, and mobile trials. Embedded and tied to your ReadyBread ID.",
-    requires: [],
-    buildUrl: () => `/revu`,
-    note: "Live (embedded in-site)",
-  },
-  {
     id: "magic-receipts",
     name: "BitLabs Magic Receipts",
     status: "ready",

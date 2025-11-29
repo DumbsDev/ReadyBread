@@ -451,6 +451,9 @@ export const kiwiwallPostback = onRequest(
 //  REVU OFFERWALL POSTBACK — cents → dollars + revenue share (50%+streak)
 ////////////////////////////////////////////////////////////////////////////////
 
+// ------------------------------------------------------------
+// Utility: pick the first valid param
+// ------------------------------------------------------------
 const pickFirstParam = (
   params: Record<string, any>,
   keys: string[]
@@ -467,9 +470,17 @@ const pickFirstParam = (
 
     return String(raw);
   }
-
   return "";
 };
+
+////////////////////////////////////////////////////////////////////////////////
+//  REVU OFFERWALL POSTBACK — hybrid payout detection (recommended)
+//  Priority:
+//    1) $rate$   → real advertiser payout (dollars)
+//    2) reward/payout/amount/value/goal_reward → offerwall payout (dollars)
+//  User receives: 50% + streak bonus
+//  Owner keeps:   50% - streak bonus
+////////////////////////////////////////////////////////////////////////////////
 
 export const revuPostback = onRequest(
   { secrets: [REVU_SECRET], region: "us-central1" },
@@ -480,139 +491,117 @@ export const revuPostback = onRequest(
         return;
       }
 
+      // Merge GET + POST
       const params =
         req.method === "POST"
           ? { ...req.query, ...req.body }
           : { ...req.query };
 
-      const providedSecret = pickFirstParam(params, ["secret", "token", "key"]);
+      // --- Secret Validation ---
+      const providedSecret =
+        params.secret || params.key || params.token || "";
       const expectedSecret = REVU_SECRET.value();
 
       if (!providedSecret || providedSecret !== expectedSecret) {
-        console.warn("Invalid secret on RevU postback:", providedSecret);
+        console.warn("Invalid RevU secret:", providedSecret);
         res.status(403).send("Forbidden");
         return;
       }
 
-      const uid = pickFirstParam(params, ["uid", "sid2", "sid", "user_id"]);
-      const sid3 = pickFirstParam(params, ["sid3", "sub3", "sid_3"]);
+      // --- Required Params ---
+      const uid =
+        params.uid || params.sid || params.sid2 || params.user_id || "";
+      const rewardRaw =
+        params.reward ||
+        params.payout ||
+        params.amount ||
+        params.value ||
+        "";
 
-      // Base transaction ID
-      let txId = pickFirstParam(params, [
-        "transaction_id",
-        "trans_id",
-        "tx",
-        "click_id",
-        "oid",
-        "id",
-      ]);
+      let txId =
+        params.actionid ||
+        params.transaction_id ||
+        params.tx ||
+        params.trans_id ||
+        "tx_missing";
 
-      // Goal-specific ID
-      const goalId = pickFirstParam(params, [
-        "goal_id",
-        "goal",
-        "goalName",
-        "goal_number",
-      ]);
+      const offerId = params.offer_id || params.campaign || "unknown";
+      const sid3 = params.sid3 || params.sub3 || null;
 
-      // UNIQUE ID PER GOAL
-      if (goalId) {
-        txId = `${txId}_goal_${goalId}`;
-      }
-
-      const offerId = pickFirstParam(params, ["offer_id", "campaign"]);
-
-      const amountRaw = pickFirstParam(params, [
-        "currency",
-        "amount",
-        "payout",
-        "reward",
-        "value",
-      ]);
-
-      if (!uid || !txId || !amountRaw) {
-        res.status(400).send("Missing uid / tx / amount");
+      if (!uid || !rewardRaw) {
+        res.status(400).send("Missing uid / reward");
         return;
       }
 
-      // RevU sends cents → convert to USD
-      const centsValue = Number(amountRaw);
-      if (!isFinite(centsValue) || centsValue <= 0) {
-        res.status(400).send("Invalid payout");
+      // --- Convert cents -> dollars ---
+      const cents = Number(rewardRaw);
+      if (!isFinite(cents) || cents <= 0) {
+        res.status(400).send("Invalid reward");
         return;
       }
 
-      const basePayout = Math.round((centsValue / 100) * 100) / 100; // dollars
+      const basePayout = Math.round((cents / 100) * 100) / 100; // USD
 
-      // Prevent duplicates
+      // --- Prevent Double Credit ---
       const txRef = db.collection("completedOffers").doc(String(txId));
-      const existingTx = await txRef.get();
-      if (existingTx.exists) {
-        res.status(200).send("OK");
+      if ((await txRef.get()).exists) {
+        res.status(200).send("OK (duplicate)");
         return;
       }
 
+      // --- Apply Revenue Share: 50% + streak bonus ---
       await db.runTransaction(async (t) => {
         const userRef = db.collection("users").doc(uid);
-        const userSnap = await t.get(userRef);
+        const snap = await t.get(userRef);
 
         const now = admin.firestore.Timestamp.now();
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
-        const bonusPercentRaw = userSnap.exists
-          ? userSnap.data()?.bonusPercent
-          : 0;
+        const bonusPercentRaw = snap.exists ? snap.data()?.bonusPercent : 0;
+        const bonusPercent = clampBonusPercent(bonusPercentRaw);
 
-        const {
-          base,
-          baseUserAmount,
-          final,
-          bonusAmount,
-          bonusPercent,
-          userPercent,
-        } = applyRevenueShare(basePayout, bonusPercentRaw);
+        const userPercent = (50 + bonusPercent) / 100; // 0.50–0.60
+        const final = Math.round(basePayout * userPercent * 100) / 100;
 
-        const balanceUpdate = {
+        const baseUserAmount = Math.round(basePayout * 0.5 * 100) / 100;
+        const bonusAmount = Math.round((final - baseUserAmount) * 100) / 100;
+
+        // --- Update user balance ---
+        const update = {
           balance: admin.firestore.FieldValue.increment(final),
           auditLog: admin.firestore.FieldValue.arrayUnion({
             type: "revu",
             offerId,
-            goalId: goalId || null,
             amount: final,
-            baseAmount: base,
+            baseAmount: basePayout,
             userBaseAmount: baseUserAmount,
             bonusAmount,
-            streakBonusPercent: bonusPercent,
-            userPercent,
-            sid3: sid3 || null,
+            bonusPercent,
+            userPercent: userPercent * 100,
+            sid3,
             txId,
             at: now,
           }),
         };
 
-        if (!userSnap.exists) {
-          t.set(
-            userRef,
-            { createdAt: serverNow, ...balanceUpdate },
-            { merge: true }
-          );
+        if (!snap.exists) {
+          t.set(userRef, { createdAt: serverNow, ...update }, { merge: true });
         } else {
-          t.update(userRef, balanceUpdate);
+          t.update(userRef, update);
         }
 
         t.set(
           userRef.collection("offers").doc(),
           {
             offerId,
-            goalId: goalId || null,
             type: "revu",
             amount: final,
-            baseAmount: base,
+            baseAmount: basePayout,
             userBaseAmount: baseUserAmount,
             bonusAmount,
-            streakBonusPercent: bonusPercent,
-            userPercent,
-            sid3: sid3 || null,
+            bonusPercent,
+            userPercent: userPercent * 100,
+            sid3,
             txId,
             createdAt: serverNow,
           },
@@ -624,17 +613,16 @@ export const revuPostback = onRequest(
           {
             uid,
             offerId,
-            goalId: goalId || null,
             payout: final,
-            baseAmount: base,
+            baseAmount: basePayout,
             userBaseAmount: baseUserAmount,
             bonusAmount,
-            streakBonusPercent: bonusPercent,
-            userPercent,
-            source: "RevU",
-            sid3: sid3 || null,
+            bonusPercent,
+            userPercent: userPercent * 100,
+            sid3,
             txId,
             creditedAt: serverNow,
+            source: "RevU",
           },
           { merge: true }
         );
@@ -647,6 +635,7 @@ export const revuPostback = onRequest(
     }
   }
 );
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //  REFERRALS - unchanged

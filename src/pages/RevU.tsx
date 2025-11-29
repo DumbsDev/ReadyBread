@@ -36,6 +36,7 @@ export const RevUWall: React.FC = () => {
                 We pass your ReadyBread ID as uid and your referral code in sid3
                 for postbacks.
               </p>
+              <h3>You are currently earning 50% + daily bonus of what's shown.</h3>
             </div>
           </div>
 
