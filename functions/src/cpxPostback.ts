@@ -17,9 +17,9 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
       offer_id,
       hash,
       goal_id,
-      g,               // some CPX setups use "g" for goal
-      et,              // event type / progression event
-      event_id,        // some networks send event progress
+      g,
+      et,
+      event_id,
     } = req.query;
 
     // -------------------------------
@@ -49,7 +49,6 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
     // -------------------------------
     const uid = String(user_id);
 
-    // HANDLE GOALS SAFELY
     let txId = String(trans_id);
 
     const goalValue = goal_id || g || et || event_id || null;
@@ -79,11 +78,10 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
     }
 
     // -------------------------------
-    // REVERSAL CASE
-    // status 2 = reversed / fraud
+    // REVERSAL CASE (status 2)
     // -------------------------------
     if (String(status) === "2") {
-      const reversalAmount = rawAmount * 0.5; // reverse only user share
+      const reversalAmount = rawAmount * 0.5; // reverse only the user's 50% base
 
       await userRef.update({
         balance: admin.firestore.FieldValue.increment(-reversalAmount),
@@ -110,24 +108,33 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
       return;
     }
 
-    // -------------------------------
-    // NORMAL CREDIT — new universal system:
-    // userPercent = 50% + streakBonus%
-    // -------------------------------
+    // ------------------------------------------------------
+    // NORMAL CREDIT — NEW SYSTEM:
+    // Step 1: Your commission (50%) is taken first
+    // Step 2: User streak bonus = (dailyStreak / 2)% is applied
+    //
+    // finalPayout = (rawAmount * 0.5) * (1 + (dailyStreak/2)/100)
+    // ------------------------------------------------------
     await admin.firestore().runTransaction(async (tx) => {
       const userDoc = await tx.get(userRef);
       const data = userDoc.data() || {};
 
-      const bonusPercentRaw = typeof data.bonusPercent === "number"
-        ? data.bonusPercent
-        : 0;
+      const dailyStreak =
+        typeof data.dailyStreak === "number" && isFinite(data.dailyStreak)
+          ? data.dailyStreak
+          : 0;
 
-      // userPercent = (50 + bonus)%
-      const userPercent = (50 + bonusPercentRaw) / 100;
+      const bonusPercent = dailyStreak / 2; // 0.5% per day
+      const bonusMultiplier = 1 + bonusPercent / 100;
 
-      const finalPayout = Math.round(rawAmount * userPercent * 100) / 100;
-      const platformCut = rawAmount - finalPayout;
-      const bonusAmount = finalPayout - (rawAmount * 0.5);
+      // YOUR COMMISSION FIRST
+      const userBaseCut = rawAmount * 0.5;
+
+      // APPLY STREAK BONUS
+      const finalPayout =
+        Math.round(userBaseCut * bonusMultiplier * 100) / 100;
+
+      const bonusAmount = finalPayout - userBaseCut;
 
       tx.update(userRef, {
         balance: admin.firestore.FieldValue.increment(finalPayout),
@@ -136,9 +143,11 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
           offerId: offer_id || null,
           transactionId: txId,
           gross: rawAmount,
-          userPercent: userPercent * 100,
-          platformCut,
-          bonusPercent: bonusPercentRaw,
+          commissionTaken: rawAmount - userBaseCut,
+          userBaseCut,
+          dailyStreak,
+          bonusPercent,
+          bonusMultiplier,
           bonusAmount,
           creditedFinal: finalPayout,
           goal: goalValue || null,
@@ -152,9 +161,11 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
         offerId: offer_id || null,
         source: "cpx",
         gross: rawAmount,
-        userPercent: userPercent * 100,
-        platformCut,
-        bonusPercent: bonusPercentRaw,
+        commissionTaken: rawAmount - userBaseCut,
+        userBaseCut,
+        dailyStreak,
+        bonusPercent,
+        bonusMultiplier,
         bonusAmount,
         creditedFinal: finalPayout,
         goal: goalValue || null,
@@ -162,7 +173,7 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Per-user log
+      // Per-user log collection
       tx.set(
         userRef.collection("offers").doc(),
         {
@@ -170,10 +181,12 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
           type: "cpx",
           amount: finalPayout,
           gross: rawAmount,
-          userPercent: userPercent * 100,
-          platformCut,
+          commissionTaken: rawAmount - userBaseCut,
+          userBaseCut,
+          dailyStreak,
+          bonusPercent,
+          bonusMultiplier,
           bonusAmount,
-          bonusPercent: bonusPercentRaw,
           goal: goalValue || null,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         }

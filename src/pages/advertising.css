@@ -1,0 +1,237 @@
+/* ============================================
+   PAGE WRAPPER
+============================================ */
+.advertise-wrapper {
+  padding-bottom: 80px;
+  background: radial-gradient(
+      circle at 15% 10%,
+      rgba(255, 209, 102, 0.08),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 85% 85%,
+      rgba(255, 255, 255, 0.05),
+      transparent 55%
+    ),
+    #060607;
+  color: #ffffff;
+  overflow-x: hidden;
+}
+
+/* ============================================
+   REVEAL ON SCROLL
+============================================ */
+.advertise-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.advertise-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================
+   HERO
+============================================ */
+.advertise-hero {
+  padding-top: 100px;
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.advertise-title {
+  font-size: 56px;
+  font-weight: 900;
+  background: linear-gradient(90deg, #ffe9a6, #ffffff, #ffe9a6);
+  -webkit-background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 22px rgba(255, 220, 140, 0.7);
+}
+
+.advertise-subtitle {
+  margin-top: 12px;
+  font-size: 17px;
+  opacity: 0.85;
+  max-width: 650px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.advertise-hero-tags {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.advertise-hero-tags span {
+  background: rgba(20, 14, 3, 0.85);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 209, 102, 0.3);
+  padding: 8px 18px;
+  font-size: 13px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+}
+
+/* ============================================
+   SECTIONS
+============================================ */
+.advertise-section {
+  max-width: 1150px;
+  margin: 70px auto 0;
+  padding: 0 20px;
+}
+
+.advertise-heading {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 26px;
+  text-align: center;
+  text-shadow: 0 0 22px rgba(255, 220, 140, 0.4);
+}
+
+/* ============================================
+   GRID LAYOUT
+============================================ */
+.advertise-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 26px;
+}
+
+.advertise-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+/* ============================================
+   TILT CARDS
+============================================ */
+.advertise-tilt {
+  will-change: transform;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transform-style: preserve-3d;
+}
+
+.advertise-tilt:hover {
+  box-shadow: 0 14px 36px rgba(255, 209, 102, 0.25);
+}
+
+/* ============================================
+   GLASS CARDS
+============================================ */
+.advertise-card,
+.flow-card,
+.advertise-contact-card {
+  border-radius: 18px;
+  padding: 26px;
+  background: radial-gradient(
+      circle at top left,
+      rgba(255, 209, 102, 0.15),
+      transparent 55%
+    ),
+    rgba(20, 14, 3, 0.95);
+  border: 1px solid rgba(255, 209, 102, 0.25);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.65);
+}
+
+/* ============================================
+   TEXT STYLING
+============================================ */
+.advertise-card-title {
+  font-size: 20px;
+  margin-bottom: 12px;
+  color: #ffe9a6;
+  text-shadow: 0 0 14px rgba(255, 209, 102, 0.45);
+}
+
+.advertise-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.advertise-list li {
+  margin-bottom: 8px;
+  padding-left: 14px;
+  position: relative;
+  opacity: 0.85;
+  font-size: 14px;
+}
+
+.advertise-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #ffd166;
+}
+
+/* ============================================
+   FLOW STEP CARDS
+============================================ */
+.flow-step {
+  font-weight: 700;
+  background: #ffd166;
+  color: #0a0804;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+
+/* ============================================
+   CONTACT SECTION
+============================================ */
+.contact-subtext {
+  font-size: 15px;
+  opacity: 0.82;
+  max-width: 650px;
+  margin: 0 auto 20px;
+  text-align: center;
+}
+
+.advertise-btn-primary {
+  display: block;
+  width: fit-content;
+  margin: 0 auto 20px;
+  padding: 12px 24px;
+  border-radius: 14px;
+  background: linear-gradient(140deg, #ffd166, #fff3c0);
+  color: #000;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 8px 20px rgba(255, 209, 102, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.advertise-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(255, 209, 102, 0.55);
+}
+
+.contact-subheading {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 18px;
+  color: #ffe9a6;
+}
+
+/* ============================================
+   RESPONSIVE
+============================================ */
+@media (max-width: 820px) {
+  .advertise-title {
+    font-size: 42px;
+  }
+
+  .advertise-subtitle {
+    font-size: 15px;
+  }
+}

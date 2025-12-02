@@ -3,6 +3,7 @@ import * as functions from "firebase-functions";
 import { onRequest, onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import * as crypto from "crypto";
 
 admin.initializeApp();
@@ -68,6 +69,10 @@ const REVU_SECRET = defineSecret("REVU_SECRET");
 // KiwiWall secret key (used for MD5 verification). Can be overridden with env KIWI_SECRET.
 const KIWI_SECRET_VALUE =
   process.env.KIWI_SECRET || "26b6e44ad5b4e320f03ed0b71b1c398c";
+const TELEGRAM_BOT_TOKEN = defineSecret("TELEGRAM_BOT_TOKEN");
+const TELEGRAM_CHAT_ID = defineSecret("TELEGRAM_CHAT_ID");
+const SENDGRID_API_KEY = defineSecret("SENDGRID_API_KEY");
+const SENDGRID_FROM_EMAIL = defineSecret("SENDGRID_FROM_EMAIL");
 
 ////////////////////////////////////////////////////////////////////////////////
 //  ADGEM WEBHOOK — revenue share with streak bonus
@@ -640,7 +645,7 @@ export const revuPostback = onRequest(
 ////////////////////////////////////////////////////////////////////////////////
 
 const REFERRAL_REWARD = 0.25;
-const REFERRAL_CAP = 1.0;
+const REFERRAL_CAP = 2.5;
 const ADMIN_REFERRAL_CODE = "NJJK72"; // set to your admin's referralCode
 const ADMIN_REFERRAL_BONUS = 1.0; // USD to new user
 
@@ -1708,3 +1713,371 @@ export const resetBreadgameDaily = onSchedule(
 );
 
 export { cpxPostback } from "./cpxPostback";
+
+////////////////////////////////////////////////////////////////////////////////
+//  PAYOUT MIRRORING (cashout & donation -> user/{uid}/payouts)
+////////////////////////////////////////////////////////////////////////////////
+
+const writeUserPayout = async (
+  userId: string,
+  payoutId: string,
+  data: Record<string, any>
+) => {
+  const ref = db.collection("users").doc(userId).collection("payouts").doc(payoutId);
+  await ref.set(
+    {
+      ...data,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+};
+
+const sendTelegramMessage = async (text: string) => {
+  const token = TELEGRAM_BOT_TOKEN.value();
+  const chatId = TELEGRAM_CHAT_ID.value();
+  if (!token || !chatId) return;
+
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: "Markdown",
+      }),
+    });
+  } catch (err) {
+    console.error("Telegram notify failed:", err);
+  }
+};
+
+const sendEmail = async (to: string, subject: string, text: string) => {
+  const apiKey = SENDGRID_API_KEY.value();
+  const fromEmail = SENDGRID_FROM_EMAIL.value();
+  if (!apiKey || !fromEmail || !to) return;
+
+  try {
+    await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: to }] }],
+        from: { email: fromEmail, name: "ReadyBread" },
+        subject,
+        content: [{ type: "text/plain", value: text }],
+      }),
+    });
+  } catch (err) {
+    console.error("SendGrid email failed:", err);
+  }
+};
+
+export const mirrorCashoutToUser = onDocumentWritten(
+  {
+    document: "cashout_requests/{id}",
+    secrets: [TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, SENDGRID_API_KEY, SENDGRID_FROM_EMAIL],
+  },
+  async (event) => {
+    const after = event.data?.after;
+    if (!after?.data()) return;
+    const data = after.data() as any;
+    const prev = event.data?.before?.data() as any;
+    const userId = data.userId as string | undefined;
+    if (!userId) return;
+
+    const payoutId = event.params.id as string;
+    const amount = Number(data.amount) || 0;
+    const status = typeof data.status === "string" ? data.status : "pending";
+    const method = typeof data.method === "string" ? data.method : "cashout";
+    const notes =
+      (typeof data.denialReason === "string" && data.denialReason) ||
+      (typeof data.notes === "string" && data.notes) ||
+      null;
+    const createdAt = data.createdAt || admin.firestore.FieldValue.serverTimestamp();
+
+    await writeUserPayout(userId, payoutId, {
+      type: "cashout",
+      amount,
+      status,
+      method,
+      notes,
+      createdAt,
+      decidedAt: data.decidedAt || admin.firestore.FieldValue.serverTimestamp(),
+      adminUid: data.adminUid || null,
+      refunded: Boolean(data.refunded),
+      cryptoFee:
+        typeof data.cryptoFee === "number" && isFinite(data.cryptoFee)
+          ? data.cryptoFee
+          : null,
+    });
+
+    // Notify admin channel when a new request is created
+    if (!prev && status === "pending") {
+      const dest =
+        data.paypalEmail ||
+        data.cashappTag ||
+        data.venmoUsername ||
+        data.bitcoinAddress ||
+        method;
+      await sendTelegramMessage(
+        `New cashout request:\n• User: ${userId}\n• Amount: $${amount.toFixed(
+          2
+        )}\n• Method: ${method}\n• Destination: ${dest || "N/A"}`
+      );
+    }
+
+    // Email user on status change to fulfilled/denied
+    const prevStatus = prev ? (prev.status as string) : null;
+    const statusChanged =
+      prevStatus && prevStatus !== status && (status === "fulfilled" || status === "denied");
+
+    if (statusChanged) {
+      try {
+        const userSnap = await db.collection("users").doc(userId).get();
+        const userEmail =
+          (userSnap.exists && (userSnap.data() as any)?.email) ||
+          (typeof data.paypalEmail === "string" ? data.paypalEmail : null);
+
+        if (userEmail) {
+          const destination =
+            data.paypalEmail ||
+            data.cashappTag ||
+            data.venmoUsername ||
+            data.bitcoinAddress ||
+            method;
+          const noteText = notes ? `\nNotes: ${notes}` : "";
+          const subject =
+            status === "fulfilled"
+              ? "Your ReadyBread cashout was approved"
+              : "Your ReadyBread cashout was denied";
+          const body =
+            `Hi there,\n\nYour cashout request has been ${status}.\n\n` +
+            `Amount: $${amount.toFixed(2)}\n` +
+            `Method: ${method}\n` +
+            `Destination: ${destination || "N/A"}${noteText}\n\n` +
+            `If you have questions, reply to this email.\n\nThanks,\nReadyBread`;
+
+          await sendEmail(userEmail, subject, body);
+        }
+      } catch (err) {
+        console.error("Failed to send cashout email:", err);
+      }
+    }
+  }
+);
+
+export const mirrorDonationToUser = onDocumentWritten(
+  {
+    document: "donation_requests/{id}",
+    secrets: [SENDGRID_API_KEY, SENDGRID_FROM_EMAIL],
+  },
+  async (event) => {
+    const after = event.data?.after;
+    if (!after?.data()) return;
+    const data = after.data() as any;
+    const prev = event.data?.before?.data() as any;
+    const userId = data.userId as string | undefined;
+    if (!userId) return;
+
+    const payoutId = event.params.id as string;
+    const amount = Number(data.amount) || 0;
+    const status = typeof data.status === "string" ? data.status : "pending";
+    const method =
+      (typeof data.charityName === "string" && data.charityName) || "Donation";
+    const notes =
+      (typeof data.denialReason === "string" && data.denialReason) ||
+      (typeof data.notes === "string" && data.notes) ||
+      null;
+    const createdAt = data.createdAt || admin.firestore.FieldValue.serverTimestamp();
+
+    await writeUserPayout(userId, payoutId, {
+      type: "donation",
+      amount,
+      status,
+      method,
+      notes,
+      createdAt,
+      decidedAt: data.decidedAt || admin.firestore.FieldValue.serverTimestamp(),
+      adminUid: data.adminUid || null,
+      refunded: Boolean(data.refunded),
+    });
+
+    const prevStatus = prev ? (prev.status as string) : null;
+    const statusChanged =
+      prevStatus && prevStatus !== status && (status === "fulfilled" || status === "denied");
+
+    if (statusChanged) {
+      try {
+        const userSnap = await db.collection("users").doc(userId).get();
+        const userEmail =
+          (userSnap.exists && (userSnap.data() as any)?.email) ||
+          (typeof data.receiptEmail === "string" ? data.receiptEmail : null);
+
+        if (userEmail) {
+          const noteText = notes ? `\nNotes: ${notes}` : "";
+          const subject =
+            status === "fulfilled"
+              ? "Your ReadyBread donation was processed"
+              : "Your ReadyBread donation was denied";
+          const body =
+            `Hi there,\n\nYour donation request has been ${status}.\n\n` +
+            `Amount: $${amount.toFixed(2)}\n` +
+            `Charity: ${method}${noteText}\n\n` +
+            `If you have questions, reply to this email.\n\nThanks,\nReadyBread`;
+
+          await sendEmail(userEmail, subject, body);
+        }
+      } catch (err) {
+        console.error("Failed to send donation email:", err);
+      }
+    }
+  }
+);
+
+////////////////////////////////////////////////////////////////////////////////
+//  QUEST REWARDS (ReadyBread Quests) - callable
+//  - Awards cash for daily/weekly/general quests
+//  - Idempotent per quest + window (EST)
+////////////////////////////////////////////////////////////////////////////////
+
+type QuestScope = "daily" | "weekly" | "general";
+
+const QUEST_REWARDS: Record<
+  string,
+  { cash: number; scope: QuestScope }
+> = {
+  "daily-survey": { cash: 0.01, scope: "daily" },
+  "daily-game": { cash: 0.01, scope: "daily" },
+  "week-surveys": { cash: 0.05, scope: "weekly" },
+  "week-games": { cash: 0.05, scope: "weekly" },
+  "week-referral": { cash: 0.05, scope: "weekly" },
+  "home-screen": { cash: 0.05, scope: "general" }, // aligns with shortcut bonus
+  "email-verified": { cash: 0.01, scope: "general" },
+  "first-offer": { cash: 0.02, scope: "general" },
+  "first-survey": { cash: 0.01, scope: "general" },
+};
+
+const getEasternOffsetMinutes = (): number => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "longOffset",
+    hour12: false,
+  }).formatToParts(new Date());
+
+  const tz = parts.find((p) => p.type === "timeZoneName")?.value || "GMT-05:00";
+  const match = tz.match(/GMT([+-])(\d{2}):?(\d{2})?/);
+  if (!match) return -300;
+
+  const sign = match[1] === "-" ? -1 : 1;
+  const hours = parseInt(match[2], 10);
+  const minutes = parseInt(match[3] || "0", 10);
+
+  return sign * (hours * 60 + minutes);
+};
+
+const getQuestWindowStart = (scope: QuestScope): number => {
+  if (scope === "general") return 0;
+
+  const offsetMinutes = getEasternOffsetMinutes();
+  const offsetMs = offsetMinutes * 60 * 1000;
+  const now = Date.now();
+  const estNow = new Date(now + offsetMs);
+
+  const startOfDayEst = new Date(estNow);
+  startOfDayEst.setHours(0, 0, 0, 0);
+
+  if (scope === "daily") {
+    return startOfDayEst.getTime() - offsetMs;
+  }
+
+  // weekly (Monday start)
+  const startOfWeekEst = new Date(startOfDayEst);
+  const day = startOfDayEst.getDay(); // 0 = Sun, 1 = Mon
+  const daysSinceMonday = (day + 6) % 7;
+  startOfWeekEst.setDate(startOfWeekEst.getDate() - daysSinceMonday);
+
+  return startOfWeekEst.getTime() - offsetMs;
+};
+
+export const claimQuestReward = functions.https.onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "You must be logged in.");
+  }
+
+  const uid = request.auth.uid;
+  const questId = (request.data?.questId || "").toString();
+
+  const quest = QUEST_REWARDS[questId];
+  if (!quest) {
+    throw new HttpsError("invalid-argument", "Unknown quest.");
+  }
+
+  const windowStart = getQuestWindowStart(quest.scope);
+  const claimKey = `${questId}-${windowStart}`;
+  const now = admin.firestore.Timestamp.now();
+  const serverNow = admin.firestore.FieldValue.serverTimestamp();
+
+  const userRef = db.collection("users").doc(uid);
+  const claimRef = userRef.collection("questClaims").doc(claimKey);
+  const offerRef = userRef.collection("offers").doc();
+
+  return db.runTransaction(async (tx) => {
+    const [userSnap, claimSnap] = await Promise.all([
+      tx.get(userRef),
+      tx.get(claimRef),
+    ]);
+
+    if (!userSnap.exists) {
+      throw new HttpsError("failed-precondition", "User not found.");
+    }
+
+    if (claimSnap.exists) {
+      return { ok: true, alreadyClaimed: true, cash: quest.cash };
+    }
+
+    if (quest.cash > 0) {
+      tx.update(userRef, {
+        balance: admin.firestore.FieldValue.increment(quest.cash),
+        auditLog: admin.firestore.FieldValue.arrayUnion({
+          type: "quest",
+          questId,
+          amount: quest.cash,
+          at: now,
+        }),
+      });
+    }
+
+    tx.set(
+      claimRef,
+      {
+        questId,
+        scope: quest.scope,
+        windowStart,
+        cash: quest.cash,
+        createdAt: serverNow,
+      },
+      { merge: true }
+    );
+
+    tx.set(
+      offerRef,
+      {
+        offerId: questId,
+        type: "quest",
+        source: "Readybread Quests",
+        amount: quest.cash,
+        createdAt: serverNow,
+      },
+      { merge: true }
+    );
+
+    return { ok: true, cash: quest.cash };
+  });
+});

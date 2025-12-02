@@ -12,9 +12,13 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ user }) => {
   const location = useLocation();
 
-  const isActive = (path: string) =>
-    location.pathname === path ||
-    (path === "/" && location.pathname === "/home");
+  const isActive = (path: string) => {
+    const current = location.pathname;
+    if (path === "/home" || path === "/") {
+      return current === "/home" || current === "/";
+    }
+    return current === path;
+  };
 
   const balance = typeof user?.balance === "number" ? user.balance : 0;
 
@@ -25,22 +29,20 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
       -------------------------------------------------- */}
       <header className="rb-desktop-header desktop-only">
         <div className="rb-desktop-wrap">
-
           {/* LOGO */}
-          <Link to="/" className="rb-logo">
+          <Link to="/home" className="rb-logo">
             🥖 ReadyBread
           </Link>
 
           {/* NAVIGATION */}
           <nav className="rb-desktop-nav">
-            <Link to="/" className={isActive("/") ? "active" : ""}>Home</Link>
+            <Link to="/home" className={isActive("/home") ? "active" : ""}>
+              Home
+            </Link>
 
             {user && (
               <>
-                <Link
-                  to="/earn"
-                  className={isActive("/earn") ? "active" : ""}
-                >
+                <Link to="/earn" className={isActive("/earn") ? "active" : ""}>
                   Earn
                 </Link>
                 <Link
@@ -55,14 +57,14 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
                 >
                   Rewards
                 </Link>
+                <Link to="/quests" className={isActive("/quests") ? "active" : ""}>
+                  Quests
+                </Link>
               </>
             )}
 
             {!user && (
-              <Link
-                to="/login"
-                className={isActive("/login") ? "active" : ""}
-              >
+              <Link to="/login" className={isActive("/login") ? "active" : ""}>
                 Login
               </Link>
             )}
@@ -74,10 +76,7 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
               Help
             </Link>
 
-            <Link
-              to="/articles"
-              className={isActive("/articles") ? "active" : ""}
-            >
+            <Link to="/articles" className={isActive("/articles") ? "active" : ""}>
               Articles
             </Link>
           </nav>
@@ -100,11 +99,24 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
       -------------------------------------------------- */}
       {user && (
         <div className="rb-mobile-balance mobile-only">
+          {user && (
+            <Link
+              to="/quests"
+              className={`mobile-quests-btn ${isActive("/quests") ? "active" : ""}`}
+            >
+              <img
+                src={
+                  isActive("/quests")
+                    ? "/icons/medal-color.png"
+                    : "/icons/medal-white.png"
+                }
+                alt="Quests"
+              />
+            </Link>
+          )}
 
           {/* Top Title */}
-          <div className="rb-mobile-title">
-            ReadyBread
-          </div>
+          <div className="rb-mobile-title">ReadyBread</div>
 
           {/* Balance + streak */}
           <Balance balance={balance} user={user} />
@@ -116,22 +128,21 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
       -------------------------------------------------- */}
       <nav className="rb-mobile-nav mobile-only">
         <div className="nav-inner">
-
           {/* HOME */}
           <Link
-            to="/"
-            className={`nav-item ${isActive("/") ? "active" : ""}`}
+            to="/home"
+            className={`nav-item ${isActive("/home") ? "active" : ""}`}
           >
             <img
               src={
-                isActive("/")
+                isActive("/home")
                   ? "/icons/home-color.png"
                   : "/icons/home-white.png"
               }
               className="nav-icon"
               alt="Home"
             />
-            <span className={`nav-label ${isActive("/") ? "active" : ""}`}>
+            <span className={`nav-label ${isActive("/home") ? "active" : ""}`}>
               Home
             </span>
           </Link>
@@ -151,11 +162,7 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
                 className="nav-icon"
                 alt="Rewards"
               />
-              <span
-                className={`nav-label ${
-                  isActive("/rewards") ? "active" : ""
-                }`}
-              >
+              <span className={`nav-label ${isActive("/rewards") ? "active" : ""}`}>
                 Rewards
               </span>
             </Link>
@@ -196,11 +203,7 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
               className="nav-icon"
               alt="Help"
             />
-            <span
-              className={`nav-label ${
-                isActive("/tutorials") ? "active" : ""
-              }`}
-            >
+            <span className={`nav-label ${isActive("/tutorials") ? "active" : ""}`}>
               Help
             </span>
           </Link>
@@ -220,17 +223,13 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
                 className="nav-icon"
                 alt="Dashboard"
               />
-              <span
-                className={`nav-label ${
-                  isActive("/dashboard") ? "active" : ""
-                }`}
-              >
+              <span className={`nav-label ${isActive("/dashboard") ? "active" : ""}`}>
                 Dashboard
               </span>
             </Link>
           )}
 
-          {/* LOGIN – logged out only */}
+          {/* LOGIN — logged out only */}
           {!user && (
             <Link to="/login" className="nav-item">
               <img

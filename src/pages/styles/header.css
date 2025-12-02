@@ -177,6 +177,45 @@
   /* REQUIRED to allow occupying the notch zone */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+
+  position: fixed;
+}
+
+.mobile-quests-btn {
+  position: absolute;
+  right: 14px;
+  top: calc(env(safe-area-inset-top) + 10px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  border-radius: 999px;
+  text-decoration: none;
+  color: #ffe7a8;
+  font-size: 12px;
+  font-weight: 700;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.mobile-quests-btn img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.mobile-quests-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+  border-color: rgba(255, 209, 102, 0.55);
+}
+
+.mobile-quests-btn.active {
+  border-color: rgba(255, 209, 102, 0.8);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
 }
 
 

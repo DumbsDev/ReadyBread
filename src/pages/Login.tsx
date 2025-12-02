@@ -213,6 +213,8 @@ export const Login: React.FC = () => {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       const uid = cred.user.uid;
 
+      const baseUsername = email.split("@")[0];
+      const usernameLower = baseUsername.toLowerCase();
       const deviceId = getDeviceId();
 
       let referredBy: string | null = referredByParam;
@@ -236,7 +238,8 @@ export const Login: React.FC = () => {
         referralPending: !!referredBy,
 
         email,
-        username: email.split("@")[0],
+        username: baseUsername,
+        usernameLower,
         deviceId,
 
         shortcutBonusClaimed: false,
@@ -246,7 +249,8 @@ export const Login: React.FC = () => {
 
       // Public profile doc for safe lookups (username, etc.)
       await setDoc(doc(db, "publicProfiles", uid), {
-        username: email.split("@")[0],
+        username: baseUsername,
+        usernameLower,
         createdAt: serverTimestamp(),
       });
 

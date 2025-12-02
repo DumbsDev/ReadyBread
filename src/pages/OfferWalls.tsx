@@ -45,17 +45,10 @@ const wallConfigs: WallConfig[] = [
   {
     id: "cpx",
     name: "CPX Research",
-    status: "ready",
+    status: "live",
     description: "Daily survey inventory with smart routing. Already wired into our Surveys page, and available here as a dedicated wall.",
     requires: ["OIN98MFDSLNFDS80IJF", "VITE_CPX_HASH"],
-    buildUrl: (userId: string) => {
-      const appId = getEnv("VITE_CPX_APP_ID") || "30102";
-      const hash = getEnv("VITE_CPX_HASH") || "yvxLR6x1Jc1CptNFfmrhzYlAu1XqVfsj";
-      return `https://offers.cpx-research.com/index.php?app_id=${appId}&ext_user_id=${encodeURIComponent(
-        userId
-      )}&secure_hash=${encodeURIComponent(hash)}&output_method=iframe`;
-    },
-    note: "Live",
+    buildUrl: () => "/cpx"
   },
   {
     id: "lootably",

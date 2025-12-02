@@ -1,0 +1,458 @@
+/* ============================================================
+   GLOBAL CARD WRAPPER
+============================================================ */
+
+.gc-card-outer {
+  width: 100%;
+  max-width: 330px;
+  cursor: pointer;
+  perspective: 1000px;
+  margin: 0 auto;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transform-style: preserve-3d;
+}
+
+.gc-card-inner {
+  background: radial-gradient(
+      circle at 20% 20%,
+      rgba(255, 209, 102, 0.15),
+      transparent 55%
+    ),
+    rgba(15, 10, 5, 0.96);
+  border: 1px solid rgba(255, 209, 102, 0.25);
+  border-radius: 18px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.65);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.gc-card-outer:hover .gc-card-inner {
+  border-color: rgba(255, 209, 102, 0.45);
+  box-shadow: 0 20px 40px rgba(255, 209, 102, 0.25);
+}
+
+
+/* ============================================================
+   THUMBNAIL + TOP RIGHT TAG
+============================================================ */
+
+.gc-thumb-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.gc-thumb {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  display: block;
+  border-bottom: 1px solid rgba(255, 209, 102, 0.2);
+}
+
+.gc-earnings-tag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 209, 102, 0.18);
+  border: 1px solid rgba(255, 209, 102, 0.5);
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(255, 209, 102, 0.3);
+}
+
+
+/* ============================================================
+   LOWER SECTION
+============================================================ */
+
+.gc-lower {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  padding: 16px;
+  align-items: flex-start;
+}
+
+.gc-type-thumb {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+
+  background: rgba(255, 209, 102, 0.2);
+  border: 1px solid rgba(255, 209, 102, 0.45);
+  backdrop-filter: blur(10px);
+
+  padding: 8px 12px;
+  border-radius: 12px;
+
+  font-size: 20px;
+  line-height: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+
+.gc-info-text {
+  flex: 1;
+}
+
+.gc-title {
+  margin: 0;
+  margin-bottom: 4px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffe9a6;
+  text-shadow: 0 0 16px rgba(255, 209, 102, 0.35);
+}
+
+.gc-blurb {
+  margin: 0 0 8px;
+  opacity: 0.85;
+  font-size: 13px;
+}
+
+
+/* CTA BUTTON */
+.gc-play-btn {
+  width: 100%;
+  padding: 10px 0;
+  background: linear-gradient(130deg, #ffd166, #ffe9a6);
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #000;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 6px 16px rgba(255, 209, 102, 0.4);
+}
+
+.gc-play-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(255, 209, 102, 0.55);
+}
+
+
+
+/* ============================================================
+   MODAL OVERLAY
+============================================================ */
+
+.gc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  z-index: 9999;
+  padding: 40px 20px 30px;
+  overflow-y: auto;
+}
+
+
+
+/* ============================================================
+   MODAL WINDOW
+============================================================ */
+
+.gc-modal {
+  width: min(90vw, 720px);
+  min-width: 320px;
+  min-height: 420px;
+  max-width: 720px;
+  max-height: 78vh;
+  background: radial-gradient(
+      circle at 20% 20%,
+      rgba(255, 209, 102, 0.18),
+      transparent 50%
+    ),
+    rgba(12, 10, 7, 0.97);
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  border-radius: 18px;
+  padding: 24px;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  z-index: 10000;
+  animation: modalPop 0.25s ease forwards;
+  margin-top: 10px;
+}
+
+@keyframes modalPop {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+
+/* EXIT BUTTON */
+
+.gc-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+
+  background: rgba(255, 209, 102, 0.2);
+  border: 1px solid rgba(255, 209, 102, 0.4);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffd166;
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+.gc-modal-close:hover {
+  background: rgba(255, 209, 102, 0.35);
+  transform: scale(1.1);
+}
+
+.gc-modal-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.gc-progress-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.gc-progress-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #ffe9a6;
+}
+
+.gc-progress-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.gc-progress-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ffd166, #ffb347);
+}
+
+/* ============================================================
+   CAROUSEL
+============================================================ */
+
+.gc-carousel {
+  position: relative;
+  width: 100%;
+  height: 260px;
+  overflow: hidden;
+  border-radius: 14px;
+  margin-bottom: 8px;
+}
+
+.gc-carousel-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gc-carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(15, 15, 15, 0.6);
+  border: 1px solid rgba(255, 209, 102, 0.45);
+  color: #ffd166;
+  font-size: 20px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  z-index: 10;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.gc-carousel-btn:hover {
+  background: rgba(255, 209, 102, 0.25);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.gc-carousel-btn.left {
+  left: 10px;
+}
+
+.gc-carousel-btn.right {
+  right: 10px;
+}
+
+/* progress summary inside modal */
+.gc-progress-row .gc-progress-bar {
+  margin-top: 2px;
+}
+
+
+/* ============================================================
+   MODAL TEXT CONTENT
+============================================================ */
+
+.gc-modal-title {
+  font-size: 26px;
+  font-weight: 800;
+  margin: 12px 0 4px;
+  color: #ffe9a6;
+  text-shadow: 0 0 18px rgba(255, 209, 102, 0.4);
+}
+
+.gc-modal-description {
+  font-size: 14px;
+  opacity: 0.85;
+  line-height: 1.45;
+  margin-bottom: 14px;
+}
+
+
+
+/* ============================================================
+   DOWNLOAD BUTTON
+============================================================ */
+
+.gc-download-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 12px 0;
+  border-radius: 12px;
+  background: linear-gradient(130deg, #ffd166, #ffe9a6);
+  color: #000;
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: none;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 18px rgba(255, 209, 102, 0.45);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gc-download-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(255, 209, 102, 0.55);
+}
+
+
+/* ============================================================
+   OBJECTIVES
+============================================================ */
+
+.gc-objectives-title {
+  font-size: 18px;
+  margin-bottom: 10px;
+  color: #ffe9a6;
+}
+
+.gc-objectives-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  max-height: 200px;
+  padding-right: 6px;
+}
+
+.gc-objective {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 209, 102, 0.12);
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 209, 102, 0.25);
+  gap: 12px;
+}
+
+.gc-objective-step {
+  background: #ffd166;
+  color: #000;
+  padding: 5px 10px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 13px;
+  min-width: 28px;
+  text-align: center;
+}
+
+.gc-objective-step.done {
+  background: #2ecc71;
+  color: #fff;
+}
+
+.gc-objective-text {
+  flex: 1;
+  opacity: 0.9;
+  font-size: 14px;
+}
+
+.gc-objective-reward {
+  font-weight: 700;
+  color: #ffd166;
+  font-size: 15px;
+}
+
+
+/* ============================================================
+   EXTRA INFO
+============================================================ */
+
+.gc-extra-info {
+  opacity: 0.75;
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+
+
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+
+@media (max-width: 680px) {
+  .gc-modal {
+    width: 95vw;
+    min-height: 0;
+    max-height: 86vh;
+    padding: 16px;
+  }
+
+  .gc-carousel {
+    height: 200px;
+  }
+
+  .gc-title {
+    font-size: 16px;
+  }
+}
+

@@ -11,6 +11,8 @@ export interface RBUser {
 
   // Core identity fields
   username: string;
+  usernameLower?: string;
+  usernameChangedAt?: any;
   email: string;
   emailVerified: boolean;
 
@@ -38,6 +40,7 @@ export interface RBUser {
   // Dashboard + Account features
   shortcutBonusClaimed?: boolean;
   shortcutBonusAt?: any;
+  homeOffersEnabled?: boolean;   // prefer landing on /earn when visiting root
 
   // 🔥 Daily streak bonus (server-managed)
   dailyStreak?: number;   // 1, 2, 3... etc.

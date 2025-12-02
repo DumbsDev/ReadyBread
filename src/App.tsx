@@ -40,6 +40,7 @@ const Surveys = lazyPage(() => import("./pages/Surveys"), "Surveys");
 const Games = lazyPage(() => import("./pages/Games"), "Games");
 const OfferWalls = lazyPage(() => import("./pages/OfferWalls"), "OfferWalls");
 const KiwiWall = lazyPage(() => import("./pages/KiwiWall"), "KiwiWall");
+const CPXWall = lazyPage(() => import("./pages/cpx"), "CPXWall");
 const Rewards = lazyPage(() => import("./pages/Rewards"), "Rewards");
 const Receipts = lazyPage(() => import("./pages/Receipts"), "Receipts");
 const Misc = lazyPage(() => import("./pages/Misc"), "Misc");
@@ -95,9 +96,21 @@ const RouteLoader: React.FC = () => (
 // LANDING GATE ? Handles "/" logic
 // -----------------------------------------------------
 const LandingGate: React.FC = () => {
-  const { user, authUser } = useUser();
+  const { user, authUser, profile } = useUser();
+  const homeOffersEnabled =
+    profile?.homeOffersEnabled === true ||
+    user?.profile?.homeOffersEnabled === true ||
+    user?.homeOffersEnabled === true;
 
-  // If any authenticated user exists, go straight to home
+  // Wait for profile to load when authenticated so we can honor the preference
+  if (authUser && !user) {
+    return <RouteLoader />;
+  }
+
+  // If authenticated and prefers earn-first, go there
+  if (user && homeOffersEnabled) return <Navigate to="/earn" replace />;
+
+  // Otherwise default to home when signed in
   if (authUser || user) return <Navigate to="/home" replace />;
 
   return <Landing />;
@@ -144,6 +157,7 @@ export const AppInner: React.FC = () => {
           <Route path="/earn" element={<Earn />} />
           <Route path="/offerwalls" element={<OfferWalls />} />
           <Route path="/kiwiwall" element={<KiwiWall />} />
+          <Route path="/cpx" element={<CPXWall />} />
           <Route path="/revu" element={<RevUWall />} />
           <Route path="/RevU" element={<RevUWall />} />
           <Route path="/affiliate" element={<Affiliate />} />
@@ -205,7 +219,15 @@ export const AppInner: React.FC = () => {
           </div>
         </div>
         <p className="footer-note">
-          ReadyBread by DumbsDev - Ready to earn some Bread?
+         © ReadyBread by DumbsDev - Ready to earn some Bread?
+         <br />
+         <br />
+         <br />
+        </p>
+        <p>
+         <br />
+         <br />
+         <br />
         </p>
       </footer>
     </>

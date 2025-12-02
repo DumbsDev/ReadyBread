@@ -49,9 +49,11 @@ export async function loginUser(email: string, password: string) {
  */
 export async function createUserProfile(user: FirebaseUser) {
   const ref = doc(db, "users", user.uid);
+  const baseUsername = user.email?.split("@")[0] || "";
   await setDoc(ref, {
     email: user.email,
-    username: user.email?.split("@")[0],
+    username: baseUsername,
+    usernameLower: baseUsername.toLowerCase(),
     balance: 0,
     warnings: 0,
     banned: false,

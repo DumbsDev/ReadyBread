@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../quests.css";
 import { useUser } from "../contexts/UserContext";
-import { db } from "../config/firebase";
+import { db, functions } from "../config/firebase";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { isIos, isMobileDevice, isStandaloneMode } from "../utils/pwa";
 import { computeLevelProgress, estimateBaseXp } from "../utils/level";
 import { computeQuestStats, getQuestWindows } from "../utils/questsMath";
@@ -25,6 +26,33 @@ type QuestDefinition = {
   link?: string;
   actionLabel?: string;
   progressLabel?: string;
+};
+
+type QuestScope = "daily" | "weekly" | "general";
+
+const QUEST_CONFIG: Record<
+  string,
+  { cash: number; scope: QuestScope }
+> = {
+  "daily-survey": { cash: 0.01, scope: "daily" },
+  "daily-game": { cash: 0.01, scope: "daily" },
+  "week-surveys": { cash: 0.05, scope: "weekly" },
+  "week-games": { cash: 0.05, scope: "weekly" },
+  "week-referral": { cash: 0.05, scope: "weekly" },
+  "home-screen": { cash: 0.05, scope: "general" },
+  "email-verified": { cash: 0.01, scope: "general" },
+  "first-offer": { cash: 0.02, scope: "general" },
+  "first-survey": { cash: 0.01, scope: "general" },
+};
+
+const getQuestClaimKey = (
+  questId: string,
+  scope: QuestScope,
+  windows: QuestWindows
+): string => {
+  if (scope === "daily") return `${questId}-${windows.dailyStart}`;
+  if (scope === "weekly") return `${questId}-${windows.weeklyStart}`;
+  return `${questId}-0`;
 };
 
 type BeforeInstallPromptEvent = Event & {
@@ -60,6 +88,8 @@ export const Quests: React.FC = () => {
   const [startedOffers, setStartedOffers] = useState<QuestHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [questWindows, setQuestWindows] = useState<QuestWindows>(getQuestWindows());
+  const [claimedQuestKeys, setClaimedQuestKeys] = useState<Set<string>>(new Set());
+  const [claimingKeys, setClaimingKeys] = useState<Set<string>>(new Set());
 
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installingPwa, setInstallingPwa] = useState(false);
@@ -145,6 +175,24 @@ export const Quests: React.FC = () => {
     };
 
     load();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setClaimedQuestKeys(new Set());
+      return;
+    }
+
+    const fetchClaims = async () => {
+      try {
+        const snap = await getDocs(collection(db, "users", user.uid, "questClaims"));
+        setClaimedQuestKeys(new Set(snap.docs.map((d) => d.id)));
+      } catch (err) {
+        console.error("Failed to load quest claims", err);
+      }
+    };
+
+    fetchClaims();
   }, [user]);
 
   useEffect(() => {
@@ -329,6 +377,58 @@ export const Quests: React.FC = () => {
       return sum + quest.rewardCash * completion;
     }, 0);
   }, [dailyQuests, weeklyQuests, generalQuests]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const callable = httpsCallable(functions, "claimQuestReward");
+    const allQuests = [...dailyQuests, ...weeklyQuests, ...generalQuests];
+
+    allQuests.forEach((quest) => {
+      const cfg = QUEST_CONFIG[quest.id];
+      if (!cfg || quest.rewardCash <= 0) return;
+      if (quest.target <= 0) return;
+
+      const completed = quest.progress >= quest.target;
+      if (!completed) return;
+
+      const claimKey = getQuestClaimKey(quest.id, cfg.scope, questWindows);
+      if (claimedQuestKeys.has(claimKey) || claimingKeys.has(claimKey)) return;
+
+      setClaimingKeys((prev) => {
+        const next = new Set(prev);
+        next.add(claimKey);
+        return next;
+      });
+
+      callable({ questId: quest.id })
+        .then(() => {
+          setClaimedQuestKeys((prev) => {
+            const next = new Set(prev);
+            next.add(claimKey);
+            return next;
+          });
+        })
+        .catch((err) => {
+          console.error("Quest claim failed", quest.id, err);
+        })
+        .finally(() => {
+          setClaimingKeys((prev) => {
+            const next = new Set(prev);
+            next.delete(claimKey);
+            return next;
+          });
+        });
+    });
+  }, [
+    user,
+    dailyQuests,
+    weeklyQuests,
+    generalQuests,
+    questWindows,
+    claimedQuestKeys,
+    claimingKeys,
+  ]);
 
   const baseXp = useMemo(
     () =>

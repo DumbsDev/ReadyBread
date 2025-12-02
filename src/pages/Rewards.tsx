@@ -6,7 +6,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   collection,
-  addDoc,
+  /*addDoc,*/
+  setDoc,
   query,
   where,
   orderBy,
@@ -258,6 +259,30 @@ export const Rewards: React.FC = () => {
   const minCashout = 3;
   const maxPerRequest = 20;
 
+  const logPayoutHistory = async (
+    payoutId: string,
+    data: {
+      type: "cashout" | "giftcard" | "donation";
+      method: string;
+      amount: number;
+      status: string;
+      notes?: string | null;
+    }
+  ) => {
+    if (!user) return;
+    const payoutRef = doc(db, "users", user.uid, "payouts", payoutId);
+    await setDoc(
+      payoutRef,
+      {
+        payoutId,
+        ...data,
+        notes: data.notes ?? null,
+        createdAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  };
+
   const computeMaxCashout = () => {
     const allowed = Math.min(currentBalance, maxPerRequest);
     return allowed < minCashout ? minCashout : allowed;
@@ -384,7 +409,9 @@ export const Rewards: React.FC = () => {
         }
       }
 
-      await addDoc(cashRef, {
+      const cashDocRef = doc(cashRef);
+
+      await setDoc(cashDocRef, {
         userId: user.uid,
         method: selectedMethodId,
         amount: payoutFinal,
@@ -395,6 +422,14 @@ export const Rewards: React.FC = () => {
         bitcoinAddress: selectedMethodId === "bitcoin" ? idValue : null,
         status: "pending",
         createdAt: serverTimestamp(),
+      });
+
+      await logPayoutHistory(cashDocRef.id, {
+        type: "cashout",
+        method: selectedMethodId,
+        amount: payoutFinal,
+        status: "pending",
+        notes: null,
       });
 
       // Deduct balance with fresh read
@@ -449,7 +484,9 @@ export const Rewards: React.FC = () => {
     }
 
     try {
-      await addDoc(collection(db, "cashout_requests"), {
+      const giftDocRef = doc(collection(db, "cashout_requests"));
+
+      await setDoc(giftDocRef, {
         userId: user.uid,
         method: "giftcard",
         giftcardType: selectedGift.id,
@@ -458,6 +495,14 @@ export const Rewards: React.FC = () => {
         amount: amountNum,
         status: "pending",
         createdAt: serverTimestamp(),
+      });
+
+      await logPayoutHistory(giftDocRef.id, {
+        type: "giftcard",
+        method: selectedGift.name,
+        amount: amountNum,
+        status: "pending",
+        notes: null,
       });
 
       // Deduct balance
@@ -509,7 +554,9 @@ export const Rewards: React.FC = () => {
     const matchAmount = amountNum * 0.05;
 
     try {
-      await addDoc(collection(db, "donation_requests"), {
+      const donationDocRef = doc(collection(db, "donation_requests"));
+
+      await setDoc(donationDocRef, {
         userId: user.uid,
         charityId: selectedCharity.id,
         charityName: selectedCharity.name,
@@ -518,6 +565,14 @@ export const Rewards: React.FC = () => {
         receiptEmail: email,
         status: "pending",
         createdAt: serverTimestamp(),
+      });
+
+      await logPayoutHistory(donationDocRef.id, {
+        type: "donation",
+        method: selectedCharity.name,
+        amount: amountNum,
+        status: "pending",
+        notes: null,
       });
 
       const uRef = doc(db, "users", user.uid);

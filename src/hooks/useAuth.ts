@@ -34,9 +34,11 @@ export const useAuth = () => {
 
         // If no profile yet, create one automatically
         if (!snap.exists()) {
+          const baseUsername = (firebaseUser.email || "").split("@")[0];
           await setDoc(ref, {
             email: firebaseUser.email,
-            username: (firebaseUser.email || "").split("@")[0],
+            username: baseUsername,
+            usernameLower: baseUsername.toLowerCase(),
             balance: 0,
             warnings: 0,
             banned: false,

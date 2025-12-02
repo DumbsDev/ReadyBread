@@ -36,6 +36,7 @@ type MergedSurvey = {
 };
 
 export const Home: React.FC = () => {
+  <p><br></br></p>
   const { user, profile } = useUser();
   const navigate = useNavigate();
 
@@ -43,6 +44,8 @@ export const Home: React.FC = () => {
     profile?.username ||
     user?.email?.split("@")[0] ||
     "Breadwinner";
+  const homeOffersEnabled = profile?.homeOffersEnabled === true;
+  const [homeOffersSaving, setHomeOffersSaving] = useState(false);
 
   // ---------- DAILY CHECK-IN ----------
   const [showCheckInModal, setShowCheckInModal] = useState(false);
@@ -330,6 +333,27 @@ export const Home: React.FC = () => {
     loadTopSurvey();
   }, [user]);
 
+  const handleHomeOffersToggle = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      setHomeOffersSaving(true);
+      await setDoc(
+        doc(db, "users", user.uid),
+        { homeOffersEnabled: !homeOffersEnabled },
+        { merge: true }
+      );
+    } catch (err) {
+      console.error("Failed to update home offers preference", err);
+      alert("Could not update your start page preference. Try again.");
+    } finally {
+      setHomeOffersSaving(false);
+    }
+  };
+
   return (
     <>
       {/* DAILY CHECK-IN POPUP */}
@@ -374,6 +398,30 @@ export const Home: React.FC = () => {
       )}
 
       <div className="landing-container">
+        <div className="home-pref-banner">
+          <div>
+            <p className="pref-label">Enable home offers?</p>
+            <p className="pref-sub">
+              When on, opening ReadyBread jumps straight to the Earn hub. You can still open this Home page anytime.
+            </p>
+            <p className="pref-status">
+              Status: {homeOffersEnabled ? "Enabled (starts at Earn)" : "Disabled (starts at Home)"}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn-primary pref-btn"
+            onClick={handleHomeOffersToggle}
+            disabled={homeOffersSaving}
+          >
+            {homeOffersSaving
+              ? "Saving..."
+              : homeOffersEnabled
+              ? "Turn off home offers"
+              : "Enable home offers?"}
+          </button>
+        </div>
+
         {/* HERO */}
         <section className="landing-hero">
           <div className="landing-hero-inner">
@@ -390,8 +438,7 @@ export const Home: React.FC = () => {
 
             <p className="landing-subtitle">
               Your balance, offers, receipts, and withdrawals are all tracked in
-              your ReadyBread account. Pick something below and keep the dough
-              rolling in.
+              your ReadyBread account. Pick something below and keep the earning your bread.
             </p>
 
             <div className="hero-buttons">
@@ -407,7 +454,7 @@ export const Home: React.FC = () => {
                 type="button"
                 onClick={() => navigate("/earn")}
               >
-                View all earning options
+                View All Earning Options
               </button>
             </div>
 
@@ -422,7 +469,7 @@ export const Home: React.FC = () => {
               </div>
               <div className="stat-chip">
                 <span className="stat-label">Referral bonus -&gt;</span>
-                <span className="stat-value">Up to $1.00</span>
+                <span className="stat-value">Up to 10 referrals</span>
               </div>
               {currentStreak && currentBonus != null && (
                 <div className="stat-chip">
@@ -475,8 +522,8 @@ export const Home: React.FC = () => {
           <TiltCard className="rw-card glass-card receipts-card earn-card">
             <h2>🧾 Magic Receipts</h2>
             <p>
-              Turn your grocery runs into even more earnings. Snap a picture,
-              upload, and if it matches an active offer - that&apos;s extra{" "}
+              Earn like a wizard with Magic Receipts. Snap a picture of your receipt,
+              upload, and if it matches an active offer, that&apos;s extra{" "}
               <span className="bread-word">bread</span> for you.
             </p>
             <br />
@@ -488,19 +535,54 @@ export const Home: React.FC = () => {
               Upload a receipt
             </Link>
           </TiltCard>
+        </section>
 
+        <section className="feature-grid">
           <TiltCard className="rw-card glass-card cashouts-card earn-card">
-            <h2>💸 Satisfying Cashouts</h2>
+            <h2>Cashout via Mobile Bank</h2>
             <p>
-              Once you&apos;re happy with your stack, cash out. PayPal, Cash
-              App, or donations to vetted charities, all with zero fees.
+              Once you&apos;re happy with your stack, cash out. Get a direct
+              payment, with 0 fees.
             </p>
             <br />
             <Link to="/tutorials" className="earn-cta">
               Tap to learn more
             </Link>
+            <br />
             <Link to="/rewards" className="earn-cta">
-              View rewards & cashouts
+              View cashout options
+            </Link>
+          </TiltCard>
+
+          <TiltCard className="rw-card glass-card cashouts-card earn-card">
+            <h2>Cashout via Bitcoin</h2>
+            <p>
+              Skip the mobile banking and get your payment via bitcoin, to any bitcoin wallet
+              you want.
+            </p>
+            <br />
+            <Link to="/tutorials" className="earn-cta">
+              Tap to learn more
+            </Link>
+            <br />
+            <Link to="/rewards" className="earn-cta">
+              View cashout options
+            </Link>
+          </TiltCard>
+
+          <TiltCard className="rw-card glass-card cashouts-card earn-card">
+            <h2>Cashout via Donations</h2>
+            <p>
+              Feeling generous? Donate your earnings, and we will match 5% to your 
+              charity of choice.
+            </p>
+            <br />
+            <Link to="/tutorials" className="earn-cta">
+              Tap to learn more
+            </Link>
+            <br />
+            <Link to="/rewards" className="earn-cta">
+              View cashout options
             </Link>
           </TiltCard>
         </section>
@@ -649,11 +731,6 @@ export const Home: React.FC = () => {
             <ChangelogCard />
           </div>
         </section>
-
-        {/* FOOTER */}
-        <footer className="landing-footer">
-          © {new Date().getFullYear()} ReadyBread - thanks for being part of the bakery!
-        </footer>
       </div>
     </>
   );

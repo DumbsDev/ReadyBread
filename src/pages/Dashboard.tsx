@@ -12,6 +12,9 @@ import {
   orderBy,
   query,
   setDoc,
+  limit,
+  serverTimestamp,
+  updateDoc,
   where,
 } from "firebase/firestore";
 
@@ -77,6 +80,7 @@ interface OfferHistoryItem {
 const SHORTCUT_BONUS_ID = "shortcut_bonus";
 const SHORTCUT_BONUS_AMOUNT = 0.05;
 const SHORTCUT_BONUS_TITLE = "Home screen bonus";
+const USERNAME_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
 
 // -------------------------------
 // Component
@@ -86,10 +90,17 @@ export const Dashboard: React.FC = () => {
   const { user, profile, balance, loading } = useUser();
 
   const [error, setError] = useState<string | null>(null);
+  const [desiredUsername, setDesiredUsername] = useState(
+    profile?.username ?? ""
+  );
+  const [usernameMessage, setUsernameMessage] = useState<string | null>(null);
+  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
 
   const [activeTab, setActiveTab] = useState<
     "overview" | "stats" | "offers" | "payouts" | "achievements"
   >("overview");
+  const homeOffersEnabled = profile?.homeOffersEnabled === true;
+  const [homeOffersSaving, setHomeOffersSaving] = useState(false);
 
   const auth = getAuth();
   const handleLogout = async () => {
@@ -115,6 +126,28 @@ export const Dashboard: React.FC = () => {
   alert("Failed to delete account. You may need to re-authenticate.");
   }
   };
+
+  const handleHomeOffersToggle = async () => {
+    if (!user) return;
+
+    try {
+      setHomeOffersSaving(true);
+      await setDoc(
+        doc(db, "users", user.uid),
+        { homeOffersEnabled: !homeOffersEnabled },
+        { merge: true }
+      );
+    } catch (err) {
+      console.error("Failed to update home offers preference", err);
+      alert("Could not update your start page preference. Try again.");
+    } finally {
+      setHomeOffersSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    setDesiredUsername(profile?.username ?? "");
+  }, [profile?.username]);
 
   const [allOffers, setAllOffers] = useState<StartedOffer[]>([]);
   const [activeOffers, setActiveOffers] = useState<StartedOffer[]>([]);
@@ -439,6 +472,38 @@ export const Dashboard: React.FC = () => {
   // ----------------------------------------------------
   // MODAL + HELPERS + UI
   // ----------------------------------------------------
+  const getTimestampMs = (ts: any): number | null => {
+    if (!ts) return null;
+    if (typeof ts.toMillis === "function") return ts.toMillis();
+    if (ts instanceof Date) return ts.getTime();
+    if (typeof ts === "number") return ts;
+    return null;
+  };
+
+  const lastUsernameChangeMs = useMemo(
+    () => getTimestampMs(profile?.usernameChangedAt),
+    [profile?.usernameChangedAt]
+  );
+
+  const nextUsernameChangeMs = useMemo(() => {
+    if (!lastUsernameChangeMs) return null;
+    return lastUsernameChangeMs + USERNAME_COOLDOWN_MS;
+  }, [lastUsernameChangeMs]);
+
+  const canChangeUsername =
+    !nextUsernameChangeMs || Date.now() >= nextUsernameChangeMs;
+
+  const nextUsernameChangeLabel = useMemo(() => {
+    if (!nextUsernameChangeMs) return null;
+    return new Date(nextUsernameChangeMs).toLocaleDateString();
+  }, [nextUsernameChangeMs]);
+
+  const usernameButtonDisabled =
+    !desiredUsername.trim() ||
+    desiredUsername.trim() === (profile?.username ?? "") ||
+    isUpdatingUsername ||
+    !canChangeUsername;
+
   const formatTimestamp = (ts: any) => {
     if (!ts) return "--";
     if (typeof ts.toDate === "function") {
@@ -465,6 +530,101 @@ export const Dashboard: React.FC = () => {
     const link = `${window.location.origin}/login?ref=${referralCode}`;
     navigator.clipboard?.writeText(link);
     alert("Copied!");
+  };
+
+  const handleUsernameUpdate = async () => {
+    if (!user || !profile) return;
+
+    const trimmed = desiredUsername.trim();
+    setUsernameMessage(null);
+
+    if (!trimmed) {
+      setUsernameMessage("Enter a username to continue.");
+      return;
+    }
+
+    if (trimmed === profile.username) {
+      setUsernameMessage("That's already your username.");
+      return;
+    }
+
+    if (!canChangeUsername) {
+      setUsernameMessage(
+        nextUsernameChangeLabel
+          ? `You can change your username again on ${nextUsernameChangeLabel}.`
+          : "Username changes are limited to once every 30 days."
+      );
+      return;
+    }
+
+    const pattern = /^[a-zA-Z0-9._-]{3,20}$/;
+    if (!pattern.test(trimmed)) {
+      setUsernameMessage(
+        "Use 3-20 letters, numbers, dots, underscores, or hyphens."
+      );
+      return;
+    }
+
+    setIsUpdatingUsername(true);
+
+    try {
+      const lower = trimmed.toLowerCase();
+      const dupeSnap = await getDocs(
+        query(
+          collection(db, "users"),
+          where("usernameLower", "==", lower),
+          limit(1)
+        )
+      );
+
+      if (!dupeSnap.empty && dupeSnap.docs[0].id !== user.uid) {
+        setUsernameMessage("That username is already taken.");
+        return;
+      }
+
+      // Fallback check for older docs without usernameLower
+      if (dupeSnap.empty) {
+        const legacySnap = await getDocs(
+          query(
+            collection(db, "users"),
+            where("username", "==", trimmed),
+            limit(1)
+          )
+        );
+        if (!legacySnap.empty && legacySnap.docs[0].id !== user.uid) {
+          setUsernameMessage("That username is already taken.");
+          return;
+        }
+      }
+
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        username: trimmed,
+        usernameLower: lower,
+        usernameChangedAt: serverTimestamp(),
+      });
+
+      try {
+        await setDoc(
+          doc(db, "publicProfiles", user.uid),
+          {
+            username: trimmed,
+            usernameLower: lower,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } catch (pubErr) {
+        console.warn("Failed to sync public profile username", pubErr);
+      }
+
+      setUsernameMessage("Username updated. It may take a moment to refresh.");
+    } catch (err) {
+      console.error("Error updating username:", err);
+      setUsernameMessage("Failed to update username. Try again in a bit.");
+    } finally {
+      setIsUpdatingUsername(false);
+    }
   };
 
   const questStats: QuestStats = useMemo(
@@ -520,6 +680,18 @@ export const Dashboard: React.FC = () => {
 
   const totalXp = useMemo(() => baseXp + questXp, [baseXp, questXp]);
   const levelState = useMemo(() => computeLevelProgress(totalXp), [totalXp]);
+
+  const questCashTotal = useMemo(() => {
+    return offerHistory.reduce((sum, item) => {
+      const amt = typeof item.amount === "number" ? item.amount : 0;
+      const type = (item.type || "").toString().toLowerCase();
+      const source = (item.source || "").toString().toLowerCase();
+      if (type === "quest" || source.includes("readybread quests")) {
+        return sum + amt;
+      }
+      return sum;
+    }, 0);
+  }, [offerHistory]);
 
   // ----------------------------------------------------
   // AUTH GUARD USING CONTEXT
@@ -623,10 +795,54 @@ export const Dashboard: React.FC = () => {
             <div className="dash-card modern-card glass-card">
               <h3 className="dash-card-title">Account Summary</h3>
 
-              <p className="dash-line">
+              <div className="dash-line" style={{ marginBottom: 6 }}>
                 <span className="dash-label">Username:</span>
                 <span>{profile?.username}</span>
-              </p>
+              </div>
+
+              <div style={{ margin: "8px 0 12px" }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="text"
+                    value={desiredUsername}
+                    maxLength={20}
+                    onChange={(e) => {
+                      setDesiredUsername(e.target.value);
+                      setUsernameMessage(null);
+                    }}
+                    placeholder="New username"
+                    style={{ flex: 1 }}
+                    disabled={isUpdatingUsername}
+                  />
+                  <button
+                    className="dash-offer-btn"
+                    onClick={handleUsernameUpdate}
+                    disabled={usernameButtonDisabled}
+                    style={
+                      usernameButtonDisabled
+                        ? { opacity: 0.65, cursor: "not-allowed" }
+                        : undefined
+                    }
+                  >
+                    {isUpdatingUsername ? "Saving..." : "Update"}
+                  </button>
+                </div>
+                <p className="dash-muted dash-footnote" style={{ marginTop: 6 }}>
+                  {canChangeUsername
+                    ? "You can change your username once every 30 days."
+                    : nextUsernameChangeLabel
+                    ? `Next change available on ${nextUsernameChangeLabel}.`
+                    : "Username changes are limited to once every 30 days."}
+                </p>
+                {usernameMessage && (
+                  <p
+                    className="dash-muted"
+                    style={{ marginTop: 4, color: "var(--golden-toast)" }}
+                  >
+                    {usernameMessage}
+                  </p>
+                )}
+              </div>
 
               <p className="dash-line">
                 <span className="dash-label">UID:</span>
@@ -649,6 +865,37 @@ export const Dashboard: React.FC = () => {
                 <span className="dash-label">Current Balance:</span>
                 <span className="dash-balance">${balance.toFixed(2)}</span>
               </p>
+            </div>
+
+            <div className="dash-card modern-card glass-card">
+              <h3 className="dash-card-title">Home start preference</h3>
+              <p className="dash-line">
+                <span className="dash-label">Status:</span>{" "}
+                <span>
+                  {homeOffersEnabled
+                    ? "Enabled (opens Earn first)"
+                    : "Disabled (opens Home first)"}
+                </span>
+              </p>
+              <p className="dash-muted dash-footnote" style={{ marginTop: 6 }}>
+                Toggle to auto-open the Earn hub when launching ReadyBread. You can still visit the Home page anytime.
+              </p>
+              <button
+                className="dash-offer-btn"
+                onClick={handleHomeOffersToggle}
+                disabled={homeOffersSaving}
+                style={
+                  homeOffersSaving
+                    ? { opacity: 0.65, cursor: "not-allowed" }
+                    : undefined
+                }
+              >
+                {homeOffersSaving
+                  ? "Saving..."
+                  : homeOffersEnabled
+                  ? "Disable home offers"
+                  : "Enable home offers?"}
+              </button>
             </div>
 
             {/* REFERRALS */}
@@ -795,6 +1042,11 @@ export const Dashboard: React.FC = () => {
               <p className="dash-line">
                 <span className="dash-label">Total Offers Completed:</span>{" "}
                 <span>{completedOffers.length}</span>
+              </p>
+
+              <p className="dash-line">
+                <span className="dash-label">Quest cash (Readybread Quests):</span>{" "}
+                <span>${questCashTotal.toFixed(2)}</span>
               </p>
 
               <p className="dash-line">
@@ -1017,6 +1269,11 @@ export const Dashboard: React.FC = () => {
                       <p className="dash-line">
                         <span className="dash-label">Status:</span> {p.status}
                       </p>
+                      {p.notes && (
+                        <p className="dash-line">
+                          <span className="dash-label">Notes:</span> {p.notes}
+                        </p>
+                      )}
                       <p className="dash-line">
                         <span className="dash-label">Requested:</span>{" "}
                         {formatTimestamp(p.createdAt)}
@@ -1113,6 +1370,34 @@ export const Dashboard: React.FC = () => {
                   </header>
 
                   <div className="dash-offer-modal-body">
+                    {selectedOffer.goals && selectedOffer.goals.length > 0 && (
+                      <div className="dash-offer-progress-summary">
+                        {(() => {
+                          const total = selectedOffer.goals?.length || 0;
+                          const done =
+                            selectedOffer.goals?.filter((g) => g.isCompleted)
+                              .length || 0;
+                          const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                          return (
+                            <>
+                              <div className="dash-progress-text">
+                                <span>Goals</span>
+                                <strong>
+                                  {done}/{total} completed
+                                </strong>
+                              </div>
+                              <div className="dash-progress-bar-wrap">
+                                <div
+                                  className="dash-progress-bar-fill"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
+
                     <div className="dash-offer-modal-summary">
                       <p className="dash-line">
                         <span className="dash-label">Payout:</span>

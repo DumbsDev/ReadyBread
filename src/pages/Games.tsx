@@ -26,7 +26,7 @@ interface Offer {
 }
 
 // Toggle the AdGem offer wall button on/off for quick testing
-const SHOW_ADGEM_WALL = true;
+const SHOW_ADGEM_WALL = false;
 
 export const Games: React.FC = () => {
   const navigate = useNavigate();

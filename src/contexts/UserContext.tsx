@@ -11,6 +11,8 @@ import type { RBUser } from "../types";
 ------------------------------------------------------------ */
 export interface UserProfile {
   username: string;
+  usernameLower?: string;
+  usernameChangedAt?: any;
   balance: number;
   email?: string;
   referralCode: string;
@@ -21,6 +23,7 @@ export interface UserProfile {
   createdAt: any;
   shortcutBonusClaimed: boolean;
   shortcutBonusAt?: any;
+  homeOffersEnabled?: boolean;  // redirect root -> earn when true
   dailyStreak?: number;       // number of days
   bonusPercent?: number;      // +0.5% increments
   lastCheckIn?: any;          // Firestore timestamp

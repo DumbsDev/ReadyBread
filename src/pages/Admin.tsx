@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { db } from "../config/firebase";
 import {
   collection,
+  doc,
   query,
   where,
   orderBy,
@@ -10,9 +11,9 @@ import {
   updateDoc,
   serverTimestamp,
   QueryDocumentSnapshot,
-  doc,
   getDoc,
   limit,
+  setDoc,
 } from "firebase/firestore";
 import type { DocumentData } from "firebase/firestore";
 import { useUser } from "../contexts/UserContext";
@@ -87,6 +88,27 @@ export const Admin: React.FC = () => {
     if (ts.toDate) return ts.toDate().toLocaleString();
     if (ts instanceof Date) return ts.toLocaleString();
     return "--";
+  };
+
+  const syncUserPayout = async (
+    userId: string,
+    payoutId: string,
+    data: Partial<{
+      status: CashoutStatus;
+      notes: string | null;
+      refunded: boolean;
+      decidedAt: any;
+    }>
+  ) => {
+    const payoutRef = doc(db, "users", userId, "payouts", payoutId);
+    await setDoc(
+      payoutRef,
+      {
+        ...data,
+        decidedAt: data.decidedAt ?? serverTimestamp(),
+      },
+      { merge: true }
+    );
   };
 
   const mapCashoutDoc = (
@@ -391,6 +413,11 @@ export const Admin: React.FC = () => {
           decidedAt: serverTimestamp(),
         });
 
+        await syncUserPayout(actionRow.userId, actionRow.id, {
+          status: "fulfilled",
+          notes: "Fulfilled",
+        });
+
         setCashouts((prev) =>
           prev.map((r) =>
             r.id === actionRow.id ? { ...r, status: "fulfilled" } : r
@@ -421,6 +448,12 @@ export const Admin: React.FC = () => {
           adminUid: user?.uid,
           decidedAt: serverTimestamp(),
           denialReason: denialReason.trim(),
+          refunded: refundOnDeny,
+        });
+
+        await syncUserPayout(actionRow.userId, actionRow.id, {
+          status: "denied",
+          notes: denialReason.trim(),
           refunded: refundOnDeny,
         });
 
