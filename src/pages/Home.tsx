@@ -144,6 +144,8 @@ export const Home: React.FC = () => {
       return;
     }
 
+    const roundedBonus = Math.round(pendingBonus * 100) / 100;
+
     try {
       setCheckInSaving(true);
       const userRef = doc(db, "users", user.uid);
@@ -151,14 +153,14 @@ export const Home: React.FC = () => {
         userRef,
         {
           dailyStreak: pendingStreak,
-          bonusPercent: pendingBonus,
+          bonusPercent: roundedBonus,
           lastCheckIn: serverTimestamp(),
         },
         { merge: true }
       );
 
       setCurrentStreak(pendingStreak);
-      setCurrentBonus(pendingBonus);
+      setCurrentBonus(roundedBonus);
     } catch (err) {
       console.error("Error saving daily check-in:", err);
     } finally {

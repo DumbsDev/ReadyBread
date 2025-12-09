@@ -25,7 +25,7 @@ service cloud.firestore {
 
       let allowedKeys = [
         "username", "usernameLower", "usernameChangedAt",
-        "email", "balance", "admin", "isBanned", "createdAt",
+        "email", "balance", "admin", "partner", "isBanned", "createdAt",
         "auditLog", "referralCode", "referredBy", "totalReferralEarnings",
         "referralPending", "shortcutBonusClaimed", "shortcutBonusToken",
         "dailyStreak", "bonusPercent", "lastCheckIn"

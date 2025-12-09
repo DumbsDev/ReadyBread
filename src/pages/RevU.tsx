@@ -1,5 +1,5 @@
 // src/pages/RevU.tsx
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { AntiFraudGate } from "../components/AntiFraudGate";
 import { useUser } from "../contexts/UserContext";
 
@@ -10,6 +10,7 @@ export const RevUWall: React.FC = () => {
   const { authUser, profile } = useUser();
   const userId = authUser?.uid || "guest";
   const sid3 = profile?.referralCode || profile?.username || "";
+  const [wallError, setWallError] = useState(false);
 
   const iframeSrc = useMemo(() => {
     const params = new URLSearchParams({
@@ -47,8 +48,26 @@ export const RevUWall: React.FC = () => {
               height="1400"
               allowFullScreen
               frameBorder="0"
+              onError={() => setWallError(true)}
+              onLoad={() => setWallError(false)}
             />
           </div>
+
+          {wallError && (
+            <div className="rb-card modern-card" style={{ marginTop: 12 }}>
+              <h3>We couldn't load RevU in-page</h3>
+              <p className="dash-muted">
+                Open the wall directly and keep VPN/proxy off to avoid partner blocks.
+              </p>
+              <button
+                type="button"
+                className="survey-start-btn"
+                onClick={() => window.open(iframeSrc, "_blank")}
+              >
+                Open RevU in a new tab
+              </button>
+            </div>
+          )}
 
           <p className="rb-section-sub" style={{ marginTop: 10 }}>
             If the wall looks empty, disable VPN/proxy and refresh. Conversions

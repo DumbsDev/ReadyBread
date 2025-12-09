@@ -1,5 +1,5 @@
 // src/pages/cpx.tsx
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { AntiFraudGate } from "../components/AntiFraudGate";
 import { useUser } from "../contexts/UserContext";
 
@@ -17,6 +17,7 @@ export const CPXWall: React.FC = () => {
   const userId = authUser?.uid || "guest";
   const username = profile?.username || authUser?.email?.split("@")[0] || "guest";
   const email = authUser?.email || "";
+  const [wallError, setWallError] = useState(false);
 
   const iframeSrc = useMemo(() => {
     const params = new URLSearchParams({
@@ -56,8 +57,27 @@ export const CPXWall: React.FC = () => {
               height="2000"
               allowFullScreen
               frameBorder="0"
+              onError={() => setWallError(true)}
+              onLoad={() => setWallError(false)}
             />
           </div>
+
+          {wallError && (
+            <div className="rb-card modern-card glass-card" style={{ marginTop: 12 }}>
+              <h3 className="rb-section-title-small">CPX wall fallback</h3>
+              <p className="dash-muted">
+                If the embedded wall is blocked, open it directly in a new tab. Your ReadyBread
+                ID and verification will be passed automatically.
+              </p>
+              <button
+                type="button"
+                className="survey-start-btn"
+                onClick={() => window.open(iframeSrc, "_blank")}
+              >
+                Open CPX in a new tab
+              </button>
+            </div>
+          )}
 
           <div className="rb-card modern-card glass-card" style={{ marginTop: 16 }}>
             <h3 className="rb-section-title">Integration details</h3>

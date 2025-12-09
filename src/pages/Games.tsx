@@ -21,7 +21,7 @@ interface Offer {
     name: string;
     reward: number;
   }>;
-  provider: "bitlabs" | "adgem";
+  provider: "bitlabs" | "adgem" | "cpalead";
   isWall?: boolean; // true for the AdGem wall hub card
 }
 
@@ -45,6 +45,10 @@ export const Games: React.FC = () => {
   // AdGem wall (HTML wall, not JSON API yet)
   const ADGEM_APP_ID = "31547";
   const ADGEM_WALL_BASE = "https://api.adgem.com/v1/wall";
+
+  // CPALead direct game offer (single-link)
+  const CPALEAD_BASE_URL =
+    "https://www.directcpi.com/view.php?id=5543016&pub=3319601";
 
   // Gate page behind auth
   useEffect(() => {
@@ -133,11 +137,29 @@ export const Games: React.FC = () => {
       };
 
       // -------------------------------------------
-      // 3) Combine: BitLabs individual games + AdGem wall hub
+      // 3) CPAlead single offer (Direct CPI)
+      // -------------------------------------------
+      const cpaleadOffer: Offer = {
+        id: "cpalead_5543016",
+        title: "Direct CPI Game (CPALead)",
+        payout: 0,
+        image_url: null,
+        click_url: `${CPALEAD_BASE_URL}&subid=${encodeURIComponent(
+          currentUser.uid
+        )}`,
+        est_minutes: null,
+        disclaimer:
+          "Opens a CPALead offer. Make sure you start from ReadyBread so subid tracks and the postback credits your balance.",
+        objectives: undefined,
+        provider: "cpalead",
+      };
+
+      // -------------------------------------------
+      // 4) Combine: BitLabs individual games + AdGem wall hub + CPALead direct
       // -------------------------------------------
       const combined: Offer[] = SHOW_ADGEM_WALL
-        ? [...bitlabsOffers, adgemWallOffer]
-        : [...bitlabsOffers];
+        ? [...bitlabsOffers, adgemWallOffer, cpaleadOffer]
+        : [...bitlabsOffers, cpaleadOffer];
 
       setOffers(combined);
     } catch (err) {
@@ -186,7 +208,11 @@ export const Games: React.FC = () => {
           imageUrl: offer.image_url ?? null,
           clickUrl: offer.click_url,
           source:
-            offer.provider === "adgem" ? "adgem-offers" : "bitlabs-offers",
+            offer.provider === "adgem"
+              ? "adgem-offers"
+              : offer.provider === "cpalead"
+              ? "cpalead-offers"
+              : "bitlabs-offers",
           status: "started",
           startedAt: serverTimestamp(),
           lastUpdatedAt: serverTimestamp(),
@@ -299,7 +325,7 @@ export const Games: React.FC = () => {
             >
               <span className="chip chip-time">
                 {offers.length > 0
-                  ? `${offers.length} live entries (BitLabs${SHOW_ADGEM_WALL ? " + AdGem hub" : ""})`
+                  ? `${offers.length} live entries (BitLabs + CPALead${SHOW_ADGEM_WALL ? " + AdGem hub" : ""})`
                   : loadingOffers
                   ? "Checking offers…"
                   : "No active offers at the moment"}
@@ -364,6 +390,8 @@ export const Games: React.FC = () => {
                           <span className="chip chip-provider">
                             {offer.provider === "adgem"
                               ? "AdGem Games"
+                              : offer.provider === "cpalead"
+                              ? "CPALead"
                               : "BitLabs Games"}
                           </span>
                         </p>

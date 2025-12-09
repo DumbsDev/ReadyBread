@@ -1,8 +1,11 @@
 // functions/src/cpxPostback.ts
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import { checkOfferVelocity, logVelocityBlock } from "./velocity";
 
-admin.initializeApp();
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 const CPX_SECRET = "OIN98MFDSLNFDS80IJF"; // your CPX shared secret
 
@@ -108,8 +111,22 @@ export const cpxPostback = functions.https.onRequest(async (req, res): Promise<v
       return;
     }
 
+    const velocity = await checkOfferVelocity(uid, "cpx");
+    if (velocity.blocked) {
+      await logVelocityBlock({
+        uid,
+        source: "cpx",
+        txId,
+        amount: rawAmount,
+        counts: velocity.counts,
+        reasons: velocity.reasons,
+      });
+      res.status(200).send("OK (velocity block)");
+      return;
+    }
+
     // ------------------------------------------------------
-    // NORMAL CREDIT — NEW SYSTEM:
+    // NORMAL CREDIT – NEW SYSTEM:
     // Step 1: Your commission (50%) is taken first
     // Step 2: User streak bonus = (dailyStreak / 2)% is applied
     //

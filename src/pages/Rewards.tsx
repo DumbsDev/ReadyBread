@@ -1,5 +1,5 @@
-// src/pages/Rewards.tsx
-// ReadyBread — Dark glass, category-based rewards UI
+﻿// src/pages/Rewards.tsx
+// ReadyBread â€” Dark glass, category-based rewards UI
 // Cashouts still go through Firestore for manual processing
 
 import React, { useState, useEffect } from "react";
@@ -20,6 +20,9 @@ import {
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { useUser } from "../contexts/UserContext";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import ReCaptchaBox from "../components/ReCaptchaBox";
+import "../styles.css";
 
 // Page-specific styles
 import "./styles/rewards.css";
@@ -31,6 +34,8 @@ import paypalLogo from "../static/images/icons/paypal.png";
 import cashappLogo from "../static/images/icons/Cashapp.webp";
 import venmoLogo from "../static/images/icons/venmo.png";
 import bitcoinLogo from "../static/images/icons/bitcoin.svg";
+import litecoinLogo from "../static/images/icons/litecoin.svg";
+import dogecoinLogo from "../static/images/icons/dogecoin.svg";
 
 import amazonLogo from "../static/images/icons/giftcards/amazon.png";
 import doordashLogo from "../static/images/icons/giftcards/doordash.jpg";
@@ -46,7 +51,14 @@ import unicefLogo from "../static/images/icons/unicef.png";
    Types
 --------------------------------------------------- */
 
-type PayoutMethodId = "paypal" | "cashapp" | "venmo" | "bitcoin" | "giftcard";
+type PayoutMethodId =
+  | "paypal"
+  | "cashapp"
+  | "venmo"
+  | "bitcoin"
+  | "litecoin"
+  | "dogecoin"
+  | "giftcard";
 
 interface PayoutMethod {
   id: PayoutMethodId;
@@ -73,7 +85,7 @@ interface GiftCardOption {
 }
 
 /* ---------------------------------------------------
-   Config — Payout Methods
+   Config â€” Payout Methods
 --------------------------------------------------- */
 
 const mobilePayoutMethods: PayoutMethod[] = [
@@ -109,6 +121,20 @@ const cryptoPayoutMethods: PayoutMethod[] = [
     headline: "10% network fee",
     blurb: "Withdraw to a BTC address you control.",
     logo: bitcoinLogo,
+    brandClass: "rw-pill-bitcoin",
+  },
+  {
+    id: "litecoin",
+    name: "Litecoin",
+    blurb: "Fast, low-fee LTC payout to your wallet.",
+    logo: litecoinLogo,
+    brandClass: "rw-pill-bitcoin",
+  },
+  {
+    id: "dogecoin",
+    name: "Dogecoin",
+    blurb: "Send DOGE to any address you own.",
+    logo: dogecoinLogo,
     brandClass: "rw-pill-bitcoin",
   },
 ];
@@ -169,7 +195,7 @@ const charities: Charity[] = [
   },
   {
     id: "st_jude",
-    name: "St. Jude Children’s Research Hospital",
+    name: "St. Jude Children's Research Hospital",
     blurb: "Supporting kids and families fighting cancer.",
     logo: stjudesLogo,
     brandClass: "rw-pill-stjude",
@@ -199,6 +225,9 @@ export const Rewards: React.FC = () => {
   const { user, loading, refreshProfile } = useUser();
 
   const [currentBalance, setCurrentBalance] = useState(0);
+  const [payoutCaptchaToken, setPayoutCaptchaToken] = useState<string | null>(
+    null
+  );
 
   // CASHOUT MODAL
   const [showPayoutModal, setShowPayoutModal] = useState(false);
@@ -244,7 +273,7 @@ export const Rewards: React.FC = () => {
     return (
       <main className="rb-content rewards-shell">
         <section className="rw-card rw-card-hero">
-          <p>Loading rewards…</p>
+          <p>Loading rewards...</p>
         </section>
       </main>
     );
@@ -297,6 +326,7 @@ export const Rewards: React.FC = () => {
       alert("You need at least $3.00 to cash out.");
       return;
     }
+    setPayoutCaptchaToken(null);
 
     if (methodId === "giftcard") {
       // gift cards use a dedicated modal
@@ -334,10 +364,13 @@ export const Rewards: React.FC = () => {
     if (!user || !selectedMethodId) return;
 
     const amountNum = parseFloat(payoutAmount);
-    
-    // Apply crypto fee: user receives 90% but pays full amount
+    if (!payoutCaptchaToken) {
+      alert("Please complete the captcha.");
+      return;
+    }
+    // Apply crypto fee: user receives 90% on all crypto
     let payoutFinal = amountNum;
-    if (selectedMethodId === "bitcoin") {
+    if (selectedMethodId === "bitcoin" || selectedMethodId === "litecoin" || selectedMethodId === "dogecoin") {
       payoutFinal = parseFloat((amountNum * 0.90).toFixed(2)); // 10% network fee
     }
 
@@ -386,8 +419,35 @@ export const Rewards: React.FC = () => {
         return;
       }
     }
+    if (selectedMethodId === "litecoin" || selectedMethodId === "dogecoin") {
+      if (idValue.length < 15) {
+        alert("That wallet address looks too short.");
+        return;
+      }
+    }
 
     try {
+      // Verify captcha with backend
+      try {
+        const functions = getFunctions(undefined, "us-central1");
+        const verifyFn = httpsCallable(functions, "verifyRecaptcha");
+        const res: any = await verifyFn({ token: payoutCaptchaToken });
+        if (!res?.data?.ok) {
+          const reason = res?.data?.reason || "Captcha failed. Please try again.";
+          alert(reason);
+          return;
+        }
+      } catch (err: any) {
+        console.error("Captcha verification failed", err);
+        const msg =
+          err?.message ||
+          err?.code ||
+          (err?.details as string) ||
+          "Captcha failed. Please try again.";
+        alert(msg);
+        return;
+      }
+
       // Enforce 24h rule
       const cashRef = collection(db, "cashout_requests");
       const qRecent = query(
@@ -416,10 +476,18 @@ export const Rewards: React.FC = () => {
         method: selectedMethodId,
         amount: payoutFinal,
         originalAmount: amountNum,
+        cryptoFee:
+          selectedMethodId === "bitcoin" ||
+          selectedMethodId === "litecoin" ||
+          selectedMethodId === "dogecoin"
+            ? Number((amountNum - payoutFinal).toFixed(2))
+            : null,
         paypalEmail: selectedMethodId === "paypal" ? idValue : null,
         cashappTag: selectedMethodId === "cashapp" ? idValue : null,
         venmoUsername: selectedMethodId === "venmo" ? idValue : null,
         bitcoinAddress: selectedMethodId === "bitcoin" ? idValue : null,
+        litecoinAddress: selectedMethodId === "litecoin" ? idValue : null,
+        dogecoinAddress: selectedMethodId === "dogecoin" ? idValue : null,
         status: "pending",
         createdAt: serverTimestamp(),
       });
@@ -448,6 +516,7 @@ export const Rewards: React.FC = () => {
 
       alert("Cashout request submitted! We process requests within 72 hours.");
       setShowPayoutModal(false);
+      setPayoutCaptchaToken(null);
     } catch (err) {
       console.error(err);
       alert("Failed to submit cashout.");
@@ -519,7 +588,7 @@ export const Rewards: React.FC = () => {
       setCurrentBalance(bal - amountNum);
       await refreshProfile();
 
-      alert("Gift card request submitted! We’ll email your code within 72 hours.");
+      alert("Gift card request submitted! We'll email your code within 72 hours.");
       setShowGiftModal(false);
     } catch (err) {
       console.error(err);
@@ -588,7 +657,7 @@ export const Rewards: React.FC = () => {
       setCurrentBalance(bal - amountNum);
       await refreshProfile();
 
-      alert("Donation submitted — thank you ❤️");
+      alert("Donation submitted - thank you!");
       setShowDonationModal(false);
     } catch (err) {
       console.error(err);
@@ -602,9 +671,11 @@ export const Rewards: React.FC = () => {
   /* ---------------------------------------------------
      RENDER
   --------------------------------------------------- */
-  // BTC network fee preview
-  const btcReceiveAmount =
-    selectedMethodId === "bitcoin"
+  // Crypto network fee preview (all crypto)
+  const cryptoReceiveAmount =
+    selectedMethodId === "bitcoin" ||
+    selectedMethodId === "litecoin" ||
+    selectedMethodId === "dogecoin"
       ? (parseFloat(payoutAmount || "0") * 0.9).toFixed(2)
       : null;
 
@@ -614,7 +685,7 @@ export const Rewards: React.FC = () => {
       <section className="rw-card rw-card-hero">
         <div className="rw-hero-top">
           <div>
-            <h2 className="rb-section-title">Cash out your earnings 💰</h2>
+            <h2 className="rb-section-title">Cash out your earnings <span className="emoji">💸</span></h2>
             <p className="rb-section-sub">
               Mobile banking, gift cards, crypto, or donations are processed
               manually within <strong>72 hours</strong>.
@@ -627,9 +698,9 @@ export const Rewards: React.FC = () => {
         </div>
 
         <div className="rw-hero-footnote">
-          <span>• Minimum cashout: $3</span>
-          <span>• Max per request: $20</span>
-          <span>• 1 request every 24 hours</span>
+          <span>🪙 Minimum cashout: $3</span>
+          <span>💵 Max per request: $20</span>
+          <span>⏰ 1 request every 24 hours</span>
         </div>
       </section>
 
@@ -711,7 +782,7 @@ export const Rewards: React.FC = () => {
           <div className="rw-category-text">
             <h3 className="rw-category-title">Crypto</h3>
             <p className="rw-category-sub">
-              Cash out in Bitcoin to a wallet you control.
+              Cash out in Bitcoin, Litecoin, or Dogecoin to a wallet you control. 10% network fee applies.
             </p>
           </div>
         </div>
@@ -783,7 +854,7 @@ export const Rewards: React.FC = () => {
           <li>Gift cards: minimum $5 (Spotify fixed at $10)</li>
           <li>Maximum per request: $20</li>
           <li>One cashout request every 24 hours</li>
-          <li>Crypto payouts include a 10% network / processing fee</li>
+          <li>Crypto includes a 10% network / processing fee</li>
           <li>All payouts are reviewed and processed manually within 72 hours</li>
         </ul>
       </section>
@@ -806,6 +877,10 @@ export const Rewards: React.FC = () => {
                   ? "Cash App"
                   : selectedMethodId === "venmo"
                   ? "Venmo"
+                  : selectedMethodId === "litecoin"
+                  ? "Litecoin"
+                  : selectedMethodId === "dogecoin"
+                  ? "Dogecoin"
                   : "Bitcoin"}
               </h3>
 
@@ -833,13 +908,13 @@ export const Rewards: React.FC = () => {
                   Max
                 </button>
               </div>
-              {selectedMethodId === "bitcoin" && (
+              {cryptoReceiveAmount && (
                 <p className="rw-fee-note">
-                <br></br>You will receive <strong>${btcReceiveAmount}</strong> after the 10% network fee.
+                <br></br>You will receive <strong>${cryptoReceiveAmount}</strong> after the 10% network fee.
                 </p>
               )}
               <p className="rw-helper-text">
-                Min ${minCashout.toFixed(2)} • Max $
+                Min ${minCashout.toFixed(2)} | Max $
                 {computeMaxCashout().toFixed(2)}
               </p>
 
@@ -850,12 +925,22 @@ export const Rewards: React.FC = () => {
                   ? "Cash App $cashtag"
                   : selectedMethodId === "venmo"
                   ? "Venmo username"
+                  : selectedMethodId === "litecoin"
+                  ? "Litecoin address"
+                  : selectedMethodId === "dogecoin"
+                  ? "Dogecoin address"
                   : "Bitcoin address"}
               </label>
               <input
                 type="text"
                 value={payoutIdentifier}
                 onChange={(e) => setPayoutIdentifier(e.target.value)}
+              />
+
+              <p className="rw-helper-text">Check the captcha box to submit.</p>
+              <ReCaptchaBox
+                onChange={(token) => setPayoutCaptchaToken(token)}
+                className="captcha-container"
               />
 
               <div className="rw-modal-actions">
@@ -883,7 +968,7 @@ export const Rewards: React.FC = () => {
           <div className="rb-modal-content rw-modal-content">
             <h3 className="rw-modal-title">Redeem a gift card</h3>
             <p className="rw-modal-caption">
-              Choose a brand and amount. We’ll email the digital code within 72
+              Choose a brand and amount. Weâ€™ll email the digital code within 72
               hours.
             </p>
 
@@ -930,7 +1015,9 @@ export const Rewards: React.FC = () => {
                   onChange={(e) => setGiftcardEmail(e.target.value)}
                   placeholder="your@email.com"
                 />
-              </>
+
+                {/* Captcha runs automatically on submit (v3). */}
+                              </>
             )}
 
             <div className="rw-modal-actions">
@@ -987,6 +1074,7 @@ export const Rewards: React.FC = () => {
               placeholder={user.email || "your@email.com"}
             />
 
+            {/* Captcha runs automatically on submit (v3). */}
             <div className="rw-modal-actions">
               <button className="hb-btn" onClick={handleSubmitDonation}>
                 Submit donation
@@ -1004,3 +1092,7 @@ export const Rewards: React.FC = () => {
     </main>
   );
 };
+
+
+
+

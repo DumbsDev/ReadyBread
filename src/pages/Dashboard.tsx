@@ -2,7 +2,7 @@
 // Dashboard using global UserContext instead of local Firebase state
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   collection,
   doc,
@@ -81,6 +81,17 @@ const SHORTCUT_BONUS_ID = "shortcut_bonus";
 const SHORTCUT_BONUS_AMOUNT = 0.05;
 const SHORTCUT_BONUS_TITLE = "Home screen bonus";
 const USERNAME_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
+const QUEST_TITLE_LOOKUP: Record<string, string> = {
+  "daily-survey": "Daily survey quest reward",
+  "daily-game": "Daily game quest reward",
+  "week-surveys": "Weekly surveys quest reward",
+  "week-games": "Weekly games quest reward",
+  "week-referral": "Weekly referral quest reward",
+  "home-screen": "Home screen quest reward",
+  "email-verified": "Email verification quest reward",
+  "first-offer": "First offer quest reward",
+  "first-survey": "First survey quest reward",
+};
 
 // -------------------------------
 // Component
@@ -88,6 +99,7 @@ const USERNAME_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
 export const Dashboard: React.FC = () => {
   // Global user context
   const { user, profile, balance, loading } = useUser();
+  const navigate = useNavigate();
 
   const [error, setError] = useState<string | null>(null);
   const [desiredUsername, setDesiredUsername] = useState(
@@ -480,6 +492,99 @@ export const Dashboard: React.FC = () => {
     return null;
   };
 
+  const questTitleFromId = (questId?: string | null) => {
+    if (!questId) return "Quest reward";
+    return QUEST_TITLE_LOOKUP[questId] || `Quest reward (${questId})`;
+  };
+
+  const completedOfferKey = (offer: StartedOffer): string => {
+    const amount = Number(offer.totalPayout ?? 0);
+    const ts =
+      getTimestampMs(offer.completedAt) ??
+      getTimestampMs(offer.lastUpdatedAt) ??
+      getTimestampMs(offer.startedAt) ??
+      0;
+    const type = (offer.type || "").toString().toLowerCase();
+    const source = (offer.source || "").toString().toLowerCase();
+    const title = (offer.title || "").toString().toLowerCase();
+    return `${type}|${source}|${title}|${amount.toFixed(2)}|${ts}`;
+  };
+
+  const questHistoryOffers: StartedOffer[] = useMemo(() => {
+    return offerHistory
+      .filter((item) => {
+        const type = (item.type || "").toString().toLowerCase();
+        const source = (item.source || "").toString().toLowerCase();
+        return type === "quest" || source.includes("quest");
+      })
+      .map((item) => {
+        const createdAt = item.createdAt;
+        const amount = Number(item.amount) || 0;
+        const questId = item.offerId ?? item.id;
+
+        return {
+          id: `quest-history-${item.id}`,
+          title: questTitleFromId(questId),
+          totalPayout: amount,
+          type: "quest",
+          status: "completed",
+          completedAt: createdAt,
+          lastUpdatedAt: createdAt,
+          startedAt: createdAt,
+          source: item.source || "quest_reward",
+        } as StartedOffer;
+      });
+  }, [offerHistory]);
+
+  const combinedCompletedOffers: StartedOffer[] = useMemo(() => {
+    const base = [...completedOffers];
+    const seen = new Set(base.map(completedOfferKey));
+
+    questHistoryOffers.forEach((questOffer) => {
+      const key = completedOfferKey(questOffer);
+      if (!seen.has(key)) {
+        base.push(questOffer);
+        seen.add(key);
+      }
+    });
+
+    base.sort((a, b) => {
+      const aTime =
+        getTimestampMs(a.completedAt) ??
+        getTimestampMs(a.lastUpdatedAt) ??
+        getTimestampMs(a.startedAt) ??
+        0;
+      const bTime =
+        getTimestampMs(b.completedAt) ??
+        getTimestampMs(b.lastUpdatedAt) ??
+        getTimestampMs(b.startedAt) ??
+        0;
+      return bTime - aTime;
+    });
+
+    return base;
+  }, [completedOffers, questHistoryOffers]);
+
+  const completedOffersLoading = offersLoading || offerHistoryLoading;
+
+  const payoutSummary = useMemo(() => {
+    let total = 0;
+    let pending = 0;
+    let fulfilled = 0;
+    let denied = 0;
+
+    payouts.forEach((p) => {
+      const amt = Number((p as any)?.amount) || 0;
+      total += amt;
+      const status = ((p as any)?.status || "").toString().toLowerCase();
+      if (status === "pending") pending += 1;
+      else if (status === "fulfilled") fulfilled += 1;
+      else if (status === "denied") denied += 1;
+    });
+
+    return { total, pending, fulfilled, denied };
+  }, [payouts]);
+
   const lastUsernameChangeMs = useMemo(
     () => getTimestampMs(profile?.usernameChangedAt),
     [profile?.usernameChangedAt]
@@ -791,6 +896,86 @@ export const Dashboard: React.FC = () => {
         {/* OVERVIEW TAB */}
         {activeTab === "overview" && (
           <div className="dash-panel dash-panel-active">
+            {/* HERO SUMMARY */}
+            <div className="dash-highlight-grid">
+              <div className="dash-highlight-card primary">
+                <p className="dash-label">Balance</p>
+                <h3 className="dash-highlight-value">${balance.toFixed(2)}</h3>
+                <p className="dash-muted">
+                  Keep earning daily to grow this. Quests & streak bonuses apply automatically.
+                </p>
+                <div className="dash-highlight-actions">
+                  <Link className="dash-cta-link" to="/earn">
+                    View Earn
+                  </Link>
+                  <Link className="dash-cta-link ghost" to="/rewards">
+                    Withdraw
+                  </Link>
+                </div>
+              </div>
+
+              <div className="dash-highlight-card">
+                <p className="dash-label">Daily streak</p>
+                <h3 className="dash-highlight-value">
+                  {profile?.dailyStreak ?? 0}d • +{(profile?.bonusPercent ?? 0).toFixed(1)}%
+                </h3>
+                <p className="dash-muted">
+                  Check in each day to lift your streak bonus up to +10%.
+                </p>
+                <button className="dash-cta-link ghost" onClick={() => navigate("/home")}>
+                  Open Check-in
+                </button>
+              </div>
+
+              <div className="dash-highlight-card">
+                <p className="dash-label">Quest cash tracked</p>
+                <h3 className="dash-highlight-value">${questCashTotal.toFixed(2)}</h3>
+                <p className="dash-muted">
+                  Daily + weekly quests auto-claim when goals complete.
+                </p>
+                <button className="dash-cta-link" onClick={() => navigate("/quests")}>
+                  View Quests
+                </button>
+              </div>
+
+              <div className="dash-highlight-card">
+                <p className="dash-label">Referrals</p>
+                <h3 className="dash-highlight-value">
+                  {referralCount} • ${referralEarnings.toFixed(2)}
+                </h3>
+                <p className="dash-muted">Share your link to earn on each friend’s activity.</p>
+                <button className="dash-cta-link ghost" onClick={() => setActiveTab("overview")}>
+                  See referral panel
+                </button>
+              </div>
+
+              <div className="dash-highlight-card">
+                <p className="dash-label">Payout requests</p>
+                <h3 className="dash-highlight-value">{payouts.length}</h3>
+                <p className="dash-muted">
+                  Track your recent cashouts and donation requests.
+                </p>
+                <button className="dash-cta-link" onClick={() => setActiveTab("payouts")}>
+                  View payouts
+                </button>
+              </div>
+            </div>
+
+            <div className="dash-quick-actions">
+              <button className="dash-qa-btn" onClick={() => navigate("/earn")}>
+                Earn hub
+              </button>
+              <button className="dash-qa-btn" onClick={() => navigate("/quests")}>
+                Quests
+              </button>
+              <button className="dash-qa-btn" onClick={() => navigate("/rewards")}>
+                Withdraw
+              </button>
+              <button className="dash-qa-btn" onClick={() => setActiveTab("offers")}>
+                Offers & history
+              </button>
+            </div>
+
             {/* ACCOUNT SUMMARY */}
             <div className="dash-card modern-card glass-card">
               <h3 className="dash-card-title">Account Summary</h3>
@@ -1074,6 +1259,28 @@ export const Dashboard: React.FC = () => {
         {/* OFFERS TAB */}
         {activeTab === "offers" && (
           <div className="dash-panel dash-panel-active">
+            <div className="dash-card modern-card glass-card">
+              <h3 className="dash-card-title">Offers at a glance</h3>
+              <div className="dash-stats-grid">
+                <div className="dash-stat">
+                  <span className="dash-stat-label">Active</span>
+                  <span className="dash-stat-value">{activeOffers.length}</span>
+                </div>
+                <div className="dash-stat">
+                  <span className="dash-stat-label">Completed</span>
+                  <span className="dash-stat-value">{combinedCompletedOffers.length}</span>
+                </div>
+                <div className="dash-stat">
+                  <span className="dash-stat-label">History entries</span>
+                  <span className="dash-stat-value">{offerHistory.length}</span>
+                </div>
+                <div className="dash-stat">
+                  <span className="dash-stat-label">Total started</span>
+                  <span className="dash-stat-value">{allOffers.length}</span>
+                </div>
+              </div>
+            </div>
+
             {/* ACTIVE OFFERS */}
             <div className="dash-card modern-card glass-card">
               <h3 className="dash-card-title">Active Offers</h3>
@@ -1128,13 +1335,13 @@ export const Dashboard: React.FC = () => {
             <div className="dash-card modern-card glass-card">
               <h3 className="dash-card-title">Completed Offers</h3>
 
-              {offersLoading ? (
-                <p className="dash-muted">Loading…</p>
-              ) : completedOffers.length === 0 ? (
+              {completedOffersLoading ? (
+                <p className="dash-muted">Loading...</p>
+              ) : combinedCompletedOffers.length === 0 ? (
                 <p className="dash-muted">No completed offers.</p>
               ) : (
                 <div className="dash-offer-list">
-                  {completedOffers.map((offer) => (
+                  {combinedCompletedOffers.map((offer) => (
                     <div
                       key={offer.id}
                       className="dash-offer-row dash-offer-row-clickable glass-row"
@@ -1160,7 +1367,7 @@ export const Dashboard: React.FC = () => {
               )}
 
               <p className="dash-muted dash-footnote">
-                Completed offers automatically clean themselves after ~24h.
+                Completed offers and quest rewards automatically clean themselves after ~24h.
               </p>
             </div>
 
@@ -1211,7 +1418,19 @@ export const Dashboard: React.FC = () => {
 
             {/* OFFER HISTORY */}
             <div className="dash-card modern-card glass-card">
-              <h3 className="dash-card-title">Offer Earnings History</h3>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "10px",
+                }}
+              >
+                <h3 className="dash-card-title">Offer Earnings History</h3>
+                <Link className="peek-chip" to="/offer-history">
+                  Open full history
+                </Link>
+              </div>
 
               {offerHistoryLoading ? (
                 <p className="dash-muted">Loading…</p>
@@ -1251,6 +1470,34 @@ export const Dashboard: React.FC = () => {
         {/* PAYOUTS TAB */}
         {activeTab === "payouts" && (
           <div className="dash-panel dash-panel-active">
+            <div className="dash-card modern-card glass-card">
+              <h3 className="dash-card-title">Payout overview</h3>
+              <div className="dash-stats-grid">
+                <div className="dash-stat">
+                  <span className="dash-stat-label">Total requests</span>
+                  <span className="dash-stat-value">{payouts.length}</span>
+                </div>
+                <div className="dash-stat">
+                  <span className="dash-stat-label">Pending</span>
+                  <span className="dash-stat-value">{payoutSummary.pending}</span>
+                </div>
+                <div className="dash-stat">
+                  <span className="dash-stat-label">Fulfilled</span>
+                  <span className="dash-stat-value">{payoutSummary.fulfilled}</span>
+                </div>
+                <div className="dash-stat">
+                  <span className="dash-stat-label">Denied</span>
+                  <span className="dash-stat-value">{payoutSummary.denied}</span>
+                </div>
+                <div className="dash-stat">
+                  <span className="dash-stat-label">Total requested</span>
+                  <span className="dash-stat-value">
+                    ${payoutSummary.total.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <div className="dash-card modern-card glass-card">
               <h3 className="dash-card-title">Payout History</h3>
 

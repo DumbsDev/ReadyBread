@@ -1835,7 +1835,7 @@ body {
 
     /* Ensure they stay real emojis */
     -webkit-text-fill-color: initial !important;
-    color: inherit !important;
+    color: initial !important;
 
     /* Prevent filters from flattening emoji color */
     filter: none !important;
@@ -1854,7 +1854,7 @@ body {
     background: none !important;
     -webkit-background-clip: initial !important;
     -webkit-text-fill-color: initial !important;
-    color: inherit !important;
+    color: initial !important;
 }
 
 /* Affiliates Page */
@@ -2240,20 +2240,21 @@ body {
 /*  GLASSY DASHBOARD PANELS                                 */
 /* -------------------------------------------------------- */
 .dash-card.modern-card {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px) saturate(1.8);
-  -webkit-backdrop-filter: blur(12px) saturate(1.8);
+  background: linear-gradient(150deg, rgba(0, 0, 0, 0.55), rgba(255, 209, 102, 0.14), rgba(0, 0, 0, 0.65));
+  backdrop-filter: blur(10px) saturate(1.4);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
   border-radius: 16px;
   padding: 20px;
   margin-bottom: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.25);
-  transition: transform 0.25s ease, box-shadow 0.3s ease;
+  border: 1px solid rgba(255, 209, 102, 0.2);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.4);
+  transition: transform 0.25s ease, box-shadow 0.3s ease, border-color 0.2s ease;
 }
 
 .dash-card.modern-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+  box-shadow: 0 14px 28px rgba(0,0,0,0.45);
+  border-color: rgba(255, 209, 102, 0.35);
 }
 
 /* Headings */
@@ -2446,6 +2447,350 @@ body {
   gap: 12px;
   overflow-x: auto;
   padding-bottom: 8px;
+}
+
+/* =========================================================
+   DASHBOARD REDESIGN (Mobile-first highlights + actions)
+========================================================= */
+.dash-highlight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 6px 0 14px;
+}
+
+.dash-highlight-card {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+}
+
+.dash-highlight-card.primary {
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.18), rgba(96, 96, 255, 0.16));
+  border-color: rgba(255, 209, 102, 0.35);
+}
+
+.dash-highlight-value {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 2px 0 4px;
+  color: #fef6df;
+}
+
+.dash-highlight-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.dash-cta-link {
+  background: linear-gradient(135deg, #0b0b0f, #191922);
+  color: #ffeec4;
+  font-weight: 800;
+  padding: 9px 13px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 209, 102, 0.55);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.22s ease, border-color 0.2s ease;
+  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.5);
+}
+
+.dash-cta-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(255, 209, 102, 0.3);
+  border-color: rgba(255, 209, 102, 0.8);
+}
+
+.dash-cta-link.ghost {
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff8e8;
+  border-color: rgba(255, 209, 102, 0.3);
+}
+
+.dash-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 6px 0 16px;
+}
+
+.dash-qa-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fdfdfd;
+  border-radius: 12px;
+  padding: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.22s ease;
+}
+
+.dash-qa-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* =========================================================
+   DASHBOARD REDESIGN (Mobile-first, Quests/Earn vibe)
+   Overrides older dash styles with brighter gradients,
+   pill tabs, and stacked cards optimized for phones.
+========================================================= */
+
+.dash-shell {
+  background: radial-gradient(circle at 18% 22%, rgba(255, 209, 102, 0.14), transparent 40%),
+              radial-gradient(circle at 82% 8%, rgba(0, 0, 0, 0.35), transparent 45%),
+              #0a0a0d;
+  border: 1px solid rgba(255, 209, 102, 0.18);
+  border-radius: 20px;
+  padding: 16px 14px 22px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+  max-width: 1100px;
+  margin: 12px auto 32px;
+}
+
+@media (min-width: 1024px) {
+  .dash-shell {
+    padding: 22px 24px 28px;
+  }
+}
+
+.offer-history-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.offer-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.partner-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.dash-tabs {
+  display: inline-flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 6px 4px 12px;
+  scrollbar-width: none;
+  width: 100%;
+  -ms-overflow-style: none;
+}
+
+.dash-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.dash-tab {
+  border: 1px solid rgba(255, 209, 102, 0.28);
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.45), rgba(255, 209, 102, 0.12));
+  color: #fef8e7;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  text-align: center;
+  white-space: nowrap;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.dash-tab-active {
+  background: linear-gradient(135deg, #cba34c, #ffde8a);
+  color: #0b0b0f;
+  border-color: rgba(255, 209, 102, 0.95);
+  box-shadow: 0 12px 24px rgba(255, 209, 102, 0.45);
+  transform: translateY(-1px);
+}
+
+.dash-panel {
+  display: none;
+  width: 100%;
+}
+
+.dash-panel-active {
+  display: block;
+  animation: fadeIn 0.25s ease;
+}
+
+.dash-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 18px 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+.dash-card.modern-card {
+  background: linear-gradient(150deg, rgba(96, 96, 255, 0.12), rgba(255, 209, 102, 0.12), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform 0.2s ease, box-shadow 0.25s ease;
+}
+
+.dash-card.modern-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+}
+
+.dash-card-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #fef6df;
+  letter-spacing: 0.01em;
+}
+
+.dash-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+  font-size: 14px;
+}
+
+.dash-label {
+  color: rgba(255, 209, 102, 0.95);
+  font-weight: 700;
+}
+
+.dash-muted {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.dash-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 900px) {
+  .dash-grid-2 {
+    grid-template-columns: 1.05fr 0.95fr;
+  }
+}
+
+.dash-stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.dash-stat {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.dash-stat-value {
+  color: #ffd166;
+}
+
+.dash-offer-row,
+.dash-payout-row,
+.dash-progress-row {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 12px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.dash-offer-row:hover,
+.dash-payout-row:hover,
+.dash-progress-row:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 209, 102, 0.45);
+}
+
+.dash-offer-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fef6df;
+}
+
+.dash-offer-meta {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.dash-offer-btn {
+  background: linear-gradient(135deg, #ffd166, #ffb347);
+  color: #101010;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.dash-offer-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(255, 209, 102, 0.35);
+}
+
+.dash-progress-bar-wrap {
+  height: 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.dash-progress-bar-fill {
+  background: linear-gradient(90deg, #ffd166, #ff9f66);
+}
+
+.dash-level-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.dash-level-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fef6df;
+}
+
+.dash-footnote {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+/* Mobile-first spacing */
+@media (max-width: 720px) {
+  .dash-card {
+    padding: 14px;
+  }
+
+  .dash-card-title {
+    font-size: 16px;
+  }
+
+  .dash-line {
+    font-size: 13px;
+  }
+
+  .dash-tabs {
+    gap: 8px;
+  }
 }
 
 .admin-shell {
@@ -2789,6 +3134,94 @@ body {
   display: flex;
   justify-content: space-between;
   margin-top: 20px;
+}
+
+.admin-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 10px 0 16px;
+}
+
+.admin-summary-card h3 {
+  font-size: 22px;
+  margin: 4px 0;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.admin-lookup-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.admin-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-activity-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 209, 102, 0.18);
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.admin-activity-amount {
+  font-weight: 700;
+  color: var(--golden-toast);
+}
+
+.admin-ban-controls {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 209, 102, 0.2);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.admin-ban-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+.admin-ban-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
 }
 
 .hb-btn {
@@ -3407,4 +3840,56 @@ body {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 13px;
+}
+
+/* ------------------------------
+   Soft email verification banner
+------------------------------ */
+.verify-banner {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 209, 102, 0.3);
+  background: rgba(255, 209, 102, 0.08);
+  border-radius: 16px;
+  margin: 12px auto 0;
+  width: calc(100% - 32px);
+  max-width: 1200px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+}
+
+.verify-banner .banner-title {
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.verify-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 220px;
+}
+
+.banner-success {
+  color: #6ad59c;
+  font-weight: 700;
+}
+
+.banner-error {
+  color: #ff9b9b;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .verify-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .verify-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }

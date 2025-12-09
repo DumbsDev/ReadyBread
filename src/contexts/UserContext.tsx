@@ -27,6 +27,14 @@ export interface UserProfile {
   dailyStreak?: number;       // number of days
   bonusPercent?: number;      // +0.5% increments
   lastCheckIn?: any;          // Firestore timestamp
+  deviceId?: string | null;
+  lastDeviceId?: string | null;
+  lastIp?: string | null;
+  lastIpHash?: string | null;
+  lastUserAgent?: string | null;
+  fingerprintUpdatedAt?: any;
+  partnerSources?: string[];
+  partner?: boolean;
 }
 
 /* ------------------------------------------------------------

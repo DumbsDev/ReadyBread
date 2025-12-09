@@ -30,6 +30,13 @@ export interface RBUser {
 
   // Device fingerprinting for fraud prevention
   deviceId?: string;
+  lastDeviceId?: string | null;
+  lastIp?: string | null;
+  lastIpHash?: string | null;
+  lastUserAgent?: string | null;
+  fingerprintUpdatedAt?: any;
+  partnerSources?: string[];
+  partner?: boolean;
 
   // Referral System
   referralCode?: string;          // user's code that others can use

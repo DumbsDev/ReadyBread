@@ -23,31 +23,12 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 
 import { app, auth, db } from "../config/firebase";
 import { useUser } from "../contexts/UserContext";
+import { getDeviceId } from "../utils/device";
+import ReCaptchaBox from "../components/ReCaptchaBox";
 
 // Referral reward constants
 const REFERRAL_REWARD = 0.25;
 const REFERRAL_CAP = 1.0;
-
-/* -------------------------------------------------------
-   DEVICE ID GENERATION
-------------------------------------------------------- */
-const getDeviceId = () => {
-  const KEY = "rb_device_id";
-  try {
-    let id = localStorage.getItem(KEY);
-    if (!id) {
-      id =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : Math.random().toString(36).slice(2) + Date.now().toString(36);
-
-      localStorage.setItem(KEY, id);
-    }
-    return id;
-  } catch {
-    return "unknown";
-  }
-};
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -61,7 +42,10 @@ export const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
+  const [showPassword, setShowPassword] = useState(false);
+  const [signupCaptchaToken, setSignupCaptchaToken] = useState<string | null>(
+    null
+  );
   const [agreeTOS, setAgreeTOS] = useState(false);
   const [agreePP, setAgreePP] = useState(false);
   const [agreeED, setAgreeED] = useState(false);
@@ -90,12 +74,7 @@ export const Login: React.FC = () => {
     if (loading) return;
 
     if (authUser && profile) {
-      if (authUser.emailVerified) {
-        navigate("/dashboard");
-      } else {
-        // Unverified users stay on this page
-        // (you can show a banner here if you want later)
-      }
+      navigate("/dashboard");
     }
   }, [authUser, profile, loading, navigate]);
 
@@ -169,9 +148,17 @@ export const Login: React.FC = () => {
       const cred = await signInWithEmailAndPassword(auth, email, password);
 
       if (!cred.user.emailVerified) {
-        await signOut(auth);
-        alert("Please verify your email before logging in.");
-        return;
+        try {
+          await sendEmailVerification(cred.user, {
+            url: `${window.location.origin}/confirmation`,
+            handleCodeInApp: false,
+          });
+        } catch {
+          /* ignore */
+        }
+        alert(
+          "Verification email sent. You can browse, but payouts and referrals stay locked until you verify."
+        );
       }
 
       // Cloud Function to process referrals
@@ -208,8 +195,33 @@ export const Login: React.FC = () => {
       alert("You must agree to everything.");
       return;
     }
+    if (!signupCaptchaToken) {
+      alert("Please complete the captcha.");
+      return;
+    }
 
     try {
+      // Verify captcha with backend before creating the account
+      try {
+        const functions = getFunctions(app, "us-central1");
+        const verifyCaptcha = httpsCallable(functions, "verifyRecaptcha");
+        const res: any = await verifyCaptcha({ token: signupCaptchaToken });
+        if (!res?.data?.ok) {
+          const reason = res?.data?.reason || "Captcha failed. Please try again.";
+          alert(reason);
+          return;
+        }
+      } catch (err: any) {
+        console.error("Captcha verification failed", err);
+        const msg =
+          err?.message ||
+          err?.code ||
+          (err?.details as string) ||
+          "Captcha failed. Please try again.";
+        alert(msg);
+        return;
+      }
+
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       const uid = cred.user.uid;
 
@@ -231,6 +243,7 @@ export const Login: React.FC = () => {
         balance: 0,
         isBanned: false,
         admin: false,
+        partner: false,
         createdAt: serverTimestamp(),
 
         referralCode: uid.slice(-6).toUpperCase(),
@@ -254,7 +267,10 @@ export const Login: React.FC = () => {
         createdAt: serverTimestamp(),
       });
 
-      await sendEmailVerification(cred.user);
+      await sendEmailVerification(cred.user, {
+        url: `${window.location.origin}/confirmation`,
+        handleCodeInApp: false,
+      });
 
       // Cloud function to process referrals on signup as well
       try {
@@ -338,7 +354,7 @@ export const Login: React.FC = () => {
             />
 
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               autoComplete="off"
               value={password}
@@ -346,12 +362,21 @@ export const Login: React.FC = () => {
             />
 
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Confirm Password"
               autoComplete="off"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
+
+            <label className="checkbox-row" style={{ marginBottom: 8 }}>
+              <input
+                type="checkbox"
+                checked={showPassword}
+                onChange={(e) => setShowPassword(e.target.checked)}
+              />{" "}
+              Show password
+            </label>
 
             <div className="legal-checks">
               <label>
@@ -390,8 +415,15 @@ export const Login: React.FC = () => {
                 <a href="/earnings" target="_blank">
                   Earnings Disclaimer
                 </a>
-                .
+                .                
               </label>
+            </div>
+
+            <div className="legal-checks">
+              <ReCaptchaBox
+                onChange={(token) => setSignupCaptchaToken(token)}
+                className="recaptcha-box"
+              />
             </div>
 
             <button onClick={handleSignUp}>Create Account</button>

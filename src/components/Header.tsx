@@ -1,5 +1,5 @@
 // src/components/Header.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { User } from "../types";
 import { Balance } from "./Balance";
@@ -11,6 +11,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ user }) => {
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isActive = (path: string) => {
     const current = location.pathname;
@@ -21,6 +22,26 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
   };
 
   const balance = typeof user?.balance === "number" ? user.balance : 0;
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  const extraLinks = [
+    { to: "/offerwalls", label: "Offer walls" },
+    { to: "/offer-history", label: "Offer history" },
+    { to: "/proof", label: "Payout proofs" },
+    { to: "/anti-fraud", label: "Anti-fraud" },
+    {
+      to: "/partner",
+      label: "Partner dashboard",
+      show:
+        user?.admin ||
+        (user as any)?.partner === true ||
+        (user as any)?.partnerSources?.length > 0,
+    },
+    { to: "/admin", label: "Admin", show: user?.admin },
+  ].filter((l) => l.show !== false);
 
   return (
     <>
@@ -79,6 +100,14 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
             <Link to="/articles" className={isActive("/articles") ? "active" : ""}>
               Articles
             </Link>
+
+            {(user?.admin ||
+              (user as any)?.partner === true ||
+              (user as any)?.partnerSources?.length) && (
+              <Link to="/partner" className={isActive("/partner") ? "active" : ""}>
+                Partner
+              </Link>
+            )}
           </nav>
 
           {/* RIGHT SIDE */}
@@ -229,6 +258,19 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
             </Link>
           )}
 
+          <button
+            type="button"
+            className={`nav-item nav-more ${mobileMenuOpen ? "active" : ""}`}
+          onClick={() => setMobileMenuOpen((open) => !open)}
+          aria-expanded={mobileMenuOpen}
+          aria-label="Open more navigation"
+        >
+          <div className="nav-icon nav-more-icon">|||</div>
+          <span className={`nav-label ${mobileMenuOpen ? "active" : ""}`}>
+            More
+          </span>
+        </button>
+
           {/* LOGIN — logged out only */}
           {!user && (
             <Link to="/login" className="nav-item">
@@ -246,6 +288,28 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
           )}
         </div>
       </nav>
+
+      <div className={`mobile-drawer ${mobileMenuOpen ? "open" : ""}`}>
+        <div
+          className="mobile-drawer-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+        <div className="mobile-drawer-panel">
+          <h4>Quick links</h4>
+          <div className="drawer-grid">
+            {extraLinks.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className="drawer-link"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
     </>
   );
 };

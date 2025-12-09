@@ -104,8 +104,6 @@ export const OfferWalls: React.FC = () => {
   const { authUser, loading } = useUser();
   const userId = authUser?.uid || "guest";
 
-  <h1>Please note: This is only for partners to see for now. Once we go public, non-supported/partnered brands will be removed, however their implentation will stay in the code (even if the user doesn't see) in case of future partnership.</h1>
-
   const cards = wallConfigs.map((wall) => {
     const missing = wall.requires.filter((key) => !getEnv(key));
     const url = wall.buildUrl(userId);

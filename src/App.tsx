@@ -9,12 +9,14 @@ import { useUser } from "./contexts/UserContext";
 import { Header } from "./components/Header";
 // import { Balance } from "./components/Balance";
 import { Loader } from "./components/Loader";
+import { VerificationBanner } from "./components/VerificationBanner";
 
 // Articles
 import ArticlePage from "./pages/articles/ArticlePage";
 import ArticlesHome from "./pages/articles/articlesHome";
 
 import { useShortcutBonus } from "./hooks/useShortcutBonus";
+import { useFingerprintLogger } from "./hooks/useFingerprintLogger";
 
 const lazyPage = (
   loader: () => Promise<Record<string, unknown>>,
@@ -45,6 +47,10 @@ const Rewards = lazyPage(() => import("./pages/Rewards"), "Rewards");
 const Receipts = lazyPage(() => import("./pages/Receipts"), "Receipts");
 const Misc = lazyPage(() => import("./pages/Misc"), "Misc");
 const Affiliate = lazyPage(() => import("./pages/Affiliate"), "Affiliate");
+const OfferHistoryPage = lazyPage(
+  () => import("./pages/OfferHistory"),
+  "OfferHistoryPage"
+);
 const NotFound = lazyPage(
   () => import("./pages/SimplePlaceholders"),
   "NotFound"
@@ -68,6 +74,10 @@ const TutorialArticle = lazyPage(
 );
 
 const RevUWall = lazyPage(() => import("./pages/RevU"), "RevUWall");
+const PartnerDashboard = lazyPage(
+  () => import("./pages/PartnerDashboard"),
+  "PartnerDashboard"
+);
 
 const BreadGame = React.lazy(() => import("./breadgame/breadGame"));
 
@@ -81,6 +91,10 @@ const EarningsDisclaimer = lazyPage(
 const Proof = lazyPage(() => import("./pages/Proof"), "Proof");
 const AntiFraud = lazyPage(() => import("./pages/AntiFraud"), "AntiFraud");
 const Advertise = lazyPage(() => import("./pages/Advertise"), "Advertise");
+const Confirmation = lazyPage(
+  () => import("./pages/Confirmation"),
+  "Confirmation"
+);
 
 const RouteLoader: React.FC = () => (
   <div className="rb-route-fallback">
@@ -122,6 +136,7 @@ const LandingGate: React.FC = () => {
 export const AppInner: React.FC = () => {
   const { user, profile, /*balance,*/ loading, admin } = useUser();
   useShortcutBonus();
+  useFingerprintLogger();
 
   const showLoader: boolean = loading || (user !== null && profile === null);
 
@@ -131,6 +146,8 @@ export const AppInner: React.FC = () => {
 
       {/* Header always visible (landing, login, everything) */}
       <Header user={user} />
+
+      <VerificationBanner />
 
       {/* Balance shows only when logged in + profile loaded */}
       <Suspense fallback={<RouteLoader />}>
@@ -144,6 +161,7 @@ export const AppInner: React.FC = () => {
 
           {/* Auth pages */}
           <Route path="/login" element={<Login />} />
+          <Route path="/confirmation" element={<Confirmation />} />
 
           {/* Earn pages */}
           <Route path="/surveys" element={<Surveys />} />
@@ -153,6 +171,7 @@ export const AppInner: React.FC = () => {
           <Route path="/security" element={<Security />} />
           <Route path="/misc" element={<Misc />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/offer-history" element={<OfferHistoryPage />} />
           <Route path="/quests" element={<Quests />} />
           <Route path="/earn" element={<Earn />} />
           <Route path="/offerwalls" element={<OfferWalls />} />
@@ -161,6 +180,7 @@ export const AppInner: React.FC = () => {
           <Route path="/revu" element={<RevUWall />} />
           <Route path="/RevU" element={<RevUWall />} />
           <Route path="/affiliate" element={<Affiliate />} />
+          <Route path="/partner" element={<PartnerDashboard />} />
 
           <Route path="/breadgame" element={<BreadGame user={user} />} />
 

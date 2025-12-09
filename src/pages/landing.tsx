@@ -96,7 +96,7 @@ export const Landing: React.FC = () => {
 
           <p className="landing-subtitle">
             Play games, complete surveys, scan receipts, and cash out.
-            No points, no fees, no nonsense.
+            <br></br><b>No points, no fees, no nonsense</b>.
           </p>
 
           <div className="hero-buttons">
@@ -113,13 +113,18 @@ export const Landing: React.FC = () => {
               <span className="stat-label">Payouts from little as</span>
               <span className="stat-value">$3</span>
             </div>
+            <br></br>
             <div className="stat-chip">
-              <span className="stat-label">Supported</span>
+              <span className="stat-label">Support for</span>
               <span className="stat-value">Games • Surveys • More</span>
             </div>
             <div className="stat-chip">
               <span className="stat-label">Designed to be</span>
               <span className="stat-value">Totally User First.</span>
+            </div>
+            <div className="stat-chip">
+              <span className="stat-label">No payout confusion, with</span>
+              <span className="stat-value">no fees, no points, and fast payouts.</span>
             </div>
           </div>
         </div>
@@ -179,12 +184,12 @@ export const Landing: React.FC = () => {
           <h2>💸 Satisfying Cashouts</h2>
           <p>
             Cash out to PayPal, Cash App, or donate to charities like St. Judes,
-            Red Cross and more. Actual dollars, not "points".
+            Red Cross and more. Actual money, not "points", and no fees.
           </p>
           <ul className="feature-list">
             <li>Low minimums</li>
             <li>Daily processing</li>
-            <li>Absolutely <span className="bread-word">zero</span> withdraw fees</li>
+            <li>Absolutely <span className="bread-word">zero</span>* withdraw fees</li>
           </ul>
         </TiltCard>
       </section>
@@ -290,7 +295,7 @@ export const Landing: React.FC = () => {
           <div className="partner-badges">
             <span>Major offerwalls are either already implemented, or ready to be at any moment.</span>
           </div>
-          <h3>Representative of Adgem, Bitlabs, CPX, AdGate, Lootably, or OfferToro? All the code is there, and we are ready to implement your offers <span className="bread-word">Immediately</span>.</h3>
+          <h3>Representative of Adgem, Bitlabs, AdGate, Lootably, or OfferToro? Join our existing partners today! All the code is there, and we are ready to implement your offers <span className="bread-word">Immediately</span>.</h3>
           <p className="partner-note">
             Shared Wi-Fi and dorm networks are allowed. VPN/proxy use may reduce offer availability. We share fraud logs with partners on request.
           </p>
@@ -313,7 +318,7 @@ export const Landing: React.FC = () => {
             <h4>🌎 Browser Extension</h4>
             <p>
               Earn from browsing, and save on all your favorite shopping sites with BreadBase, our
-              custom browser extension. Currently in Beta.
+              custom browser extension. Currently in development.
             </p>
           </div>
         </div>
@@ -340,6 +345,10 @@ export const Landing: React.FC = () => {
           It's important to be functional, but its also important to look good.
           <br></br>Just another reason ReadyBread.xyz is <i>better</i>.
         </p>
+      </section>
+
+      <section>
+        <p>* there is a 10% network fee for crypto cashouts. They are the only fees we <i>ever</i> charge.</p>
       </section>
     </div>
   );

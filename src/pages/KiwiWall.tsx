@@ -1,5 +1,5 @@
 // src/pages/KiwiWall.tsx
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { AntiFraudGate } from "../components/AntiFraudGate";
 import { useUser } from "../contexts/UserContext";
 
@@ -8,6 +8,7 @@ const KIWI_WALL_ID = "crlk6jn5o5msasdkwphkgb4ui53opiht";
 export const KiwiWall: React.FC = () => {
   const { authUser } = useUser();
   const userId = authUser?.uid || "guest";
+  const [wallError, setWallError] = useState(false);
 
   const iframeSrc = useMemo(
     () =>
@@ -39,8 +40,27 @@ export const KiwiWall: React.FC = () => {
               height="1400"
               allowFullScreen
               frameBorder="0"
+              onError={() => setWallError(true)}
+              onLoad={() => setWallError(false)}
             />
           </div>
+
+          {wallError && (
+            <div className="rb-card modern-card" style={{ marginTop: 12 }}>
+              <h3>Having trouble loading the wall?</h3>
+              <p className="dash-muted">
+                Open KiwiWall in a new tab or disable VPN/proxy. Your ReadyBread ID will be
+                passed automatically.
+              </p>
+              <button
+                className="survey-start-btn"
+                type="button"
+                onClick={() => window.open(iframeSrc, "_blank")}
+              >
+                Open KiwiWall in a new tab
+              </button>
+            </div>
+          )}
 
           <p className="rb-section-sub" style={{ marginTop: 10 }}>
             If the wall looks empty, disable VPN/proxy and refresh. Conversions

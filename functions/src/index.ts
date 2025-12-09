@@ -5,8 +5,12 @@ import { defineSecret } from "firebase-functions/params";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import * as crypto from "crypto";
+import { checkOfferVelocity, logVelocityBlock } from "./velocity";
+const fetchFn = (global as any).fetch as typeof fetch;
 
-admin.initializeApp();
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 const db = admin.firestore();
 
 /* ============================================================
@@ -71,8 +75,139 @@ const KIWI_SECRET_VALUE =
   process.env.KIWI_SECRET || "26b6e44ad5b4e320f03ed0b71b1c398c";
 const TELEGRAM_BOT_TOKEN = defineSecret("TELEGRAM_BOT_TOKEN");
 const TELEGRAM_CHAT_ID = defineSecret("TELEGRAM_CHAT_ID");
-const SENDGRID_API_KEY = defineSecret("SENDGRID_API_KEY");
-const SENDGRID_FROM_EMAIL = defineSecret("SENDGRID_FROM_EMAIL");
+const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
+const RECAPTCHA_SECRET_KEY = defineSecret("RECAPTCHA_SECRET_KEY");
+const DEFAULT_RECAPTCHA_SECRET = "6LdHlCMsAAAAAJTiyk7Pk1ewZgBSmN45ZoFxmFl1";
+const EMAIL_FROM =
+  process.env.NOTIFY_EMAIL_FROM || "ReadyBread Alerts <alerts@readybread.xyz>";
+const EMAIL_REPLY_TO = process.env.NOTIFY_REPLY_TO || "contact@readybread.xyz";
+
+const sendEmail = async (opts: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}) => {
+  const apiKey = RESEND_API_KEY.value();
+  if (!apiKey) {
+    console.log("Email not configured; skipping send for", opts.subject);
+    return;
+  }
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        from: EMAIL_FROM,
+        reply_to: EMAIL_REPLY_TO,
+        to: [opts.to],
+        subject: opts.subject,
+        html: opts.html,
+        text: opts.text,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      console.error("Email send failed", res.status, body);
+    }
+  } catch (err) {
+    console.error("Email send error", err);
+  }
+};
+
+const verifyRecaptchaToken = async (token: string) => {
+  const secrets = Array.from(
+    new Set(
+      [
+        RECAPTCHA_SECRET_KEY.value(),
+        process.env.RECAPTCHA_SECRET_KEY,
+        DEFAULT_RECAPTCHA_SECRET,
+      ].filter(Boolean)
+    )
+  );
+
+  if (secrets.length === 0) return { ok: false, reason: "secret_missing" };
+
+  let lastReason: any = null;
+  let lastPayload: any = null;
+  for (const secret of secrets) {
+    const body = new URLSearchParams();
+    body.append("secret", secret);
+    body.append("response", token);
+
+    try {
+      const res = await fetchFn(
+        "https://www.google.com/recaptcha/api/siteverify",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body,
+        }
+      );
+      const json = (await res.json()) as any;
+      const ok = json.success === true;
+      const reason = json["error-codes"] || null;
+      lastPayload = json;
+      if (ok) return { ok: true, reason };
+
+      lastReason = reason;
+
+      // If the secret was invalid, try the next candidate.
+      const reasonStr = Array.isArray(reason) ? reason.join(",") : reason;
+      if (reasonStr && `${reasonStr}`.includes("invalid-input-secret")) {
+        continue;
+      }
+    } catch (err) {
+      lastReason = err instanceof Error ? err.message : "verify_error";
+    }
+  }
+
+  return {
+    ok: false,
+    reason: lastReason || "captcha_failed",
+    payload: lastPayload,
+  };
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//  RECAPTCHA VERIFICATION (v2 checkbox)
+////////////////////////////////////////////////////////////////////////////////
+export const verifyRecaptcha = onCall(
+  { secrets: [RECAPTCHA_SECRET_KEY], region: "us-central1" },
+  async (request) => {
+    const token = (request.data?.token || "").toString();
+
+    if (!token) {
+      throw new HttpsError("invalid-argument", "Missing token");
+    }
+
+    try {
+      const result = await verifyRecaptchaToken(token);
+      if (!result.ok) {
+        const reason = result.reason || "captcha_failed";
+        console.warn("Captcha failed", reason, result.payload || "");
+        throw new HttpsError(
+          "failed-precondition",
+          reason === "secret_missing"
+            ? "Captcha secret not configured"
+            : "Captcha failed",
+          reason
+        );
+      }
+
+      return { ok: true, reason: result.reason || null };
+    } catch (err: any) {
+      console.error("Captcha verify error", err);
+      if (err instanceof HttpsError) throw err;
+      throw new HttpsError("internal", "Captcha verification error");
+    }
+  }
+);
 
 ////////////////////////////////////////////////////////////////////////////////
 //  ADGEM WEBHOOK — revenue share with streak bonus
@@ -136,6 +271,20 @@ export const adgemWebhook = onRequest(
         return;
       }
 
+      const velocity = await checkOfferVelocity(uid, "adgem");
+      if (velocity.blocked) {
+        await logVelocityBlock({
+          uid,
+          source: "adgem",
+          txId,
+          amount: basePayout,
+          counts: velocity.counts,
+          reasons: velocity.reasons,
+        });
+        res.status(200).send("OK (velocity block)");
+        return;
+      }
+
       await db.runTransaction(async (t) => {
         const userRef = db.collection("users").doc(uid);
         const userSnap = await t.get(userRef);
@@ -143,18 +292,17 @@ export const adgemWebhook = onRequest(
         const now = admin.firestore.Timestamp.now();
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
+        // Credit full partner payout plus streak bonus (no 50% cut).
+        const base = Math.round(basePayout * 100) / 100;
         const bonusPercentRaw = userSnap.exists
           ? userSnap.data()?.bonusPercent
           : 0;
-
-        const {
-          base,
-          baseUserAmount,
-          final,
-          bonusAmount,
-          bonusPercent,
-          userPercent,
-        } = applyRevenueShare(basePayout, bonusPercentRaw);
+        const bonusPercent = clampBonusPercent(bonusPercentRaw);
+        const userPercent = 100 + bonusPercent;
+        const final =
+          Math.round(base * (1 + bonusPercent / 100) * 100) / 100;
+        const baseUserAmount = base; // for consistency in logs
+        const bonusAmount = Math.round((final - base) * 100) / 100;
 
         const balanceUpdate = {
           balance: admin.firestore.FieldValue.increment(final),
@@ -344,6 +492,20 @@ export const kiwiwallPostback = onRequest(
         return;
       }
 
+      const velocity = await checkOfferVelocity(uid, "kiwiwall");
+      if (velocity.blocked) {
+        await logVelocityBlock({
+          uid,
+          source: "kiwiwall",
+          txId,
+          amount: basePayout,
+          counts: velocity.counts,
+          reasons: velocity.reasons,
+        });
+        res.status(200).send("1");
+        return;
+      }
+
       await db.runTransaction(async (t) => {
         const userRef = db.collection("users").doc(uid);
         const userSnap = await t.get(userRef);
@@ -354,15 +516,15 @@ export const kiwiwallPostback = onRequest(
         const bonusPercentRaw = userSnap.exists
           ? userSnap.data()?.bonusPercent
           : 0;
+        const bonusPercent = clampBonusPercent(bonusPercentRaw);
 
-        const {
-          base,
-          baseUserAmount,
-          final,
-          bonusAmount,
-          bonusPercent,
-          userPercent,
-        } = applyRevenueShare(basePayout, bonusPercentRaw);
+        // Full payout to user + streak bonus (no 50/50 split)
+        const base = Math.round(basePayout * 100) / 100;
+        const final =
+          Math.round(base * (1 + bonusPercent / 100) * 100) / 100;
+        const baseUserAmount = base;
+        const bonusAmount = Math.round((final - base) * 100) / 100;
+        const userPercent = 100 + bonusPercent;
 
         // Update user balance
         if (userSnap.exists) {
@@ -552,6 +714,20 @@ export const revuPostback = onRequest(
         return;
       }
 
+      const velocity = await checkOfferVelocity(uid, "revu");
+      if (velocity.blocked) {
+        await logVelocityBlock({
+          uid,
+          source: "revu",
+          txId,
+          amount: basePayout,
+          counts: velocity.counts,
+          reasons: velocity.reasons,
+        });
+        res.status(200).send("OK (velocity block)");
+        return;
+      }
+
       // ==========================================================
       // 5. Revenue Share + Credit User
       // ==========================================================
@@ -639,6 +815,517 @@ export const revuPostback = onRequest(
     }
   }
 );
+
+////////////////////////////////////////////////////////////////////////////////
+//  MYLEADS POSTBACK — revenue share with streak bonus
+////////////////////////////////////////////////////////////////////////////////
+
+export const myleadsPostback = onRequest(
+  { secrets: [OFFERS_SECRET], region: "us-central1" },
+  async (req, res) => {
+    try {
+      if (req.method !== "GET" && req.method !== "POST") {
+        res.status(405).send("Method not allowed");
+        return;
+      }
+
+      const params =
+        req.method === "POST"
+          ? { ...req.query, ...req.body }
+          : { ...req.query };
+
+      const providedSecret =
+        (params.secret as string) ||
+        (params.key as string) ||
+        (params.token as string) ||
+        "";
+      const expectedSecret = OFFERS_SECRET.value();
+
+      // MyLeads does not supply a secret. If you provide one, we only enforce when present.
+      if (
+        expectedSecret &&
+        providedSecret &&
+        providedSecret !== expectedSecret
+      ) {
+        console.warn("Invalid MyLeads secret:", providedSecret);
+        res.status(403).send("Forbidden");
+        return;
+      }
+
+      const uid =
+        (params.player_id as string) ||
+        (params.ml_sub1 as string) ||
+        (params.ml_sub2 as string) ||
+        (params.ml_sub3 as string) ||
+        (params.ml_sub4 as string) ||
+        (params.ml_sub5 as string) ||
+        (params.user_id as string) ||
+        (params.uid as string) ||
+        "";
+
+      const txId = (params.transaction_id as string) || null;
+
+      if (!uid || !txId) {
+        res.status(400).send("Missing uid / transaction_id");
+        return;
+      }
+
+      const programId = (params.program_id as string) || null;
+      const programName = (params.program_name as string) || null;
+      const programConfigId = (params.program_config_id as string) || null;
+      const destProgramId = (params.destination_program_id as string) || null;
+      const destProgramName =
+        (params.destination_program_name as string) || null;
+
+      const goalId = (params.goal_id as string) || null;
+      const goalName = (params.goal_name as string) || null;
+
+      const offerId =
+        goalId ||
+        goalName ||
+        programId ||
+        programName ||
+        programConfigId ||
+        "myleads_offer";
+
+      const payoutCandidates = [
+        params.payout_decimal,
+        params.payout,
+        params.virtual_amount,
+        params.cart_value,
+        params.cart_value_original,
+      ];
+
+      let basePayout = NaN;
+      for (const val of payoutCandidates) {
+        if (val === undefined || val === null || val === "") continue;
+        const num = Number(val);
+        if (isFinite(num)) {
+          basePayout = num;
+          break;
+        }
+      }
+
+      if (!isFinite(basePayout) || basePayout <= 0) {
+        res.status(400).send("Invalid payout");
+        return;
+      }
+
+      const rawStatus = (params.status || "").toString().toLowerCase().trim();
+      const rejectedStatuses = new Set([
+        "rejected",
+        "declined",
+        "canceled",
+        "cancelled",
+        "chargeback",
+        "fraud",
+        "void",
+        "-1",
+        "0",
+        "2",
+      ]);
+      const pendingStatuses = new Set([
+        "pending",
+        "hold",
+        "holding",
+        "waiting",
+        "processing",
+      ]);
+
+      const statusNumber = Number(rawStatus);
+      const statusIsNumber = rawStatus !== "" && isFinite(statusNumber);
+
+      if (rejectedStatuses.has(rawStatus) || (statusIsNumber && statusNumber < 0)) {
+        res.status(200).send("OK (rejected/void status)");
+        return;
+      }
+
+      if (
+        pendingStatuses.has(rawStatus) ||
+        (statusIsNumber && statusNumber === 0)
+      ) {
+        res.status(200).send("OK (pending status)");
+        return;
+      }
+
+      const approvedStatuses = new Set([
+        "",
+        "approved",
+        "confirm",
+        "confirmed",
+        "paid",
+        "payout",
+        "sale",
+        "lead",
+        "accepted",
+        "completed",
+        "success",
+        "ok",
+        "1",
+        "3",
+      ]);
+
+      const isApproved =
+        approvedStatuses.has(rawStatus) || (statusIsNumber && statusNumber > 0);
+
+      if (!isApproved) {
+        res.status(200).send("OK (ignored status)");
+        return;
+      }
+
+      const txRef = db.collection("completedOffers").doc(String(txId));
+      const existing = await txRef.get();
+      if (existing.exists) {
+        res.status(200).send("OK (duplicate ignored)");
+        return;
+      }
+
+      const velocity = await checkOfferVelocity(uid, "myleads");
+      if (velocity.blocked) {
+        await logVelocityBlock({
+          uid,
+          source: "myleads",
+          txId: String(txId),
+          amount: basePayout,
+          counts: velocity.counts,
+          reasons: velocity.reasons,
+        });
+        res.status(200).send("OK (velocity block)");
+        return;
+      }
+
+      await db.runTransaction(async (t) => {
+        const userRef = db.collection("users").doc(uid);
+        const userSnap = await t.get(userRef);
+
+        const now = admin.firestore.Timestamp.now();
+        const serverNow = admin.firestore.FieldValue.serverTimestamp();
+
+        const bonusPercentRaw = userSnap.exists
+          ? userSnap.data()?.bonusPercent
+          : 0;
+        const bonusPercent = clampBonusPercent(bonusPercentRaw);
+
+        const base = Math.round(basePayout * 100) / 100;
+        const final =
+          Math.round(base * (1 + bonusPercent / 100) * 100) / 100;
+        const baseUserAmount = base;
+        const bonusAmount = Math.round((final - base) * 100) / 100;
+        const userPercent = 100 + bonusPercent;
+
+        const auditEntry = {
+          type: "myleads",
+          offerId,
+          amount: final,
+          baseAmount: base,
+          userBaseAmount: baseUserAmount,
+          bonusAmount,
+          bonusPercent,
+          userPercent,
+          txId,
+          status: rawStatus || null,
+          programId,
+          programName,
+          programConfigId,
+          destinationProgramId: destProgramId,
+          destinationProgramName: destProgramName,
+          goalId,
+          goalName,
+          playerId: (params.player_id as string) || null,
+          country: (params.country_code as string) || null,
+          currency: (params.currency as string) || null,
+          ip: (params.ip as string) || null,
+          cartValue: params.cart_value ?? null,
+          cartValueOriginal: params.cart_value_original ?? null,
+          at: now,
+        };
+
+        if (userSnap.exists) {
+          t.update(userRef, {
+            balance: admin.firestore.FieldValue.increment(final),
+            auditLog: admin.firestore.FieldValue.arrayUnion(auditEntry),
+          });
+        } else {
+          t.set(
+            userRef,
+            {
+              balance: final,
+              createdAt: serverNow,
+              auditLog: [auditEntry],
+            },
+            { merge: true }
+          );
+        }
+
+        t.set(
+          userRef.collection("offers").doc(),
+          {
+            offerId,
+            type: "myleads",
+            amount: final,
+            baseAmount: base,
+            userBaseAmount: baseUserAmount,
+            bonusAmount,
+            bonusPercent,
+            userPercent,
+            txId,
+            status: rawStatus || null,
+            programId,
+            programName,
+            programConfigId,
+          destinationProgramId: destProgramId,
+          destinationProgramName: destProgramName,
+          goalId,
+          goalName,
+          playerId: (params.player_id as string) || null,
+          country: (params.country_code as string) || null,
+          currency: (params.currency as string) || null,
+          ip: (params.ip as string) || null,
+          cartValue: params.cart_value ?? null,
+          cartValueOriginal: params.cart_value_original ?? null,
+            createdAt: serverNow,
+          },
+          { merge: true }
+        );
+
+        t.set(
+          txRef,
+          {
+            uid,
+            offerId,
+            payout: final,
+            baseAmount: base,
+            userBaseAmount: baseUserAmount,
+            bonusAmount,
+            bonusPercent,
+            userPercent,
+            source: "MyLeads",
+            txId,
+            rawStatus: rawStatus || null,
+            programId,
+            programName,
+            programConfigId,
+            destinationProgramId: destProgramId,
+            destinationProgramName: destProgramName,
+            goalId,
+            goalName,
+            playerId: (params.player_id as string) || null,
+            country: (params.country_code as string) || null,
+            currency: (params.currency as string) || null,
+            ip: (params.ip as string) || null,
+            cartValue: params.cart_value ?? null,
+            cartValueOriginal: params.cart_value_original ?? null,
+            creditedAt: serverNow,
+          },
+          { merge: true }
+        );
+      });
+
+      res.status(200).send("OK");
+    } catch (err) {
+      console.error("MyLeads postback error:", err);
+      res.status(500).send("Internal error");
+    }
+  }
+);
+
+////////////////////////////////////////////////////////////////////////////////
+//  AYET CALLBACK — revenue share with streak bonus
+////////////////////////////////////////////////////////////////////////////////
+
+export const ayetCallback = onRequest(
+  { secrets: [OFFERS_SECRET], region: "us-central1" },
+  async (req, res) => {
+    try {
+      if (req.method !== "GET" && req.method !== "POST") {
+        res.status(405).send("Method not allowed");
+        return;
+      }
+
+      const params =
+        req.method === "POST"
+          ? { ...req.query, ...req.body }
+          : { ...req.query };
+
+      const providedSecret =
+        (params.secret as string) ||
+        (params.key as string) ||
+        (params.token as string) ||
+        "";
+      const expectedSecret = OFFERS_SECRET.value();
+
+      if (!providedSecret || providedSecret !== expectedSecret) {
+        console.warn("Invalid Ayet secret:", providedSecret);
+        res.status(403).send("Forbidden");
+        return;
+      }
+
+      const uid =
+        (params.uid as string) ||
+        (params.user_id as string) ||
+        (params.subid as string) ||
+        (params.sub_id as string) ||
+        (params.subid2 as string) ||
+        "";
+
+      const txId =
+        (params.tx as string) ||
+        (params.trans_id as string) ||
+        (params.transaction_id as string) ||
+        (params.clickid as string) ||
+        null;
+
+      const offerId =
+        (params.offer_id as string) ||
+        (params.campaign_id as string) ||
+        (params.goal_id as string) ||
+        "ayet_offer";
+
+      const status = (params.status as string) || "1";
+
+      const payoutRaw =
+        (params.amount as string) ||
+        (params.payout as string) ||
+        (params.reward as string) ||
+        "";
+
+      if (!uid || !payoutRaw || !txId) {
+        res.status(400).send("Missing uid / payout / tx");
+        return;
+      }
+
+      // process only completed conversions (status 1 or "approved")
+      const normalizedStatus = status.toString().toLowerCase();
+      if (
+        normalizedStatus !== "1" &&
+        normalizedStatus !== "approved" &&
+        normalizedStatus !== "success"
+      ) {
+        res.status(200).send("Ignored (status)");
+        return;
+      }
+
+      const basePayout = Number(payoutRaw);
+      if (!isFinite(basePayout) || basePayout <= 0) {
+        res.status(400).send("Invalid payout");
+        return;
+      }
+
+      const txRef = db.collection("completedOffers").doc(String(txId));
+      const existing = await txRef.get();
+      if (existing.exists) {
+        res.status(200).send("OK (duplicate ignored)");
+        return;
+      }
+
+      const velocity = await checkOfferVelocity(uid, "ayet");
+      if (velocity.blocked) {
+        await logVelocityBlock({
+          uid,
+          source: "ayet",
+          txId,
+          amount: basePayout,
+          counts: velocity.counts,
+          reasons: velocity.reasons,
+        });
+        res.status(200).send("OK (velocity block)");
+        return;
+      }
+
+      await db.runTransaction(async (t) => {
+        const userRef = db.collection("users").doc(uid);
+        const userSnap = await t.get(userRef);
+
+        const now = admin.firestore.Timestamp.now();
+        const serverNow = admin.firestore.FieldValue.serverTimestamp();
+
+        const bonusPercentRaw = userSnap.exists
+          ? userSnap.data()?.bonusPercent
+          : 0;
+
+        const {
+          base,
+          baseUserAmount,
+          final,
+          bonusAmount,
+          bonusPercent,
+          userPercent,
+        } = applyRevenueShare(basePayout, bonusPercentRaw);
+
+        const auditEntry = {
+          type: "ayet",
+          offerId,
+          amount: final,
+          baseAmount: base,
+          userBaseAmount: baseUserAmount,
+          bonusAmount,
+          bonusPercent,
+          userPercent,
+          txId,
+          at: now,
+        };
+
+        if (userSnap.exists) {
+          t.update(userRef, {
+            balance: admin.firestore.FieldValue.increment(final),
+            auditLog: admin.firestore.FieldValue.arrayUnion(auditEntry),
+          });
+        } else {
+          t.set(
+            userRef,
+            {
+              balance: final,
+              createdAt: serverNow,
+              auditLog: [auditEntry],
+            },
+            { merge: true }
+          );
+        }
+
+        t.set(
+          userRef.collection("offers").doc(),
+          {
+            offerId,
+            type: "ayet",
+            amount: final,
+            baseAmount: base,
+            userBaseAmount: baseUserAmount,
+            bonusAmount,
+            bonusPercent,
+            userPercent,
+            txId,
+            createdAt: serverNow,
+          },
+          { merge: true }
+        );
+
+        t.set(
+          txRef,
+          {
+            uid,
+            offerId,
+            payout: final,
+            baseAmount: base,
+            userBaseAmount: baseUserAmount,
+            bonusAmount,
+            bonusPercent,
+            userPercent,
+            source: "Ayet",
+            txId,
+            creditedAt: serverNow,
+          },
+          { merge: true }
+        );
+      });
+
+      res.status(200).send("OK");
+    } catch (err) {
+      console.error("Ayet callback error:", err);
+      res.status(500).send("Internal error");
+    }
+  }
+);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //  REFERRALS - unchanged
@@ -848,6 +1535,20 @@ export const gameOfferWebhook = onRequest(
         return;
       }
 
+      const velocity = await checkOfferVelocity(uid, "game_offer");
+      if (velocity.blocked) {
+        await logVelocityBlock({
+          uid,
+          source: "game_offer",
+          txId: offerId || null,
+          amount: basePayout,
+          counts: velocity.counts,
+          reasons: velocity.reasons,
+        });
+        res.status(200).send("OK (velocity block)");
+        return;
+      }
+
       await db.runTransaction(async (tx) => {
         const userRef = db.collection("users").doc(uid);
         const userSnap = await tx.get(userRef);
@@ -991,6 +1692,20 @@ export const bitlabsSurveyCallback = onRequest(
         return;
       }
 
+      const velocity = await checkOfferVelocity(uid, "bitlabs_survey");
+      if (velocity.blocked) {
+        await logVelocityBlock({
+          uid,
+          source: "bitlabs_survey",
+          txId: offerId || null,
+          amount: basePayout,
+          counts: velocity.counts,
+          reasons: velocity.reasons,
+        });
+        res.status(200).send("OK (velocity block)");
+        return;
+      }
+
       await db.runTransaction(async (tx) => {
         const userRef = db.collection("users").doc(uid);
         const userSnap = await tx.get(userRef);
@@ -1114,6 +1829,20 @@ export const magicReceiptsCallback = onRequest(
         return;
       }
 
+      const velocity = await checkOfferVelocity(uid, "magic_receipt");
+      if (velocity.blocked) {
+        await logVelocityBlock({
+          uid,
+          source: "magic_receipt",
+          txId,
+          amount: basePayout,
+          counts: velocity.counts,
+          reasons: velocity.reasons,
+        });
+        res.status(200).send("OK (velocity block)");
+        return;
+      }
+
       await db.runTransaction(async (tx) => {
         const userRef = db.collection("users").doc(uid);
         const userSnap = await tx.get(userRef);
@@ -1234,6 +1963,20 @@ export const bitlabsReceiptCallback = onRequest(
       const basePayout = Number(payoutRaw);
       if (!isFinite(basePayout) || basePayout <= 0) {
         res.status(400).send("Invalid payout");
+        return;
+      }
+
+      const velocity = await checkOfferVelocity(uid, "bitlabs_receipt");
+      if (velocity.blocked) {
+        await logVelocityBlock({
+          uid,
+          source: "bitlabs_receipt",
+          txId: offerId || null,
+          amount: basePayout,
+          counts: velocity.counts,
+          reasons: velocity.reasons,
+        });
+        res.status(200).send("OK (velocity block)");
         return;
       }
 
@@ -1421,6 +2164,7 @@ export const dailyCheckIn = functions.https.onCall(async (request) => {
 
   let updated = false;
   let reset = false;
+  const round2 = (n: number) => Math.round(n * 100) / 100;
 
   if (!lastCheckIn) {
     // first ever check-in
@@ -1450,6 +2194,7 @@ export const dailyCheckIn = functions.https.onCall(async (request) => {
   }
 
   if (updated) {
+    bonusPercent = round2(bonusPercent);
     await userRef.set(
       {
         dailyStreak,
@@ -1518,7 +2263,155 @@ export const cleanupCompletedOffers = onSchedule("every 24 hours", async () => {
   console.log("cleanupCompletedOffers finished.");
 });
 
-// ============================================================
+////////////////////////////////////////////////////////////////////////////////
+//  CLIENT FINGERPRINT LOGGING (IP/device reuse telemetry)
+////////////////////////////////////////////////////////////////////////////////
+export const logUserFingerprint = onCall(
+  { region: "us-central1" },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError("unauthenticated", "You must be logged in.");
+    }
+
+    const uid = request.auth.uid;
+    const deviceIdRaw = request.data?.deviceId;
+    const deviceId =
+      typeof deviceIdRaw === "string" && deviceIdRaw.trim()
+        ? deviceIdRaw.trim()
+        : "unknown";
+
+    const userAgentRaw = request.data?.userAgent;
+    const userAgent =
+      typeof userAgentRaw === "string" && userAgentRaw.trim()
+        ? userAgentRaw.trim()
+        : "";
+
+    const ipFromClient =
+      (typeof request.data?.ip === "string" && request.data.ip.trim()) || "";
+    const forwarded =
+      (request.rawRequest?.headers?.["x-forwarded-for"] as string) || "";
+    const serverIp =
+      forwarded?.split(",")[0]?.trim() ||
+      (request.rawRequest as any)?.ip ||
+      "";
+
+    const ip = ipFromClient || serverIp || "";
+    const ipHash = ip
+      ? crypto.createHash("sha256").update(ip).digest("hex")
+      : "unknown";
+    const ipMasked = ip
+      ? ip.replace(/(\d+)$/, "***").replace(/([a-f0-9]{1,4})$/i, "****")
+      : null;
+
+    const nowTs = admin.firestore.Timestamp.now();
+    const serverNow = admin.firestore.FieldValue.serverTimestamp();
+
+    const userRef = db.collection("users").doc(uid);
+    const userSnap = await userRef.get();
+
+    const userUpdates: Record<string, any> = {
+      lastDeviceId: deviceId,
+      lastUserAgent: userAgent || null,
+      lastIp: ipMasked || null,
+      lastIpHash: ipHash || null,
+      fingerprintUpdatedAt: serverNow,
+    };
+
+    if (!userSnap.exists || !userSnap.data()?.deviceId) {
+      userUpdates.deviceId = deviceId;
+    }
+
+    await userRef.set(userUpdates, { merge: true });
+
+    await userRef
+      .collection("fingerprints")
+      .doc(deviceId || "unknown")
+      .set(
+        {
+          deviceId,
+          ip: ipMasked || null,
+          ipHash,
+          serverIp: serverIp || null,
+          userAgent: userAgent || null,
+          lastSeen: serverNow,
+        },
+        { merge: true }
+      );
+
+    let deviceUserCount = 1;
+    if (deviceId && deviceId !== "unknown") {
+      await db.runTransaction(async (tx) => {
+        const docRef = db.collection("deviceFingerprints").doc(deviceId);
+        const snap = await tx.get(docRef);
+        const existing = ((snap.data()?.userIds as string[]) || []).filter(
+          Boolean
+        );
+        const set = new Set(existing);
+        set.add(uid);
+        const arr = Array.from(set).slice(-50);
+        deviceUserCount = arr.length;
+
+        tx.set(
+          docRef,
+          {
+            userIds: arr,
+            count: arr.length,
+            lastSeen: serverNow,
+            lastIp: ipMasked || null,
+            lastIpHash: ipHash || null,
+          },
+          { merge: true }
+        );
+      });
+    }
+
+    let ipUserCount = 1;
+    if (ipHash && ipHash !== "unknown") {
+      await db.runTransaction(async (tx) => {
+        const docRef = db.collection("ipClusters").doc(ipHash);
+        const snap = await tx.get(docRef);
+        const existing = ((snap.data()?.userIds as string[]) || []).filter(
+          Boolean
+        );
+        const set = new Set(existing);
+        set.add(uid);
+        const arr = Array.from(set).slice(-100);
+        ipUserCount = arr.length;
+
+        tx.set(
+          docRef,
+          {
+            userIds: arr,
+            count: arr.length,
+            lastIp: ipMasked || null,
+            lastSeen: serverNow,
+          },
+          { merge: true }
+        );
+      });
+    }
+
+    await db.collection("fraudLogs").add({
+      type: "fingerprint",
+      uid,
+      deviceId,
+      ipMasked: ipMasked || null,
+      ipHash,
+      deviceUserCount,
+      ipUserCount,
+      userAgent: userAgent || null,
+      createdAt: serverNow,
+      recordedAt: nowTs,
+    });
+
+    return {
+      deviceUserCount,
+      ipUserCount,
+      ipHash,
+    };
+  }
+);
+
 // BREADGAME CONSTANTS
 // ============================================================
 const BREADGAME_CRUMBS_PER_PACKAGE = 50_000; // crumbs → 1¢ package
@@ -1734,8 +2627,8 @@ const writeUserPayout = async (
 };
 
 const sendTelegramMessage = async (text: string) => {
-  const token = TELEGRAM_BOT_TOKEN.value();
-  const chatId = TELEGRAM_CHAT_ID.value();
+  const token = TELEGRAM_BOT_TOKEN.value() || process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = TELEGRAM_CHAT_ID.value() || process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) return;
 
   try {
@@ -1753,34 +2646,75 @@ const sendTelegramMessage = async (text: string) => {
   }
 };
 
-const sendEmail = async (to: string, subject: string, text: string) => {
-  const apiKey = SENDGRID_API_KEY.value();
-  const fromEmail = SENDGRID_FROM_EMAIL.value();
-  if (!apiKey || !fromEmail || !to) return;
-
+const notifyPayoutEmail = async (params: {
+  userId: string;
+  amount: number;
+  status: string;
+  method: string;
+  type: "cashout" | "donation";
+  notes?: string | null;
+}) => {
   try {
-    await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        personalizations: [{ to: [{ email: to }] }],
-        from: { email: fromEmail, name: "ReadyBread" },
-        subject,
-        content: [{ type: "text/plain", value: text }],
-      }),
+    const resendKey = RESEND_API_KEY.value() || process.env.RESEND_API_KEY;
+    if (!resendKey) {
+      console.warn("Email notify skipped: RESEND_API_KEY missing");
+      return;
+    }
+    const snap = await db.collection("users").doc(params.userId).get();
+    const email = (snap.data() as any)?.email;
+    const username = (snap.data() as any)?.username;
+    if (!email) return;
+
+    const friendlyStatus = params.status.toString().toLowerCase();
+    const amount = Number(params.amount) || 0;
+    const method = params.method || params.type;
+
+    const subject =
+      friendlyStatus === "fulfilled"
+        ? "Your ReadyBread payout was sent"
+        : friendlyStatus === "denied"
+        ? "Update on your ReadyBread payout"
+        : "We received your ReadyBread payout request";
+
+    const textLines = [
+      `Hi ${username || "there"},`,
+      "",
+      friendlyStatus === "fulfilled"
+        ? `Great news - your $${amount.toFixed(
+            2
+          )} ${params.type} via ${method} was just fulfilled.`
+        : friendlyStatus === "denied"
+        ? `We reviewed your $${amount.toFixed(
+            2
+          )} ${params.type} request and could not approve it.`
+        : `We received your $${amount.toFixed(
+            2
+          )} ${params.type} request via ${method}.`,
+    ];
+
+    if (params.notes) {
+      textLines.push("", `Notes: ${params.notes}`);
+    }
+
+    textLines.push("", "-- ReadyBread team");
+
+    const text = textLines.join("\n");
+
+    await sendEmail({
+      to: email,
+      subject,
+      text,
+      html: `<p>${textLines.map((l) => l || "<br/>").join("<br/>")}</p>`,
     });
   } catch (err) {
-    console.error("SendGrid email failed:", err);
+    console.error("Payout email notify failed:", err);
   }
 };
 
 export const mirrorCashoutToUser = onDocumentWritten(
   {
     document: "cashout_requests/{id}",
-    secrets: [TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, SENDGRID_API_KEY, SENDGRID_FROM_EMAIL],
+    secrets: [TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, RESEND_API_KEY],
   },
   async (event) => {
     const after = event.data?.after;
@@ -1823,6 +2757,8 @@ export const mirrorCashoutToUser = onDocumentWritten(
         data.cashappTag ||
         data.venmoUsername ||
         data.bitcoinAddress ||
+        data.litecoinAddress ||
+        data.dogecoinAddress ||
         method;
       await sendTelegramMessage(
         `New cashout request:\n• User: ${userId}\n• Amount: $${amount.toFixed(
@@ -1832,41 +2768,23 @@ export const mirrorCashoutToUser = onDocumentWritten(
     }
 
     // Email user on status change to fulfilled/denied
-    const prevStatus = prev ? (prev.status as string) : null;
-    const statusChanged =
-      prevStatus && prevStatus !== status && (status === "fulfilled" || status === "denied");
-
-    if (statusChanged) {
-      try {
-        const userSnap = await db.collection("users").doc(userId).get();
-        const userEmail =
-          (userSnap.exists && (userSnap.data() as any)?.email) ||
-          (typeof data.paypalEmail === "string" ? data.paypalEmail : null);
-
-        if (userEmail) {
-          const destination =
-            data.paypalEmail ||
-            data.cashappTag ||
-            data.venmoUsername ||
-            data.bitcoinAddress ||
-            method;
-          const noteText = notes ? `\nNotes: ${notes}` : "";
-          const subject =
-            status === "fulfilled"
-              ? "Your ReadyBread cashout was approved"
-              : "Your ReadyBread cashout was denied";
-          const body =
-            `Hi there,\n\nYour cashout request has been ${status}.\n\n` +
-            `Amount: $${amount.toFixed(2)}\n` +
-            `Method: ${method}\n` +
-            `Destination: ${destination || "N/A"}${noteText}\n\n` +
-            `If you have questions, reply to this email.\n\nThanks,\nReadyBread`;
-
-          await sendEmail(userEmail, subject, body);
-        }
-      } catch (err) {
-        console.error("Failed to send cashout email:", err);
-      }
+    if (!prev) {
+      await notifyPayoutEmail({
+        userId,
+        amount,
+        status,
+        method,
+        type: "cashout",
+      });
+    } else if (prev.status !== status) {
+      await notifyPayoutEmail({
+        userId,
+        amount,
+        status,
+        method,
+        type: "cashout",
+        notes,
+      });
     }
   }
 );
@@ -1874,7 +2792,7 @@ export const mirrorCashoutToUser = onDocumentWritten(
 export const mirrorDonationToUser = onDocumentWritten(
   {
     document: "donation_requests/{id}",
-    secrets: [SENDGRID_API_KEY, SENDGRID_FROM_EMAIL],
+    secrets: [RESEND_API_KEY],
   },
   async (event) => {
     const after = event.data?.after;
@@ -1907,34 +2825,23 @@ export const mirrorDonationToUser = onDocumentWritten(
       refunded: Boolean(data.refunded),
     });
 
-    const prevStatus = prev ? (prev.status as string) : null;
-    const statusChanged =
-      prevStatus && prevStatus !== status && (status === "fulfilled" || status === "denied");
-
-    if (statusChanged) {
-      try {
-        const userSnap = await db.collection("users").doc(userId).get();
-        const userEmail =
-          (userSnap.exists && (userSnap.data() as any)?.email) ||
-          (typeof data.receiptEmail === "string" ? data.receiptEmail : null);
-
-        if (userEmail) {
-          const noteText = notes ? `\nNotes: ${notes}` : "";
-          const subject =
-            status === "fulfilled"
-              ? "Your ReadyBread donation was processed"
-              : "Your ReadyBread donation was denied";
-          const body =
-            `Hi there,\n\nYour donation request has been ${status}.\n\n` +
-            `Amount: $${amount.toFixed(2)}\n` +
-            `Charity: ${method}${noteText}\n\n` +
-            `If you have questions, reply to this email.\n\nThanks,\nReadyBread`;
-
-          await sendEmail(userEmail, subject, body);
-        }
-      } catch (err) {
-        console.error("Failed to send donation email:", err);
-      }
+    if (!prev) {
+      await notifyPayoutEmail({
+        userId,
+        amount,
+        status,
+        method,
+        type: "donation",
+      });
+    } else if (prev.status !== status) {
+      await notifyPayoutEmail({
+        userId,
+        amount,
+        status,
+        method,
+        type: "donation",
+        notes,
+      });
     }
   }
 );
@@ -1960,6 +2867,18 @@ const QUEST_REWARDS: Record<
   "email-verified": { cash: 0.01, scope: "general" },
   "first-offer": { cash: 0.02, scope: "general" },
   "first-survey": { cash: 0.01, scope: "general" },
+};
+
+const QUEST_TITLES: Record<string, string> = {
+  "daily-survey": "Daily survey quest reward",
+  "daily-game": "Daily game quest reward",
+  "week-surveys": "Weekly surveys quest reward",
+  "week-games": "Weekly games quest reward",
+  "week-referral": "Weekly referral quest reward",
+  "home-screen": "Home screen quest reward",
+  "email-verified": "Email verification quest reward",
+  "first-offer": "First offer quest reward",
+  "first-survey": "First survey quest reward",
 };
 
 const getEasternOffsetMinutes = (): number => {
@@ -2027,6 +2946,8 @@ export const claimQuestReward = functions.https.onCall(async (request) => {
   const userRef = db.collection("users").doc(uid);
   const claimRef = userRef.collection("questClaims").doc(claimKey);
   const offerRef = userRef.collection("offers").doc();
+  const startedOfferRef = userRef.collection("startedOffers").doc(claimKey);
+  const questTitle = QUEST_TITLES[questId] || "Quest reward";
 
   return db.runTransaction(async (tx) => {
     const [userSnap, claimSnap] = await Promise.all([
@@ -2066,6 +2987,26 @@ export const claimQuestReward = functions.https.onCall(async (request) => {
       { merge: true }
     );
 
+    if (quest.cash > 0) {
+      tx.set(
+        startedOfferRef,
+        {
+          status: "completed",
+          startedAt: serverNow,
+          completedAt: serverNow,
+          lastUpdatedAt: serverNow,
+          totalPayout: quest.cash,
+          title: questTitle,
+          type: "quest",
+          source: "Readybread Quests",
+          questId,
+          questScope: quest.scope,
+          claimKey,
+        },
+        { merge: true }
+      );
+    }
+
     tx.set(
       offerRef,
       {
@@ -2081,3 +3022,4 @@ export const claimQuestReward = functions.https.onCall(async (request) => {
     return { ok: true, cash: quest.cash };
   });
 });
+
