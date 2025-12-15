@@ -1,8 +1,9 @@
 // src/pages/Earn.tsx
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { computeLevelProgress, estimateBaseXp } from "../utils/level";
+import { isMobileDevice } from "../utils/pwa";
 import "../earn.css";
 
 type LaunchCard = {
@@ -24,12 +25,19 @@ type HubTile = {
 export const Earn: React.FC = () => {
   const { user, profile, loading } = useUser();
   const navigate = useNavigate();
+  const [showTrackingReminder, setShowTrackingReminder] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/login");
     }
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (isMobileDevice()) {
+      setShowTrackingReminder(true);
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -113,7 +121,40 @@ export const Earn: React.FC = () => {
   ];
 
   return (
-    <main className="earn-page">
+    <>
+      {showTrackingReminder && (
+        <div className="rb-modal">
+          <div
+            className="rb-modal-backdrop"
+            onClick={() => setShowTrackingReminder(false)}
+          />
+          <div className="rb-modal-content">
+            <h3>Enable tracking to earn</h3>
+            <p>
+              Remember, you will only receive rewards if you enable tracking. If
+              you haven&apos;t, or do not know how, please visit the help menu.
+            </p>
+            <div className="rb-modal-actions">
+              <Link
+                to="/tutorials"
+                className="hb-btn"
+                onClick={() => setShowTrackingReminder(false)}
+              >
+                Open help
+              </Link>
+              <button
+                className="secondary-btn"
+                type="button"
+                onClick={() => setShowTrackingReminder(false)}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="earn-page">
       <section className="earn-top-grid">
         <div className="earn-hero-block">
           <div className="pill-row">
@@ -288,5 +329,6 @@ export const Earn: React.FC = () => {
         </div>
       </section>
     </main>
+    </>
   );
 };

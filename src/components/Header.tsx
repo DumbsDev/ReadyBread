@@ -136,8 +136,8 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
               <img
                 src={
                   isActive("/quests")
-                    ? "/icons/medal-color.png"
-                    : "/icons/medal-white.png"
+                    ? "/icons/medal-color.webp"
+                    : "/icons/medal-white.webp"
                 }
                 alt="Quests"
               />
@@ -162,14 +162,14 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
             to="/home"
             className={`nav-item ${isActive("/home") ? "active" : ""}`}
           >
-            <img
-              src={
-                isActive("/home")
-                  ? "/icons/home-color.png"
-                  : "/icons/home-white.png"
-              }
-              className="nav-icon"
-              alt="Home"
+              <img
+                src={
+                  isActive("/home")
+                    ? "/icons/home-color.webp"
+                    : "/icons/home-white.webp"
+                }
+                className="nav-icon"
+                alt="Home"
             />
             <span className={`nav-label ${isActive("/home") ? "active" : ""}`}>
               Home
@@ -185,8 +185,8 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
               <img
                 src={
                   isActive("/rewards")
-                    ? "/icons/cashout-color.png"
-                    : "/icons/cashout-white.png"
+                    ? "/icons/cashout-color.webp"
+                    : "/icons/cashout-white.webp"
                 }
                 className="nav-icon"
                 alt="Rewards"
@@ -206,8 +206,8 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
               <img
                 src={
                   isActive("/earn")
-                    ? "/icons/earnings-color.png"
-                    : "/icons/earnings-white.png"
+                    ? "/icons/earnings-color.webp"
+                    : "/icons/earnings-white.webp"
                 }
                 className="nav-icon"
                 alt="Earn"
@@ -223,14 +223,14 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
             to="/tutorials"
             className={`nav-item ${isActive("/tutorials") ? "active" : ""}`}
           >
-            <img
-              src={
-                isActive("/tutorials")
-                  ? "/icons/help-color.png"
-                  : "/icons/help-white.png"
-              }
-              className="nav-icon"
-              alt="Help"
+              <img
+                src={
+                  isActive("/tutorials")
+                    ? "/icons/help-color.webp"
+                    : "/icons/help-white.webp"
+                }
+                className="nav-icon"
+                alt="Help"
             />
             <span className={`nav-label ${isActive("/tutorials") ? "active" : ""}`}>
               Help
@@ -246,8 +246,8 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
               <img
                 src={
                   isActive("/dashboard")
-                    ? "/icons/dash-color.png"
-                    : "/icons/dash-white.png"
+                    ? "/icons/dash-color.webp"
+                    : "/icons/dash-white.webp"
                 }
                 className="nav-icon"
                 alt="Dashboard"
@@ -277,8 +277,8 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
               <img
                 src={
                   isActive("/login")
-                    ? "/icons/user-color.png"
-                    : "/icons/user-white.png"
+                    ? "/icons/user-color.webp"
+                    : "/icons/user-white.webp"
                 }
                 className="nav-icon"
                 alt="Login"

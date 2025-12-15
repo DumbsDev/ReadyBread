@@ -1,5 +1,7 @@
 // src/pages/Affiliate.tsx
 import React from "react";
+import bisectLogo from "../static/images/affiliates/bisect.png";
+import g2aLogo from "../static/images/affiliates/g2a.webp";
 
 interface Affiliate {
   id: string;
@@ -20,7 +22,7 @@ export const Affiliate: React.FC = () => {
         emoji: "🖥️",
         description: "Host a gaming server with bisect hosting, and get 25% with code \"BOX\"",
         link: "https://www.bisecthosting.com/partners/custom-banner/whatever",
-        logo: "https://assets.tiltify.com/uploads/team/thumbnail/10146/blob-25d4966d-5eb5-4aac-b9c8-06590169026a.png",
+        logo: bisectLogo,
         colorClass: "surveys-card"
     },
     {
@@ -29,7 +31,7 @@ export const Affiliate: React.FC = () => {
         emoji: "🔑",
         description: "Low-cost random (and selected) steam keys, starting at as little as just $1.",
         link: "https://www.g2a.com/r/readybread",
-        logo: "https://skinlords.com/wp-content/smush-webp/2023/09/g2a-com-site-logo-150x150.png.webp",
+        logo: g2aLogo,
         colorClass: "games-card"
     }
     ];

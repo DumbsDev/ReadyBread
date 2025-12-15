@@ -1,7 +1,9 @@
 // src/pages/Dashboard.tsx
 // Dashboard using global UserContext instead of local Firebase state
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import type { ComponentProps } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   collection,
@@ -24,6 +26,7 @@ import { getAuth, deleteUser } from "firebase/auth";
 import { computeLevelProgress, estimateBaseXp } from "../utils/level";
 import { computeQuestStats, getQuestWindows } from "../utils/questsMath";
 import type { QuestStats, QuestWindows } from "../utils/questsMath";
+import { GameCard } from "./prefabs/gameCard";
 
 // -------------------------------
 // Types
@@ -39,6 +42,7 @@ interface StartedOffer {
   id: string;
   title?: string;
   totalPayout?: number;
+  completedPayout?: number;
   estMinutes?: number | null;
   imageUrl?: string | null;
   clickUrl?: string;
@@ -51,6 +55,16 @@ interface StartedOffer {
   totalObjectives?: number;
   completedObjectives?: number;
   goals?: OfferGoal[];
+  objectives?: Array<{
+    label?: string;
+    reward?: number;
+    rewardWithBonus?: number;
+    rewardFinal?: number;
+    baseReward?: number;
+    isCompleted?: boolean;
+    completedAt?: any;
+    completedTxId?: string;
+  }>;
 }
 
 interface ReferralDoc {
@@ -77,6 +91,8 @@ interface OfferHistoryItem {
   source?: string | null;
 }
 
+type StartedOfferCardProps = ComponentProps<typeof GameCard>;
+
 const SHORTCUT_BONUS_ID = "shortcut_bonus";
 const SHORTCUT_BONUS_AMOUNT = 0.05;
 const SHORTCUT_BONUS_TITLE = "Home screen bonus";
@@ -92,6 +108,9 @@ const QUEST_TITLE_LOOKUP: Record<string, string> = {
   "first-offer": "First offer quest reward",
   "first-survey": "First survey quest reward",
 };
+
+const FEED_URL =
+  "https://raw.githubusercontent.com/DumbsDev/ReadyBread-Changelog/refs/heads/main/offers.json";
 
 // -------------------------------
 // Component
@@ -188,6 +207,11 @@ export const Dashboard: React.FC = () => {
   const [selectedOffer, setSelectedOffer] = useState<StartedOffer | null>(null);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [questWindows, setQuestWindows] = useState<QuestWindows>(getQuestWindows());
+  const selectedOfferIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    selectedOfferIdRef.current = selectedOffer?.id ?? null;
+  }, [selectedOffer]);
 
   // ----------------------------------------------------
   // LOAD EVERYTHING (NOW DRIVEN BY user?.uid)
@@ -201,7 +225,6 @@ export const Dashboard: React.FC = () => {
 
         const results = await Promise.allSettled([
           loadReferralData(uid),
-          loadStartedOffers(uid),
           loadOfferHistory(uid),
         ]);
 
@@ -403,37 +426,55 @@ export const Dashboard: React.FC = () => {
   };
 
   // ----------------------------------------------------
-  // LOAD OFFERS
+  // LIVE SUBSCRIPTION TO STARTED OFFERS (for webhook progress updates)
   // ----------------------------------------------------
-  const loadStartedOffers = async (uid: string) => {
+  useEffect(() => {
+    if (!user) return;
+
     setOffersLoading(true);
 
-    try {
-      const colRef = collection(db, "users", uid, "startedOffers");
-      const q = query(colRef, orderBy("startedAt", "desc"));
-      const snap = await getDocs(q);
+    const colRef = collection(db, "users", user.uid, "startedOffers");
+    const q = query(colRef, orderBy("startedAt", "desc"));
 
-      const items: StartedOffer[] = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as any),
-      }));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const items: StartedOffer[] = snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as any),
+        }));
 
-      const withShortcut = appendShortcutBonusToStartedOffers(items);
+        const withShortcut = appendShortcutBonusToStartedOffers(items);
 
-      setAllOffers(withShortcut);
-      setActiveOffers(withShortcut.filter((o) => o.status !== "completed"));
-      setCompletedOffers(withShortcut.filter((o) => o.status === "completed"));
-      setProgressOffers(
-        withShortcut.filter(
-          (o) => typeof o.totalObjectives === "number" && o.totalObjectives > 0
-        )
-      );
-    } catch (err) {
-      console.error("Error loading started offers:", err);
-    } finally {
-      setOffersLoading(false);
-    }
-  };
+        setAllOffers(withShortcut);
+        setActiveOffers(withShortcut.filter((o) => o.status !== "completed"));
+        setCompletedOffers(withShortcut.filter((o) => o.status === "completed"));
+        setProgressOffers(
+          withShortcut.filter(
+            (o) => typeof o.totalObjectives === "number" && o.totalObjectives > 0
+          )
+        );
+
+        const selectedId = selectedOfferIdRef.current;
+        if (selectedId) {
+          const updated = withShortcut.find((o) => o.id === selectedId);
+          if (updated) {
+            setSelectedOffer((prev) =>
+              prev && prev.id === updated.id ? updated : prev
+            );
+          }
+        }
+
+        setOffersLoading(false);
+      },
+      (err) => {
+        console.error("Error loading started offers:", err);
+        setOffersLoading(false);
+      }
+    );
+
+    return () => unsub();
+  }, [user, profile?.shortcutBonusClaimed, profile?.shortcutBonusAt]);
 
   const loadOfferHistory = async (uid: string) => {
     setOfferHistoryLoading(true);
@@ -619,15 +660,249 @@ export const Dashboard: React.FC = () => {
     return "--";
   };
 
+  const formatDateTimeFull = useCallback((ts: any) => {
+    if (!ts) return null;
+    const date =
+      typeof ts.toDate === "function"
+        ? ts.toDate()
+        : ts instanceof Date
+        ? ts
+        : typeof ts === "number"
+        ? new Date(ts)
+        : null;
+    if (!date || Number.isNaN(date.getTime())) return null;
+    return date.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }, []);
+
   const openOfferModal = (offer: StartedOffer) => {
     setSelectedOffer(offer);
     setIsOfferModalOpen(true);
+    void maybeBackfillObjectives(offer);
   };
 
   const closeOfferModal = () => {
     setSelectedOffer(null);
     setIsOfferModalOpen(false);
   };
+
+  const replaceOfferInState = (updated: StartedOffer) => {
+    setAllOffers((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+    setActiveOffers((prev) =>
+      prev.map((o) => (o.id === updated.id ? updated : o))
+    );
+    setProgressOffers((prev) =>
+      prev.map((o) => (o.id === updated.id ? updated : o))
+    );
+    setCompletedOffers((prev) =>
+      prev.map((o) => (o.id === updated.id ? updated : o))
+    );
+  };
+
+  const maybeBackfillObjectives = useCallback(
+    async (offer: StartedOffer) => {
+      if (!user || !offer?.id) return;
+
+      try {
+        const res = await fetch(FEED_URL);
+        if (!res.ok) return;
+
+        const payload = await res.json();
+        const list: any[] = Array.isArray(payload?.offers)
+          ? payload.offers
+          : Array.isArray(payload)
+          ? payload
+          : [];
+
+        const match = list.find(
+          (item) =>
+            item?.id?.toString() === offer.id ||
+            item?.offer_id?.toString() === offer.id
+        );
+        if (!match || !Array.isArray(match.objectives)) return;
+
+        const bonusPercent =
+          typeof profile?.bonusPercent === "number" &&
+          isFinite(profile.bonusPercent)
+            ? Math.min(10, Math.max(0, profile.bonusPercent))
+            : 0;
+
+        const mapped =
+          match.objectives.length > 0
+            ? match.objectives
+                .map((obj: any, idx: number) => {
+                  const label = (obj?.name || obj?.label || "").toString();
+                  const rewardRaw = obj?.reward ?? obj?.amount ?? obj?.value;
+                  const reward = Number(rewardRaw);
+                  const rewardValue = Number.isFinite(reward) ? reward : 0;
+                  const rewardWithBonus =
+                    Math.round(rewardValue * (1 + bonusPercent / 100) * 100) / 100;
+                  return {
+                    label: label || `Objective ${idx + 1}`,
+                    reward: rewardValue,
+                    rewardWithBonus,
+                  };
+                })
+                .filter((o: any) => o && o.label)
+            : [];
+
+        if (mapped.length === 0) return;
+
+        const updated: StartedOffer = {
+          ...offer,
+          objectives: mapped,
+          totalObjectives: mapped.length,
+          completedObjectives: offer.completedObjectives ?? 0,
+        };
+
+        replaceOfferInState(updated);
+        setSelectedOffer((prev) => (prev && prev.id === offer.id ? updated : prev));
+
+        const ref = doc(db, "users", user.uid, "startedOffers", offer.id);
+        await updateDoc(ref, {
+          objectives: mapped,
+          totalObjectives: mapped.length,
+        });
+      } catch (err) {
+        console.warn("Objective backfill failed", err);
+      }
+    },
+    [user, profile?.bonusPercent]
+  );
+
+  const selectedOfferCard = useMemo<StartedOfferCardProps | null>(() => {
+    if (!selectedOffer) return null;
+
+    const totalPayout = Number(selectedOffer.totalPayout ?? 0);
+    const rawObjectives = Array.isArray(selectedOffer.objectives)
+      ? selectedOffer.objectives
+      : [];
+
+    const payoutFromObjectives =
+      rawObjectives.reduce((sum, o) => {
+        const rewardOptions = [
+          o.rewardFinal,
+          o.rewardWithBonus,
+          o.reward,
+        ].map((v) => (typeof v === "number" && isFinite(v) ? v : null));
+        const picked = rewardOptions.find((v) => v !== null);
+        return sum + (picked ?? 0);
+      }, 0) || 0;
+
+    const payout = Number.isFinite(totalPayout) && totalPayout > 0
+      ? totalPayout
+      : payoutFromObjectives;
+
+    const derivedTotal =
+      selectedOffer.totalObjectives ??
+      (rawObjectives.length > 0 ? rawObjectives.length : 0);
+
+    const completedFromFlags = rawObjectives.filter(
+      (o) => o?.isCompleted === true
+    ).length;
+
+    const fallbackCompletedCount =
+      typeof selectedOffer.completedObjectives === "number"
+        ? selectedOffer.completedObjectives
+        : 0;
+
+    const derivedCompleted =
+      completedFromFlags > 0 ? completedFromFlags : fallbackCompletedCount;
+
+    let objectivesWithState =
+      rawObjectives.length > 0
+        ? rawObjectives.map((o, idx) => ({
+            label: o.label || `Objective ${idx + 1}`,
+            reward: (() => {
+              const rewardOptions = [
+                o.rewardFinal,
+                o.rewardWithBonus,
+                o.reward,
+              ].map((v) => (typeof v === "number" && isFinite(v) ? v : null));
+              const picked = rewardOptions.find((v) => v !== null);
+              return picked ?? 0;
+            })(),
+            completed:
+              o.isCompleted === true ||
+              (completedFromFlags === 0 && idx < derivedCompleted),
+          }))
+        : [];
+
+    if (objectivesWithState.length === 0 && derivedTotal > 0) {
+      const perReward =
+        derivedTotal > 0 && payout > 0
+          ? Math.max(0, Math.round((payout / derivedTotal) * 100) / 100)
+          : 0;
+      objectivesWithState = Array.from({ length: derivedTotal }, (_, idx) => ({
+        label: `Objective ${idx + 1}`,
+        reward: perReward,
+        completed: idx < derivedCompleted,
+      }));
+    }
+
+    if (objectivesWithState.length === 0) {
+      objectivesWithState = [
+        {
+          label: "Complete this offer",
+          reward: payout > 0 ? payout : 0,
+          completed: (selectedOffer.status || "").toLowerCase() === "completed",
+        },
+      ];
+    }
+
+    const progressTotal = objectivesWithState.length;
+    const progressDone = objectivesWithState.filter((o) => o.completed).length;
+
+    const blurb =
+      [
+        progressTotal > 0 ? `${progressDone}/${progressTotal} goals done` : null,
+        selectedOffer.estMinutes ? `~${selectedOffer.estMinutes} min` : null,
+        selectedOffer.status ? `Status: ${selectedOffer.status}` : null,
+      ]
+        .filter(Boolean)
+        .join(" • ") || "Track your milestones and keep going.";
+
+    const startedLabel = formatDateTimeFull(selectedOffer.startedAt);
+    const completedLabel = formatDateTimeFull(selectedOffer.completedAt);
+    const description =
+      [
+        `Total payout $${payout.toFixed(2)}`,
+        selectedOffer.source ? `Source: ${selectedOffer.source}` : null,
+        startedLabel ? `Started ${startedLabel}` : null,
+        completedLabel ? `Completed ${completedLabel}` : null,
+      ]
+        .filter(Boolean)
+        .join(". ") || "Keep progressing to earn your reward.";
+
+    const typeHint = (selectedOffer.type || selectedOffer.source || "").toLowerCase();
+    const cardType = typeHint.includes("survey")
+      ? "📝"
+      : typeHint.includes("quest")
+      ? "✨"
+      : typeHint.includes("bonus")
+      ? "💎"
+      : "🎮";
+
+    const thumb = selectedOffer.imageUrl || "";
+    const images: string[] = thumb ? [thumb] : [];
+
+    return {
+      name: selectedOffer.title || "Offer",
+      blurb,
+      description,
+      thumbnail: thumb,
+      images,
+      objectives: objectivesWithState,
+      totalRevenue: payout,
+      cardType,
+      downloadLink: selectedOffer.clickUrl || "#",
+      hideCardShell: true,
+    };
+  }, [selectedOffer, formatDateTimeFull]);
 
   const handleCopyReferralLink = () => {
     if (!referralCode) return alert("Referral link unavailable");
@@ -1584,187 +1859,23 @@ export const Dashboard: React.FC = () => {
         )}
 
         {/* OFFER DETAIL MODAL */}
-        {isOfferModalOpen && (
-          <div
-            className="dash-offer-modal-backdrop"
-            onClick={closeOfferModal}
-          >
-            <div
-              className="dash-offer-modal-wrapper"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {selectedOffer && (
-                <div className="dash-offer-modal glass-card">
-                  <header className="dash-offer-modal-header">
-                    <div>
-                      <h3 className="dash-card-title">
-                        {selectedOffer.title ?? "Offer details"}
-                      </h3>
-                      <p className="dash-offer-meta">
-                        Type: {selectedOffer.type ?? "offer"}
-                        {selectedOffer.source
-                          ? ` · Source: ${selectedOffer.source}`
-                          : ""}
-                      </p>
-                    </div>
-                    <button
-                      className="dash-offer-modal-close"
-                      onClick={closeOfferModal}
-                      aria-label="Close details"
-                    >
-                      ✕
-                    </button>
-                  </header>
+        {selectedOfferCard &&
+          createPortal(
+            <GameCard
+              key={selectedOffer?.id || "offer-modal"}
+              {...selectedOfferCard}
+              open={isOfferModalOpen}
+              onOpenChange={(next) => {
+                if (!next) {
+                  closeOfferModal();
+                } else {
+                  setIsOfferModalOpen(true);
+                }
+              }}
+            />,
+            document.body
+          )}
 
-                  <div className="dash-offer-modal-body">
-                    {selectedOffer.goals && selectedOffer.goals.length > 0 && (
-                      <div className="dash-offer-progress-summary">
-                        {(() => {
-                          const total = selectedOffer.goals?.length || 0;
-                          const done =
-                            selectedOffer.goals?.filter((g) => g.isCompleted)
-                              .length || 0;
-                          const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-                          return (
-                            <>
-                              <div className="dash-progress-text">
-                                <span>Goals</span>
-                                <strong>
-                                  {done}/{total} completed
-                                </strong>
-                              </div>
-                              <div className="dash-progress-bar-wrap">
-                                <div
-                                  className="dash-progress-bar-fill"
-                                  style={{ width: `${pct}%` }}
-                                />
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
-
-                    <div className="dash-offer-modal-summary">
-                      <p className="dash-line">
-                        <span className="dash-label">Payout:</span>
-                        <span>
-                          $
-                          {selectedOffer.totalPayout?.toFixed(2) ?? "0.00"}
-                        </span>
-                      </p>
-                      <p className="dash-line">
-                        <span className="dash-label">Status:</span>
-                        <span>{selectedOffer.status ?? "started"}</span>
-                      </p>
-                      <p className="dash-line">
-                        <span className="dash-label">Started:</span>
-                        <span>
-                          {formatTimestamp(selectedOffer.startedAt)}
-                        </span>
-                      </p>
-                      {selectedOffer.completedAt && (
-                        <p className="dash-line">
-                          <span className="dash-label">Completed:</span>
-                          <span>
-                            {formatTimestamp(selectedOffer.completedAt)}
-                          </span>
-                        </p>
-                      )}
-                    </div>
-
-                    {/* GOALS */}
-                    <div className="dash-offer-modal-goals">
-                      <div className="dash-offer-modal-column">
-                        <h4 className="dash-offer-modal-subtitle">
-                          Completed
-                        </h4>
-                        {selectedOffer.goals &&
-                        selectedOffer.goals.some((g) => g.isCompleted) ? (
-                          <ul className="dash-goal-list">
-                            {selectedOffer.goals
-                              .filter((g) => g.isCompleted)
-                              .map((g, i) => (
-                                <li
-                                  key={g.id ?? `goal-done-${i}`}
-                                  className="dash-goal-item"
-                                >
-                                  <span className="dash-goal-pill dash-goal-pill-done">
-                                    ✓
-                                  </span>
-                                  <div className="dash-goal-text-wrap">
-                                    <span className="dash-goal-label">
-                                      {g.label}
-                                    </span>
-                                    {g.payout !== undefined && (
-                                      <span className="dash-goal-payout">
-                                        +${g.payout.toFixed(2)}
-                                      </span>
-                                    )}
-                                  </div>
-                                </li>
-                              ))}
-                          </ul>
-                        ) : (
-                          <p className="dash-muted">
-                            Nothing completed yet.
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="dash-offer-modal-column">
-                        <h4 className="dash-offer-modal-subtitle">
-                          In Progress
-                        </h4>
-
-                        {selectedOffer.goals &&
-                        selectedOffer.goals.some((g) => !g.isCompleted) ? (
-                          <ul className="dash-goal-list">
-                            {selectedOffer.goals
-                              .filter((g) => !g.isCompleted)
-                              .map((g, i) => (
-                                <li
-                                  key={g.id ?? `goal-todo-${i}`}
-                                  className="dash-goal-item dash-goal-item-pending"
-                                >
-                                  <span className="dash-goal-pill">•</span>
-                                  <div className="dash-goal-text-wrap">
-                                    <span className="dash-goal-label">
-                                      {g.label}
-                                    </span>
-                                    {g.payout !== undefined && (
-                                      <span className="dash-goal-payout">
-                                        +${g.payout.toFixed(2)}
-                                      </span>
-                                    )}
-                                  </div>
-                                </li>
-                              ))}
-                          </ul>
-                        ) : (
-                          <p className="dash-muted">No remaining goals.</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {selectedOffer.clickUrl && (
-                      <div className="dash-offer-modal-footer">
-                        <button
-                          className="dash-offer-btn"
-                          onClick={() =>
-                            window.open(selectedOffer.clickUrl!, "_blank")
-                          }
-                        >
-                          Return to Offer
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </section>
     </main>
     

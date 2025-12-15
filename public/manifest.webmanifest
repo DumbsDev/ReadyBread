@@ -10,9 +10,15 @@
   "theme_color": "#ffd166",
   "icons": [
     {
-      "src": "/icons/icon-box.png",
-      "sizes": "1080x1080",
-      "type": "image/png",
+      "src": "/icons/icon-box.webp",
+      "sizes": "384x384",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-192.webp",
+      "sizes": "144x144",
+      "type": "image/webp",
       "purpose": "any maskable"
     }
   ]

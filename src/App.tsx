@@ -99,7 +99,7 @@ const Confirmation = lazyPage(
 const RouteLoader: React.FC = () => (
   <div className="rb-route-fallback">
     <img
-      src="/assets/emoji/icon.png"
+      src="/assets/emoji/icon.webp"
       alt="Loading Bread"
       className="loader-bread-img"
     />

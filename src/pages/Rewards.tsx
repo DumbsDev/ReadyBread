@@ -30,22 +30,22 @@ import "./styles/rewards.css";
 /* ---------------------------------------------------
    Logos
 --------------------------------------------------- */
-import paypalLogo from "../static/images/icons/paypal.png";
-import cashappLogo from "../static/images/icons/Cashapp.webp";
-import venmoLogo from "../static/images/icons/venmo.png";
-import bitcoinLogo from "../static/images/icons/bitcoin.svg";
-import litecoinLogo from "../static/images/icons/litecoin.svg";
-import dogecoinLogo from "../static/images/icons/dogecoin.svg";
+import paypalLogo from "../static/images/icons/payouts/paypal.png";
+import cashappLogo from "../static/images/icons/payouts/cashapp.png";
+import venmoLogo from "../static/images/icons/payouts/venmo.png";
+import bitcoinLogo from "../static/images/icons/payouts/bitcoin.png";
+import litecoinLogo from "../static/images/icons/payouts/litecoin.png";
+import dogecoinLogo from "../static/images/icons/payouts/dogecoin.svg";
 
-import amazonLogo from "../static/images/icons/giftcards/amazon.png";
+import amazonLogo from "../static/images/icons/giftcards/amazon.webp";
 import doordashLogo from "../static/images/icons/giftcards/doordash.jpg";
 import steamLogo from "../static/images/icons/giftcards/steam.jpg";
-import spotifyLogo from "../static/images/icons/giftcards/spotify.png";
+import spotifyLogo from "../static/images/icons/giftcards/spotify.webp";
 
-import dwbLogo from "../static/images/icons/drswithoutborders.png";
-import redcrossLogo from "../static/images/icons/redcross.png";
-import stjudesLogo from "../static/images/icons/stjudes.png";
-import unicefLogo from "../static/images/icons/unicef.png";
+import dwbLogo from "../static/images/icons/drswithoutborders.webp";
+import redcrossLogo from "../static/images/icons/redcross.webp";
+import stjudesLogo from "../static/images/icons/stjudes.webp";
+import unicefLogo from "../static/images/icons/unicef.webp";
 
 /* ---------------------------------------------------
    Types
@@ -159,19 +159,19 @@ const giftCardOptions: GiftCardOption[] = [
     id: "amazon",
     name: "Amazon Gift Card",
     logo: amazonLogo,
-    amounts: [5, 10, 25, 50],
+    amounts: [10, 25, 50],
   },
   {
     id: "doordash",
     name: "DoorDash Gift Card",
     logo: doordashLogo,
-    amounts: [5, 10, 15, 25],
+    amounts: [10, 15, 25],
   },
   {
     id: "steam",
     name: "Steam Wallet Code",
     logo: steamLogo,
-    amounts: [5, 10, 20, 25],
+    amounts: [10, 20, 25],
   },
   {
     id: "spotify",
@@ -542,8 +542,8 @@ export const Rewards: React.FC = () => {
 
     const amountNum = selectedGiftAmount;
 
-    if (amountNum < 5 && selectedGift.id !== "spotify") {
-      alert("Gift card minimum is $5 (Spotify fixed at $10).");
+    if (amountNum < 10) {
+      alert("Gift card minimum is $10.");
       return;
     }
 
@@ -851,7 +851,7 @@ export const Rewards: React.FC = () => {
         <h3 className="accent-toast">Cashout rules</h3>
         <ul className="rw-rules">
           <li>Minimum cashout: $3</li>
-          <li>Gift cards: minimum $5 (Spotify fixed at $10)</li>
+          <li>Gift cards: minimum $10</li>
           <li>Maximum per request: $20</li>
           <li>One cashout request every 24 hours</li>
           <li>Crypto includes a 10% network / processing fee</li>
@@ -1092,7 +1092,4 @@ export const Rewards: React.FC = () => {
     </main>
   );
 };
-
-
-
 

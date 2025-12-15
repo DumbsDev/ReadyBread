@@ -36,7 +36,7 @@ export const Loader: React.FC<LoaderProps> = ({ show }) => {
   return (
     <div id="rb-loader" className={fadeOut ? "hidden" : ""}>
       <img
-        src="/assets/emoji/icon.png"
+        src="/assets/emoji/icon.webp"
         alt="Loading Bread"
         className="loader-bread-img"
       />

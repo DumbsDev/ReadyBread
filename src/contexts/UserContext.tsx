@@ -1,6 +1,10 @@
 // src/contexts/UserContext.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  type User as FirebaseUser,
+  signOut,
+} from "firebase/auth";
 import { auth, db } from "../config/firebase";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 
@@ -94,7 +98,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
      AUTH LISTENER (firebase auth)
   ------------------------------------------------------------ */
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      // Enforce email verification before we allow a session
+      if (u && !u.emailVerified) {
+        setAuthUser(null);
+        setProfile(null);
+        setBalance(0);
+        setAuthReady(true);
+        setLoading(false);
+        await signOut(auth);
+        return;
+      }
+
       setAuthUser(u);
       setAuthReady(true);
       if (!u) {

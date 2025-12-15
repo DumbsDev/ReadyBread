@@ -170,11 +170,11 @@ export const Advertise: React.FC = () => {
           buildings, conquer zones, and strengthen heroes. Earn rewards as 
           you complete milestones and rise through the ranks.
         "
-        thumbnail="/assets/emoji/icon.png"
+        thumbnail="/assets/emoji/icon.webp"
         images={[
-          '/assets/emoji/icon.png',
-          '/assets/emoji/icon.png',
-          '/assets/emoji/icon.png'
+          '/assets/emoji/icon.webp',
+          '/assets/emoji/icon.webp',
+          '/assets/emoji/icon.webp'
         ]}
         objectives={[
           { label: 'Complete the tutorial', reward: 0.25, completed: true},

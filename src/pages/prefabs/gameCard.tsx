@@ -1,10 +1,12 @@
 // src/pages/prefabs/gameCard.tsx
-import React, { useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./gameCard.css";
 
 interface Objective {
   label: string;
   reward: number;
+  rewardFinal?: number;
+  rewardWithBonus?: number;
   completed?: boolean;
 }
 
@@ -18,6 +20,10 @@ interface GameCardProps {
   totalRevenue: number;
   cardType: string; // emoji
   downloadLink: string;
+  defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideCardShell?: boolean;
 }
 
 export const GameCard: React.FC<GameCardProps> = ({
@@ -30,11 +36,30 @@ export const GameCard: React.FC<GameCardProps> = ({
   totalRevenue,
   cardType,
   downloadLink,
+  defaultOpen = false,
+  open: openProp,
+  onOpenChange,
+  hideCardShell = false,
 }) => {
-  const fallbackImg = "src/static/images/icon.png";
+  const fallbackImg = "src/static/images/icon.webp";
   const displayImages = images && images.length > 0 ? images : [fallbackImg];
 
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isControlled = typeof openProp === "boolean";
+  const isOpen = isControlled ? (openProp as boolean) : internalOpen;
+  const setOpenState = (next: boolean) => {
+    if (!isControlled) {
+      setInternalOpen(next);
+    }
+    onOpenChange?.(next);
+  };
+
+  useEffect(() => {
+    if (!isControlled && defaultOpen) {
+      setInternalOpen(true);
+    }
+  }, [defaultOpen, isControlled]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const totalImages = displayImages.length;
 
@@ -87,12 +112,13 @@ export const GameCard: React.FC<GameCardProps> = ({
   return (
     <>
       {/* Card display */}
+      {!hideCardShell && (
       <div
         ref={cardRef}
         className="gc-card-outer"
         onMouseMove={handleMove}
         onMouseLeave={handleLeave}
-        onClick={() => setOpen(true)}
+        onClick={() => setOpenState(true)}
       >
         <div className="gc-card-inner">
           <div className="gc-thumb-wrapper">
@@ -114,7 +140,7 @@ export const GameCard: React.FC<GameCardProps> = ({
                 className="gc-play-btn"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setOpen(true);
+                  setOpenState(true);
                 }}
               >
                 Play {name} and earn ${totalRevenue.toFixed(2)}
@@ -123,10 +149,11 @@ export const GameCard: React.FC<GameCardProps> = ({
           </div>
         </div>
       </div>
+      )}
 
       {/* Modal popup */}
-      {open && (
-        <div className="gc-modal-overlay" onClick={() => setOpen(false)}>
+      {isOpen && (
+        <div className="gc-modal-overlay" onClick={() => setOpenState(false)}>
           <div className="gc-modal" onClick={(e) => e.stopPropagation()}>
             <div
               className="gc-carousel"
@@ -190,6 +217,17 @@ export const GameCard: React.FC<GameCardProps> = ({
               <div className="gc-objectives-list">
                 {objectives.map((obj, idx) => (
                   <div key={idx} className="gc-objective">
+                    {(() => {
+                      const rewardOptions = [
+                        obj.rewardFinal,
+                        obj.rewardWithBonus,
+                        obj.reward,
+                      ].map((v) => (typeof v === "number" && isFinite(v) ? v : null));
+                      const rewardValue =
+                        rewardOptions.find((v) => v !== null) ?? 0;
+
+                      return (
+                        <>
                     <span
                       className={`gc-objective-step ${
                         obj.completed ? "done" : ""
@@ -198,7 +236,12 @@ export const GameCard: React.FC<GameCardProps> = ({
                       {obj.completed ? "✓" : idx + 1}
                     </span>
                     <span className="gc-objective-text">{obj.label}</span>
-                    <span className="gc-objective-reward">+${obj.reward}</span>
+                    <span className="gc-objective-reward">
+                      +${rewardValue.toFixed(2)}
+                    </span>
+                        </>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
@@ -208,7 +251,7 @@ export const GameCard: React.FC<GameCardProps> = ({
               </div>
             </div>
 
-            <button className="gc-modal-close" onClick={() => setOpen(false)}>
+            <button className="gc-modal-close" onClick={() => setOpenState(false)}>
               X
             </button>
           </div>

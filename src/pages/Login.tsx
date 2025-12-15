@@ -73,7 +73,7 @@ export const Login: React.FC = () => {
   useEffect(() => {
     if (loading) return;
 
-    if (authUser && profile) {
+    if (authUser?.emailVerified && profile) {
       navigate("/dashboard");
     }
   }, [authUser, profile, loading, navigate]);
@@ -147,6 +147,8 @@ export const Login: React.FC = () => {
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password);
 
+      await cred.user.reload();
+
       if (!cred.user.emailVerified) {
         try {
           await sendEmailVerification(cred.user, {
@@ -156,9 +158,11 @@ export const Login: React.FC = () => {
         } catch {
           /* ignore */
         }
+        await signOut(auth);
         alert(
-          "Verification email sent. You can browse, but payouts and referrals stay locked until you verify."
+          "Please verify your email to log in. We just sent a new verification link."
         );
+        return;
       }
 
       // Cloud Function to process referrals
